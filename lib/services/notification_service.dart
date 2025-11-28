@@ -55,30 +55,36 @@ class NotificationService {
 
     final id = _eventNotificationId(event.id);
 
-    final title = 'Upcoming walk';
-    final body = '${event.title} starts in 1 hour';
+    // Friendlier body depending on how close the event is
+   final bool moreThanHourAway = event.dateTime
+    .isAfter(DateTime.now().add(const Duration(hours: 1)));
+
+    final String body = moreThanHourAway
+        ? '${event.title} starts in about 1 hour.'
+        : '${event.title} is starting soon!';
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'walk_reminders',
+        'Walk reminders',
+        channelDescription: 'Reminders before your walks start',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
 
     try {
       await _plugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tz.TZDateTime.from(scheduledTime, tz.local),
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'walk_reminders',
-            'Walk reminders',
-            channelDescription: 'Reminders before your walks start',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-        // ⛔️ REMOVED: androidAllowWhileIdle
-        // ⛔️ REMOVED: uiLocalNotificationDateInterpretation
-        matchDateTimeComponents: DateTimeComponents.dateAndTime,
-        // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      );
+  id,
+  'Upcoming walk',
+  body,
+  tz.TZDateTime.from(scheduledTime, tz.local),
+  details,
+  matchDateTimeComponents: DateTimeComponents.dateAndTime,
+  // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM permission
+  androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+);
+
     } catch (e) {
       // ignore: avoid_print
       print('Notification schedule error: $e');
