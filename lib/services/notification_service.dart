@@ -40,75 +40,43 @@ class NotificationService {
     return eventId.hashCode & 0x7fffffff;
   }
 
-  /// DEBUG: show a notification immediately (no scheduling).
-  Future<void> showTestNotification() async {
-    if (!_initialized) return;
-
-    const details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'test_channel',
-        'Test notifications',
-        channelDescription: 'For debugging only',
-        importance: Importance.high,
-        priority: Priority.high,
-      ),
-    );
-
-    await _plugin.show(
-      999, // some fixed ID for the debug notification
-      'Test notification',
-      'If you see this, local notifications are working 🎉',
-      details,
-    );
-  }
-
-  /// Schedule a reminder for a walk.
-  /// Normal mode: ~1 hour before the walk.
+  /// Schedule a reminder ~1 hour before the walk starts.
+  /// If the walk is in less than 1 hour, no reminder is scheduled.
   Future<void> scheduleWalkReminder(WalkEvent event) async {
     if (!_initialized) return;
 
-    final now = DateTime.now();
+    // ✅ REAL MODE: 1 hour before the event
+    final scheduledTime = event.dateTime.subtract(const Duration(hours: 1));
 
-    // Aim for 1 hour before the walk time
-    DateTime scheduledTime = event.dateTime.subtract(const Duration(hours: 1));
-
-    // If that's already in the past (event is <1h away or already started),
-    // schedule it a few minutes from now instead.
-    if (scheduledTime.isBefore(now)) {
-      scheduledTime = now.add(const Duration(minutes: 5));
+    // If it's already in the past, don't schedule anything
+    if (scheduledTime.isBefore(DateTime.now())) {
+      return;
     }
 
     final id = _eventNotificationId(event.id);
 
-    // Friendlier body depending on how close the event is
-    final bool moreThanHourAway =
-        event.dateTime.isAfter(now.add(const Duration(hours: 1)));
-    final String body = moreThanHourAway
-        ? '${event.title} starts in about 1 hour.'
-        : '${event.title} is starting soon!';
-
-    const details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'walk_reminders',
-        'Walk reminders',
-        channelDescription: 'Reminders before your walks start',
-        importance: Importance.high,
-        priority: Priority.high,
-      ),
-    );
+    final title = 'Upcoming walk';
+    final body = '${event.title} starts in 1 hour';
 
     try {
       await _plugin.zonedSchedule(
         id,
-        'Upcoming walk',
+        title,
         body,
         tz.TZDateTime.from(scheduledTime, tz.local),
-        details,
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'walk_reminders',
+            'Walk reminders',
+            channelDescription: 'Reminders before your walks start',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+        // ⛔️ REMOVED: androidAllowWhileIdle
+        // ⛔️ REMOVED: uiLocalNotificationDateInterpretation
         matchDateTimeComponents: DateTimeComponents.dateAndTime,
-        // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM permission
+        // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
     } catch (e) {
@@ -116,7 +84,6 @@ class NotificationService {
       print('Notification schedule error: $e');
     }
   }
-
 
   /// Cancel the reminder for this event (if any).
   Future<void> cancelWalkReminder(WalkEvent event) async {

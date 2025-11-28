@@ -20,7 +20,7 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.10.0
-#your a batte5 wa na3na3
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -37,8 +37,8 @@ dependencies:
   http: ^1.1.0
   image_picker: ^1.1.1
   table_calendar: ^3.0.8
-  flutter_local_notifications: ^17.1.2
-  timezone: ^0.9.2
+  flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
 
 
 
