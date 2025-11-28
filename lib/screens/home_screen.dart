@@ -21,30 +21,17 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
 
   /// All events (hosted by user + nearby).
-  final List<WalkEvent> _events = [
-    // Example seed data (you can remove or change)
-    WalkEvent(
-      id: '1',
-      title: 'Sunset walk at Corniche',
-      dateTime: DateTime.now().add(const Duration(days: 2)),
-      distanceKm: 4.5,
-      gender: 'Mixed',
-      isOwner: true,
-      joined: true,
-      meetingPlaceName: 'Corniche, Doha',
-      description: 'Chill sunset walk along the sea.',
-    ),
-    WalkEvent(
-      id: '2',
-      title: 'Morning park loop',
-      dateTime: DateTime.now().add(const Duration(days: 1)),
-      distanceKm: 3.0,
-      gender: 'Women only',
-      isOwner: false,
-      joined: false,
-      meetingPlaceName: 'Al Bidda park',
-    ),
-  ];
+  final List<WalkEvent> _events = [];
+
+  // TODO: Replace with real user name from profile/auth.
+  String _userName = 'Walker';
+
+  String _greetingForTime() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
 
   // --- Derived views & helpers ---
 
@@ -54,8 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<WalkEvent> get _nearbyWalks =>
       _events.where((e) => !e.isOwner && !e.cancelled).toList();
 
-  int get _walksJoined =>
-      _events.where((e) => e.joined && !e.cancelled).length;
+  int get _walksJoined => _events.where((e) => e.joined && !e.cancelled).length;
 
   int get _eventsHosted =>
       _events.where((e) => e.isOwner && !e.cancelled).length;
@@ -110,9 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!(e.joined || e.isOwner)) return false;
 
         final d = DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day);
-        return d.year == day.year &&
-            d.month == day.month &&
-            d.day == day.day;
+        return d.year == day.year && d.month == day.month && d.day == day.day;
       });
 
       if (hasWalkThatDay) {
@@ -136,10 +120,27 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!(e.joined || e.isOwner)) return false;
 
       final ed = DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day);
-      return ed.year == d0.year &&
-          ed.month == d0.month &&
-          ed.day == d0.day;
+      return ed.year == d0.year && ed.month == d0.month && ed.day == d0.day;
     }).toList();
+  }
+
+  String _formatFullDate(DateTime date) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final monthName = months[date.month - 1];
+    return '$monthName ${date.day}, ${date.year}';
   }
 
   // --- Actions ---
@@ -164,8 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final index = _events.indexWhere((e) => e.id == event.id);
       if (index == -1) return;
       final current = _events[index];
-      _events[index] =
-          current.copyWith(interested: !current.interested);
+      _events[index] = current.copyWith(interested: !current.interested);
     });
   }
 
@@ -242,6 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F9F2),
       body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
@@ -270,6 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomeTab(BuildContext context) {
     final theme = Theme.of(context);
+    final today = DateTime.now();
 
     return SafeArea(
       child: CustomScrollView(
@@ -280,36 +282,42 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top welcome header
                   Text(
-                    'This week',
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    '${_greetingForTime()}, $_userName 👋',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  _WeeklySummaryCard(
-                    walks: _weeklyWalkCount,
-                    kmSoFar: _weeklyKm,
-                    kmGoal: _weeklyGoalKm,
-                    streakDays: _streakDays,
+                  const SizedBox(height: 4),
+                  Text(
+                    'Today, ${today.day}/${today.month}/${today.year}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                    ),
                   ),
                   const SizedBox(height: 24),
+
+                  // --- MAIN ACTION FIRST: Start walk ---
                   Text(
-                    'Welcome 👋',
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    'Ready to walk? 👟',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Find people near you to walk with, create events, and earn badges.',
+                    'Start a walk now or join others nearby. Your steps, your pace.',
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _openCreateWalk,
-                      icon: const Icon(Icons.add_road),
-                      label: const Text('Start a walking event'),
+                      onPressed:
+                          _openCreateWalk, // TODO: later can be live-walk screen
+                      icon: const Icon(Icons.directions_walk_outlined),
+                      label: const Text('Start walk'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -329,27 +337,41 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () {
                             setState(() => _currentTab = 2);
                           },
-                          child: const Text('Friends'),
+                          child: const Text('Profile & stats'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
 
+                  const SizedBox(height: 24),
 
-                  const SizedBox(height: 16),
+                  // --- WEEKLY SUMMARY AFTER MAIN ACTION ---
+                  Text(
+                    'This week',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _WeeklySummaryCard(
+                    walks: _weeklyWalkCount,
+                    kmSoFar: _weeklyKm,
+                    kmGoal: _weeklyGoalKm,
+                    streakDays: _streakDays,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // --- QUICK STATS ---
                   Text(
                     'Your quick stats',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _StatCard(
-                        label: 'Walks joined',
-                        value: '$_walksJoined',
-                      ),
+                      _StatCard(label: 'Walks joined', value: '$_walksJoined'),
                       _StatCard(
                         label: 'Events hosted',
                         value: '$_eventsHosted',
@@ -361,27 +383,62 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  TableCalendar(
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: DateTime.now(),
-                    calendarFormat: CalendarFormat.week,
 
-                    // ✅ Only show dots for joined/hosted walks (not every event in the world)
-                    eventLoader: (day) => _eventsForDay(day),
-
-                    onDaySelected: (selectedDay, focusedDay) {
-                      final events = _eventsForDay(selectedDay);
-                      if (events.isNotEmpty) {
-                        _navigateToDetails(events.first);
-                      }
-                    },
+                  // --- DATE CARD + CALENDAR ---
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0.5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Today',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                _formatFullDate(today),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TableCalendar(
+                            firstDay: DateTime.utc(2020, 1, 1),
+                            lastDay: DateTime.utc(2030, 12, 31),
+                            focusedDay: today,
+                            calendarFormat: CalendarFormat.week,
+                            headerVisible: false,
+                            eventLoader: (day) => _eventsForDay(day),
+                            onDaySelected: (selectedDay, focusedDay) {
+                              final events = _eventsForDay(selectedDay);
+                              if (events.isNotEmpty) {
+                                _navigateToDetails(events.first);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
+
+                  // --- LIST OF HOSTED WALKS ---
                   Text(
                     'Your walks',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -393,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
-                  'No walks yet.\nGo to the Create tab and add your first walk!',
+                  'No walks yet.\nTap "Start walk" above to create your first one.',
                   style: TextStyle(fontSize: 16),
                 ),
               ),
@@ -403,10 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: _myHostedWalks.length,
               itemBuilder: (context, index) {
                 final e = _myHostedWalks[index];
-                return _WalkCard(
-                  event: e,
-                  onTap: () => _navigateToDetails(e),
-                );
+                return _WalkCard(event: e, onTap: () => _navigateToDetails(e));
               },
             ),
         ],
@@ -434,6 +488,8 @@ class _WeeklySummaryCard extends StatelessWidget {
     final progress = (kmGoal == 0) ? 0.0 : (kmSoFar / kmGoal).clamp(0.0, 1.0);
 
     return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0.5,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -442,8 +498,9 @@ class _WeeklySummaryCard extends StatelessWidget {
             Text(
               '$walks walk${walks == 1 ? '' : 's'} • '
               '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             ClipRRect(
@@ -472,10 +529,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatCard({
-    required this.label,
-    required this.value,
-  });
+  const _StatCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -483,14 +537,17 @@ class _StatCard extends StatelessWidget {
     return Expanded(
       child: Card(
         margin: const EdgeInsets.only(right: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0.5,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Column(
             children: [
               Text(
                 value,
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -510,10 +567,7 @@ class _WalkCard extends StatelessWidget {
   final WalkEvent event;
   final VoidCallback onTap;
 
-  const _WalkCard({
-    required this.event,
-    required this.onTap,
-  });
+  const _WalkCard({required this.event, required this.onTap});
 
   String _formatDateTime(DateTime dt) {
     final dd = dt.day.toString().padLeft(2, '0');
@@ -529,16 +583,17 @@ class _WalkCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0.5,
       child: ListTile(
         onTap: onTap,
         title: Text(
           event.title,
-          style: theme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        subtitle: Text(
-          _formatDateTime(event.dateTime),
-        ),
+        subtitle: Text(_formatDateTime(event.dateTime)),
         trailing: const Icon(Icons.chevron_right),
       ),
     );
