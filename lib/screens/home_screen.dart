@@ -9,7 +9,7 @@ import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
 import 'nearby_walks_screen.dart';
 import 'profile_screen.dart';
-//test
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
