@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // TODO: Replace with real user name from profile/auth.
   String _userName = 'Walker';
+    DateTime _selectedDay = DateTime.now();
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -79,6 +80,32 @@ class _HomeScreenState extends State<HomeScreen> {
       return !d.isBefore(start) && d.isBefore(end);
     }).toList();
   }
+    Widget _buildDayPill(String label, int dayNumber, bool isSelected) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 10,                         // smaller
+            color: isSelected ? Colors.black87 : Colors.black45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          '$dayNumber',
+          style: const TextStyle(
+            fontSize: 13,                         // smaller
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
+  }
+
 
   int get _weeklyWalkCount => _myWalksThisWeek.length;
 
@@ -289,16 +316,137 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Today, ${today.day}/${today.month}/${today.year}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.black54,
+                  const SizedBox(height: 16),
+
+                  // --- DATE CARD + CALENDAR (high on the screen) ---
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0.5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Today',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                _formatFullDate(today),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                                                   TableCalendar(
+                            firstDay: DateTime.utc(2020, 1, 1),
+                            lastDay: DateTime.utc(2030, 12, 31),
+                            focusedDay: _selectedDay,
+                            selectedDayPredicate: (day) =>
+                                isSameDay(day, _selectedDay),
+                            calendarFormat: CalendarFormat.week,
+                            headerVisible: false,
+                            daysOfWeekVisible: false,
+                            rowHeight: 60,
+                            eventLoader: (day) => _eventsForDay(day),
+                            
+                                                             calendarStyle: CalendarStyle(
+                              isTodayHighlighted: false,
+                              outsideDaysVisible: false,
+                              cellMargin:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                            ),
+                            calendarBuilders: CalendarBuilders(
+                              defaultBuilder: (context, day, focusedDay) {
+                                const labels = [
+                                  'Mon',
+                                  'Tue',
+                                  'Wed',
+                                  'Thu',
+                                  'Fri',
+                                  'Sat',
+                                  'Sun',
+                                ];
+                                final label = labels[day.weekday - 1];
+
+                                                                return Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 0),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,   // or green for selected
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: _buildDayPill(
+                                    label,
+                                    day.day,
+                                    false,                 // or true in selected
+                                  ),
+                                );
+
+                              },
+                              selectedBuilder: (context, day, focusedDay) {
+                                const labels = [
+                                  'Mon',
+                                  'Tue',
+                                  'Wed',
+                                  'Thu',
+                                  'Fri',
+                                  'Sat',
+                                  'Sun',
+                                ];
+                                final label = labels[day.weekday - 1];
+
+                                                           return Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 0),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 10),
+                                  decoration: BoxDecoration(
+                                                                        color: const Color(0xFFB7E76A),
+   // or green for selected
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: _buildDayPill(
+                                    label,
+                                    day.day,
+                                    false,                 // or true in selected
+                                  ),
+                                );
+
+                              },
+                            ),
+
+                          
+                            onDaySelected: (selectedDay, focusedDay) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                              });
+
+                              final events = _eventsForDay(selectedDay);
+                              if (events.isNotEmpty) {
+                                _navigateToDetails(events.first);
+                              }
+                            },
+                          ),
+
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  // --- MAIN ACTION FIRST: Start walk ---
+                  // --- MAIN ACTION: Start walk ---
                   Text(
                     'Ready to walk? 👟',
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -314,8 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed:
-                          _openCreateWalk, // TODO: later can be live-walk screen
+                      onPressed: _openCreateWalk,
                       icon: const Icon(Icons.directions_walk_outlined),
                       label: const Text('Start walk'),
                     ),
@@ -345,7 +492,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 24),
 
-                  // --- WEEKLY SUMMARY AFTER MAIN ACTION ---
+                  // --- WEEKLY SUMMARY ---
                   Text(
                     'This week',
                     style: theme.textTheme.titleLarge?.copyWith(
@@ -384,55 +531,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // --- DATE CARD + CALENDAR ---
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0.5,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Today',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                _formatFullDate(today),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          TableCalendar(
-                            firstDay: DateTime.utc(2020, 1, 1),
-                            lastDay: DateTime.utc(2030, 12, 31),
-                            focusedDay: today,
-                            calendarFormat: CalendarFormat.week,
-                            headerVisible: false,
-                            eventLoader: (day) => _eventsForDay(day),
-                            onDaySelected: (selectedDay, focusedDay) {
-                              final events = _eventsForDay(selectedDay);
-                              if (events.isNotEmpty) {
-                                _navigateToDetails(events.first);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
                   // --- LIST OF HOSTED WALKS ---
                   Text(
                     'Your walks',
@@ -460,7 +558,10 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: _myHostedWalks.length,
               itemBuilder: (context, index) {
                 final e = _myHostedWalks[index];
-                return _WalkCard(event: e, onTap: () => _navigateToDetails(e));
+                return _WalkCard(
+                  event: e,
+                  onTap: () => _navigateToDetails(e),
+                );
               },
             ),
         ],
@@ -488,7 +589,9 @@ class _WeeklySummaryCard extends StatelessWidget {
     final progress = (kmGoal == 0) ? 0.0 : (kmSoFar / kmGoal).clamp(0.0, 1.0);
 
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       elevation: 0.5,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -537,7 +640,9 @@ class _StatCard extends StatelessWidget {
     return Expanded(
       child: Card(
         margin: const EdgeInsets.only(right: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         elevation: 0.5,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -583,7 +688,9 @@ class _WalkCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       elevation: 0.5,
       child: ListTile(
         onTap: onTap,
