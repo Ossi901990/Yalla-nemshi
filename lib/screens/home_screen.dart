@@ -25,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // TODO: Replace with real user name from profile/auth.
   String _userName = 'Walker';
-    DateTime _selectedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -80,32 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return !d.isBefore(start) && d.isBefore(end);
     }).toList();
   }
-    Widget _buildDayPill(String label, int dayNumber, bool isSelected) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: 10,                         // smaller
-            color: isSelected ? Colors.black87 : Colors.black45,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          '$dayNumber',
-          style: const TextStyle(
-            fontSize: 13,                         // smaller
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
 
   int get _weeklyWalkCount => _myWalksThisWeek.length;
 
@@ -168,6 +142,32 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
     final monthName = months[date.month - 1];
     return '$monthName ${date.day}, ${date.year}';
+  }
+
+  Widget _buildDayPill(String label, int dayNumber, bool isSelected) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 10,
+            color: isSelected ? Colors.black87 : Colors.black45,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          '$dayNumber',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+      ],
+    );
   }
 
   // --- Actions ---
@@ -269,7 +269,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9F2),
+      // Deep green behind the top bar only – content sits on a card.
+       backgroundColor: const Color(0xFF4F925C),
       body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
@@ -301,274 +302,480 @@ class _HomeScreenState extends State<HomeScreen> {
     final today = DateTime.now();
 
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top welcome header
-                  Text(
-                    '${_greetingForTime()}, $_userName 👋',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+      child: Column(
+        children: [
+          // ===== TOP GRADIENT APP BAR (ONLY HEADER) =====
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: const BoxDecoration(
+             gradient: LinearGradient(
+      colors: [
+        Color(0xFF294630), // top
+        Color(0xFF4F925C), // bottom
+      ],
+      begin: Alignment.topCenter,      // 🔹 vertical
+      end: Alignment.bottomCenter,     // 🔹 vertical
+    ),
+    borderRadius: BorderRadius.vertical(
+      bottom: Radius.circular(0),),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white24,
+                      ),
+                      child: const Icon(
+                        Icons.directions_walk,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Yalla Nemshi',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white24,
+                          ),
+                          child: const Icon(
+                            Icons.notifications_none,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red,
+                            ),
+                            child: const Text(
+                              '3', // TODO: real unread count
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        size: 18,
+                        color: Color(0xFF14532D),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
-                  // --- DATE CARD + CALENDAR (high on the screen) ---
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0.5,
+          // ===== MAIN CONTENT CARD (ROUNDED TOP, NO GREEN ON SIDES) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF7F9F2),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 20, 16, 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Today',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          // Big inner card that contains greeting, calendar & "Your walks"
+                          Card(
+                            color: const Color(0xFFFBFEF8),
+                            elevation: 0.5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                  16, 16, 16, 20),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  // Greeting
+                                  Text(
+                                    '${_greetingForTime()}, $_userName 👋',
+                                    style: theme
+                                        .textTheme.titleLarge
+                                        ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          const Color(0xFF14532D),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatFullDate(today),
+                                    style: theme
+                                        .textTheme.bodySmall
+                                        ?.copyWith(
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Today + pill calendar
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment
+                                            .spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Today',
+                                        style: theme
+                                            .textTheme.bodyMedium
+                                            ?.copyWith(
+                                          fontWeight:
+                                              FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatFullDate(today),
+                                        style: theme
+                                            .textTheme.bodySmall
+                                            ?.copyWith(
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TableCalendar(
+                                    firstDay: DateTime.utc(
+                                        2020, 1, 1),
+                                    lastDay: DateTime.utc(
+                                        2030, 12, 31),
+                                    focusedDay: _selectedDay,
+                                    selectedDayPredicate: (day) =>
+                                        isSameDay(
+                                            day, _selectedDay),
+                                    calendarFormat:
+                                        CalendarFormat.week,
+                                    headerVisible: false,
+                                    daysOfWeekVisible: false,
+                                    rowHeight: 60,
+                                    eventLoader: (day) =>
+                                        _eventsForDay(day),
+                                    calendarStyle:
+                                        const CalendarStyle(
+                                      isTodayHighlighted: false,
+                                      outsideDaysVisible: false,
+                                    ),
+                                    calendarBuilders:
+                                        CalendarBuilders(
+                                      defaultBuilder: (context,
+                                          day, focusedDay) {
+                                        const labels = [
+                                          'Mon',
+                                          'Tue',
+                                          'Wed',
+                                          'Thu',
+                                          'Fri',
+                                          'Sat',
+                                          'Sun',
+                                        ];
+                                        final label = labels[
+                                            day.weekday - 1];
+
+                                        return Container(
+                                          margin: const EdgeInsets
+                                              .symmetric(
+                                            horizontal: 4,
+                                            vertical: 0,
+                                          ),
+                                          padding: const EdgeInsets
+                                              .symmetric(
+                                            vertical: 4,
+                                            horizontal: 10,
+                                          ),
+                                          decoration:
+                                              BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(
+                                                        999),
+                                          ),
+                                          child: _buildDayPill(
+                                            label,
+                                            day.day,
+                                            false,
+                                          ),
+                                        );
+                                      },
+                                      selectedBuilder:
+                                          (context,
+                                              day, focusedDay) {
+                                        const labels = [
+                                          'Mon',
+                                          'Tue',
+                                          'Wed',
+                                          'Thu',
+                                          'Fri',
+                                          'Sat',
+                                          'Sun',
+                                        ];
+                                        final label = labels[
+                                            day.weekday - 1];
+
+                                        return Container(
+                                          margin: const EdgeInsets
+                                              .symmetric(
+                                            horizontal: 4,
+                                            vertical: 0,
+                                          ),
+                                          padding: const EdgeInsets
+                                              .symmetric(
+                                            vertical: 4,
+                                            horizontal: 10,
+                                          ),
+                                          decoration:
+                                              BoxDecoration(
+                                            color: const Color(
+                                                0xFFB7E76A),
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(
+                                                        999),
+                                          ),
+                                          child: _buildDayPill(
+                                            label,
+                                            day.day,
+                                            true,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    onDaySelected: (selectedDay,
+                                        focusedDay) {
+                                      setState(() {
+                                        _selectedDay =
+                                            selectedDay;
+                                      });
+
+                                      final events =
+                                          _eventsForDay(
+                                              selectedDay);
+                                      if (events.isNotEmpty) {
+                                        _navigateToDetails(
+                                            events.first);
+                                      }
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Ready to walk + buttons
+                                  Text(
+                                    'Ready to walk? 👟',
+                                    style: theme
+                                        .textTheme.headlineSmall
+                                        ?.copyWith(
+                                      fontWeight:
+                                          FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Start a walk now or join others nearby. Your steps, your pace.',
+                                    style: theme
+                                        .textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton.icon(
+                                      onPressed:
+                                          _openCreateWalk,
+                                      style: FilledButton
+                                          .styleFrom(
+                                        backgroundColor:
+                                            const Color(
+                                                0xFF14532D),
+                                        foregroundColor:
+                                            Colors.white,
+                                      ),
+                                      icon: const Icon(Icons
+                                          .directions_walk_outlined),
+                                      label: const Text(
+                                          'Start walk'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: () {
+                                            setState(() =>
+                                                _currentTab =
+                                                    1);
+                                          },
+                                          child: const Text(
+                                              'Find nearby walks'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: () {
+                                            setState(() =>
+                                                _currentTab =
+                                                    2);
+                                          },
+                                          child: const Text(
+                                              'Profile & stats'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Your walks INSIDE the main card
+                                  Text(
+                                    'Your walks',
+                                    style: theme
+                                        .textTheme.titleMedium
+                                        ?.copyWith(
+                                      fontWeight:
+                                          FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (_myHostedWalks.isEmpty)
+                                    const Text(
+                                      'No walks yet.\nTap "Start walk" above to create your first one.',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black54,
+                                      ),
+                                    )
+                                  else
+                                    Column(
+                                      children: _myHostedWalks
+                                          .map(
+                                            (e) => _WalkCard(
+                                              event: e,
+                                              onTap: () =>
+                                                  _navigateToDetails(
+                                                      e),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                                ],
                               ),
-                              Text(
-                                _formatFullDate(today),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.black54,
-                                ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // ===== WEEKLY SUMMARY =====
+                          Text(
+                            'This week',
+                            style: theme.textTheme.titleLarge
+                                ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _WeeklySummaryCard(
+                            walks: _weeklyWalkCount,
+                            kmSoFar: _weeklyKm,
+                            kmGoal: _weeklyGoalKm,
+                            streakDays: _streakDays,
+                          ),
+                          const SizedBox(height: 24),
+
+                          // ===== QUICK STATS =====
+                          Text(
+                            'Your quick stats',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              _StatCard(
+                                  label: 'Walks joined',
+                                  value: '$_walksJoined'),
+                              _StatCard(
+                                label: 'Events hosted',
+                                value: '$_eventsHosted',
+                              ),
+                              _StatCard(
+                                label: 'Total km',
+                                value: _totalKmJoined
+                                    .toStringAsFixed(1),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                                                   TableCalendar(
-                            firstDay: DateTime.utc(2020, 1, 1),
-                            lastDay: DateTime.utc(2030, 12, 31),
-                            focusedDay: _selectedDay,
-                            selectedDayPredicate: (day) =>
-                                isSameDay(day, _selectedDay),
-                            calendarFormat: CalendarFormat.week,
-                            headerVisible: false,
-                            daysOfWeekVisible: false,
-                            rowHeight: 60,
-                            eventLoader: (day) => _eventsForDay(day),
-                            
-                                                             calendarStyle: CalendarStyle(
-                              isTodayHighlighted: false,
-                              outsideDaysVisible: false,
-                              cellMargin:
-                                  const EdgeInsets.symmetric(horizontal: 4),
-                            ),
-                            calendarBuilders: CalendarBuilders(
-                              defaultBuilder: (context, day, focusedDay) {
-                                const labels = [
-                                  'Mon',
-                                  'Tue',
-                                  'Wed',
-                                  'Thu',
-                                  'Fri',
-                                  'Sat',
-                                  'Sun',
-                                ];
-                                final label = labels[day.weekday - 1];
-
-                                                                return Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 0),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,   // or green for selected
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: _buildDayPill(
-                                    label,
-                                    day.day,
-                                    false,                 // or true in selected
-                                  ),
-                                );
-
-                              },
-                              selectedBuilder: (context, day, focusedDay) {
-                                const labels = [
-                                  'Mon',
-                                  'Tue',
-                                  'Wed',
-                                  'Thu',
-                                  'Fri',
-                                  'Sat',
-                                  'Sun',
-                                ];
-                                final label = labels[day.weekday - 1];
-
-                                                           return Container(
-                                  margin: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 0),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 10),
-                                  decoration: BoxDecoration(
-                                                                        color: const Color(0xFFB7E76A),
-   // or green for selected
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: _buildDayPill(
-                                    label,
-                                    day.day,
-                                    false,                 // or true in selected
-                                  ),
-                                );
-
-                              },
-                            ),
-
-                          
-                            onDaySelected: (selectedDay, focusedDay) {
-                              setState(() {
-                                _selectedDay = selectedDay;
-                              });
-
-                              final events = _eventsForDay(selectedDay);
-                              if (events.isNotEmpty) {
-                                _navigateToDetails(events.first);
-                              }
-                            },
-                          ),
-
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // --- MAIN ACTION: Start walk ---
-                  Text(
-                    'Ready to walk? 👟',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Start a walk now or join others nearby. Your steps, your pace.',
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _openCreateWalk,
-                      icon: const Icon(Icons.directions_walk_outlined),
-                      label: const Text('Start walk'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() => _currentTab = 1);
-                          },
-                          child: const Text('Find nearby walks'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() => _currentTab = 2);
-                          },
-                          child: const Text('Profile & stats'),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // --- WEEKLY SUMMARY ---
-                  Text(
-                    'This week',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _WeeklySummaryCard(
-                    walks: _weeklyWalkCount,
-                    kmSoFar: _weeklyKm,
-                    kmGoal: _weeklyGoalKm,
-                    streakDays: _streakDays,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // --- QUICK STATS ---
-                  Text(
-                    'Your quick stats',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _StatCard(label: 'Walks joined', value: '$_walksJoined'),
-                      _StatCard(
-                        label: 'Events hosted',
-                        value: '$_eventsHosted',
-                      ),
-                      _StatCard(
-                        label: 'Total km',
-                        value: _totalKmJoined.toStringAsFixed(1),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // --- LIST OF HOSTED WALKS ---
-                  Text(
-                    'Your walks',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                 ],
               ),
             ),
           ),
-          if (_myHostedWalks.isEmpty)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'No walks yet.\nTap "Start walk" above to create your first one.',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            )
-          else
-            SliverList.builder(
-              itemCount: _myHostedWalks.length,
-              itemBuilder: (context, index) {
-                final e = _myHostedWalks[index];
-                return _WalkCard(
-                  event: e,
-                  onTap: () => _navigateToDetails(e),
-                );
-              },
-            ),
         ],
       ),
     );
   }
 }
+
+// ===== Smaller components =====
 
 class _WeeklySummaryCard extends StatelessWidget {
   final int walks;
@@ -687,7 +894,7 @@ class _WalkCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
