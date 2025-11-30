@@ -42,6 +42,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _profile;
   bool _loading = true;
 
+  static const Color _deepGreen = Color(0xFF294630);
+  static const Color _lightGreen = Color(0xFF4F925C);
+  static const Color _cardBackground = Color(0xFFFFFEF8);
+
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
 
@@ -75,6 +81,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _profile = updated;
     });
   }
+    String get _walkerLevel {
+    final km = widget.totalKm;
+
+    if (km < 5) return 'New walker';
+    if (km < 25) return 'Getting active';
+    if (km < 100) return 'Regular walker';
+    if (km < 250) return 'Committed walker';
+    return 'Trail pro';
+  }
+
 
   void _openEditProfile() async {
     await Navigator.of(context).push(
@@ -158,33 +174,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? 0
         : (widget.weeklyKm / widget.weeklyGoalKm).clamp(0.0, 1.0);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: _openEditProfile,
+   return Scaffold(
+  // match the bottom of the gradient so corners look seamless
+  backgroundColor: _lightGreen,
+  body: Column(
+
+        children: [
+          // ===== HEADER (same height style as Home / Nearby) =====
+          Container(
+            height: 56, // same height as Home & Nearby
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_deepGreen, _lightGreen],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        // logo
+                        _HeaderLogo(),
+                        SizedBox(width: 8),
+                        Text(
+                          'Yalla Nemshi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // only notifications here (no small profile avatar)
+                    const _HeaderNotifications(),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Avatar + name + bio
-            GestureDetector(
-              onTap: _pickAndSaveImage,
-              child: Column(
-                children: [
-                  _buildAvatar(profile),
-                  const SizedBox(height: 8),
-                  Text(
+
+          // ===== MAIN ROUNDED CARD AREA =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: _cardBackground,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title + subtitle
+                    Text(
+                      'My profile',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: _deepGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Track your progress and edit your walking details.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Avatar, name, bio
+                    Center(
+                      child: GestureDetector(
+                        onTap: _pickAndSaveImage,
+                        child: Column(
+                          children: [
+                            _buildAvatar(profile),
+                            const SizedBox(height: 8),
+                                             Text(
                     profile?.name.isNotEmpty == true
                         ? profile!.name
                         : 'Your name',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Walker level under the name
+                  Text(
+                    _walkerLevel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF4F925C), // soft green
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -197,195 +288,222 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: theme.textTheme.bodySmall?.color,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
 
-            // Basic info row (age, gender)
-            if (profile != null)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Chip(
-                    label: Text('Age: ${profile.age}'),
-                  ),
-                  const SizedBox(width: 8),
-                  Chip(
-                    label: Text('Gender: ${profile.gender}'),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 24),
-
-            // Weekly stats
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'This week',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                      '${widget.weeklyKm.toStringAsFixed(1)} / ${widget.weeklyGoalKm.toStringAsFixed(1)} km',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    LinearProgressIndicator(value: weeklyProgress),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 16),
+
+                    // Age / gender chips
+                    if (profile != null)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Chip(label: Text('Age: ${profile.age}')),
+                          const SizedBox(width: 8),
+                          Chip(label: Text('Gender: ${profile.gender}')),
+                        ],
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    // ===== Weekly summary =====
                     Text(
-                      widget.streakDays > 0
-                          ? 'Streak: ${widget.streakDays} day${widget.streakDays == 1 ? '' : 's'} in a row'
-                          : 'No streak yet. Join a walk today!',
-                      style: theme.textTheme.bodySmall,
+                      'This week',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 0.5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
+                              '${widget.weeklyKm.toStringAsFixed(1)} / ${widget.weeklyGoalKm.toStringAsFixed(1)} km',
+                              style:
+                                  theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: weeklyProgress,
+                                minHeight: 6,
+                                backgroundColor: Colors.green.shade50,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.streakDays > 0
+                                  ? 'Streak: ${widget.streakDays} day${widget.streakDays == 1 ? '' : 's'} in a row'
+                                  : 'No streak yet. Join a walk today!',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ===== Stats row =====
+                    Text(
+                      'Your stats',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _statCard(
+                          label: 'Walks joined',
+                          value: widget.walksJoined.toString(),
+                          icon: Icons.directions_walk,
+                        ),
+                        _statCard(
+                          label: 'Hosted',
+                          value: widget.eventsHosted.toString(),
+                          icon: Icons.flag,
+                        ),
+                        _statCard(
+                          label: 'Total km',
+                          value: widget.totalKm.toStringAsFixed(1),
+                          icon: Icons.map,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Text(
+                        'Marked as interested: ${widget.interestedCount}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ===== Badges section =====
+                    Text(
+                      'Badges',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 0.5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (achievedBadges.isEmpty)
+                              Text(
+                                'Badges will appear here as you walk more.',
+                                style: theme.textTheme.bodySmall,
+                              )
+                            else
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: achievedBadges
+                                    .take(6)
+                                    .map(
+                                      (b) => GestureDetector(
+                                        onTap: () =>
+                                            _showBadgeDetails(b),
+                                        child: Column(
+                                          mainAxisSize:
+                                              MainAxisSize.min,
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 18,
+                                              backgroundColor:
+                                                  theme.colorScheme
+                                                      .primary,
+                                              child: Icon(
+                                                b.icon,
+                                                size: 18,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () =>
+                                    _openBadgesPage(allBadges),
+                                child: const Text('View all'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ===== Actions =====
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _openEditProfile,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit profile info'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _openSafetyTips,
+                        icon: const Icon(Icons.shield_outlined),
+                        label: const Text(
+                          'Walking safety & community tips',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Text(
+                        'Tip: Tap on your photo to change it.',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Stats cards
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _statCard(
-                  label: 'Walks joined',
-                  value: widget.walksJoined.toString(),
-                  icon: Icons.directions_walk,
-                ),
-                _statCard(
-                  label: 'Hosted',
-                  value: widget.eventsHosted.toString(),
-                  icon: Icons.flag,
-                ),
-                _statCard(
-                  label: 'Total km',
-                  value: widget.totalKm.toStringAsFixed(1),
-                  icon: Icons.map,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.center,
-              child: Text(
-                'Marked as interested: ${widget.interestedCount}',
-                style: theme.textTheme.bodySmall,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Compact badges row
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Badges',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Builder(
-                    builder: (ctx) {
-                      const double badgeSize = 28;
-
-                      if (allBadges.isEmpty) {
-                        return Text(
-                          'Badges will appear here as you walk more.',
-                          style: theme.textTheme.bodySmall,
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          ...achievedBadges.take(5).map((b) {
-                            return Padding(
-                              padding:
-                                  const EdgeInsets.only(right: 6.0),
-                              child: GestureDetector(
-                                onTap: () => _showBadgeDetails(b),
-                                child: CircleAvatar(
-                                  radius: badgeSize / 2,
-                                  backgroundColor: b.achieved
-                                      ? theme.colorScheme.primary
-                                      : Colors.grey.shade300,
-                                  child: Icon(
-                                    b.icon,
-                                    size: 16,
-                                    color: b.achieved
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                          if (achievedBadges.length > 5)
-                            GestureDetector(
-                              onTap: () => _openBadgesPage(allBadges),
-                              child: CircleAvatar(
-                                radius: badgeSize / 2,
-                                backgroundColor: Colors.grey.shade200,
-                                child: Text(
-                                  '+${achievedBadges.length - 5}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () => _openBadgesPage(allBadges),
-                            child: const Text('View all'),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _openEditProfile,
-                icon: const Icon(Icons.edit),
-                label: const Text('Edit profile info'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _openSafetyTips,
-                icon: const Icon(Icons.shield_outlined),
-                label: const Text('Walking safety & community tips'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Tip: Tap on your photo to change it.',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -402,10 +520,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    return const CircleAvatar(
+       return const CircleAvatar(
       radius: 48,
-      child: Icon(Icons.person, size: 48),
+      backgroundColor: Color(0xFFB7E76A), // light green like Home
+      child: Icon(
+        Icons.person,
+        size: 48,
+        color: Color(0xFF166534), // deep green icon
+      ),
     );
+
   }
 
   Widget _statCard({
@@ -414,27 +538,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
   }) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        child: Column(
-          children: [
-            Icon(icon),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+    return Expanded(
+      child: Card(
+        elevation: 0.5,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Column(
+            children: [
+              Icon(icon),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+// Small reusable header pieces (logo + bell) to keep things tidy.
+class _HeaderLogo extends StatelessWidget {
+  const _HeaderLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white24,
+      ),
+      child: const Icon(
+        Icons.directions_walk,
+        size: 18,
+        color: Colors.white,
+      ),
+    );
+  }
+}
+
+class _HeaderNotifications extends StatelessWidget {
+  const _HeaderNotifications();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white24,
+          ),
+          child: const Icon(
+            Icons.notifications_none,
+            size: 18,
+            color: Colors.white,
+          ),
+        ),
+        Positioned(
+          right: -2,
+          top: -2,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.red,
+            ),
+            child: const Text(
+              '3',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
