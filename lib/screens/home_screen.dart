@@ -391,15 +391,26 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         body = _buildHomeTab(context);
         break;
-      case 1:
-        body = NearbyWalksScreen(
-          events: _nearbyWalks,
-          onToggleJoin: _toggleJoin,
-          onToggleInterested: _toggleInterested,
-          onTapEvent: _navigateToDetails,
-          onCancelHosted: _cancelHostedWalk,
-        );
-        break;
+     case 1:
+  body = NearbyWalksScreen(
+    events: _nearbyWalks,
+    onToggleJoin: _toggleJoin,
+    onToggleInterested: _toggleInterested,
+    onTapEvent: _navigateToDetails,
+    onCancelHosted: _cancelHostedWalk,
+    // Stats for quick profile sheet + full profile screen
+    walksJoined: _walksJoined,
+    eventsHosted: _eventsHosted,
+    totalKm: _totalKmJoined,
+    interestedCount: _interestedCount,
+    weeklyKm: _weeklyKm,
+    weeklyWalks: _weeklyWalkCount,
+    streakDays: _streakDays,
+    weeklyGoalKm: _weeklyGoalKm,
+    userName: _userName,
+  );
+  break;
+
       case 2:
       default:
         body = ProfileScreen(

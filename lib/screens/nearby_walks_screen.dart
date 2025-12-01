@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/walk_event.dart';
+import 'profile_screen.dart';
 
 enum _DateFilter { all, today, thisWeek }
 enum _DistanceFilter { all, short, medium, long }
@@ -13,6 +14,17 @@ class NearbyWalksScreen extends StatefulWidget {
   final void Function(WalkEvent) onTapEvent;
   final void Function(WalkEvent) onCancelHosted;
 
+  // ✅ stats for quick profile sheet + full profile screen
+  final int walksJoined;
+  final int eventsHosted;
+  final double totalKm;
+  final int interestedCount;
+  final double weeklyKm;
+  final int weeklyWalks;
+  final int streakDays;
+  final double weeklyGoalKm;
+  final String userName;
+
   const NearbyWalksScreen({
     super.key,
     required this.events,
@@ -20,6 +32,15 @@ class NearbyWalksScreen extends StatefulWidget {
     required this.onToggleInterested,
     required this.onTapEvent,
     required this.onCancelHosted,
+    required this.walksJoined,
+    required this.eventsHosted,
+    required this.totalKm,
+    required this.interestedCount,
+    required this.weeklyKm,
+    required this.weeklyWalks,
+    required this.streakDays,
+    required this.weeklyGoalKm,
+    required this.userName,
   });
 
   @override
@@ -78,156 +99,205 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     }
   }
 
-  // ====== NEW: notification bottom sheet ======
-  void _openNotificationsSheet() {
+  // ===== SHEETS (same behaviour as Home) =====
+
+  void _showNotificationsSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFCFEF9),
+      showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        // Placeholder for now – same idea as Home
-        final notifications = <String>[
-          // 'New nearby walk: "Sunset steps" tomorrow at 18:00.',
-          // 'A walk you joined starts in 30 minutes.',
-        ];
-
-        if (notifications.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.notifications_none,
-                  size: 36,
-                  color: Colors.grey,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'No notifications yet',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You’ll see reminders and new nearby walks here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        }
-
+      builder: (context) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: const [
-                  Icon(Icons.notifications, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Notifications',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ...notifications.map(
-                (msg) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading:
-                      const Icon(Icons.circle, size: 10, color: Colors.green),
-                  title: Text(msg),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // ====== NEW: simple profile quick sheet (Nearby context) ======
-  void _openProfileQuickSheet() {
-    final nonCancelled =
-        widget.events.where((e) => !e.cancelled).toList(growable: false);
-    final joined = nonCancelled.where((e) => e.joined).length;
-    final interested = nonCancelled.where((e) => e.interested).length;
-    final upcomingCount =
-        nonCancelled.where((e) => e.dateTime.isAfter(DateTime.now())).length;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFFFCFEF9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircleAvatar(
-                radius: 28,
-                child: Icon(Icons.person, size: 30),
+              Text(
+                'Notifications',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Nearby & you',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'A quick snapshot of how you’re interacting with nearby walks.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                'No notifications yet. You’ll see updates here when people join or '
+                'comment on your walks.',
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: const [
-                  // labels only – values added below
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _MiniNearbyStat(label: 'Joined', value: '$joined'),
-                  _MiniNearbyStat(label: 'Interested', value: '$interested'),
-                  _MiniNearbyStat(label: 'Upcoming', value: '$upcomingCount'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'For full profile, badges and streaks, open the Profile tab in the bottom bar.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Close'),
-                ),
-              ),
             ],
           ),
         );
       },
     );
   }
+
+  void _showProfileQuickSheet() {
+    final theme = Theme.of(context);
+
+    final totalWalks = widget.walksJoined + widget.eventsHosted;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: false,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBFEF8),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Avatar
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: const Color(0xFFCDE9B7),
+                  child: const Icon(
+                    Icons.person,
+                    size: 32,
+                    color: Color(0xFF14532D),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.userName.isNotEmpty ? widget.userName : 'Walker',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Quick look at your progress',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Stats row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _quickStat(
+                      label: 'Walks',
+                      value: totalWalks.toString(),
+                    ),
+                    _quickStat(
+                      label: 'Total km',
+                      value: widget.totalKm.toStringAsFixed(1),
+                    ),
+                    _quickStat(
+                      label: 'Streak',
+                      value: '${widget.streakDays}d',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Buttons
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF14532D),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop(); // close sheet
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ProfileScreen(
+                            walksJoined: widget.walksJoined,
+                            eventsHosted: widget.eventsHosted,
+                            totalKm: widget.totalKm,
+                            weeklyWalks: widget.weeklyWalks,
+                            weeklyKm: widget.weeklyKm,
+                            weeklyGoalKm: widget.weeklyGoalKm,
+                            streakDays: widget.streakDays,
+                            interestedCount: widget.interestedCount,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('View full profile'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ProfileScreen(
+                            walksJoined: widget.walksJoined,
+                            eventsHosted: widget.eventsHosted,
+                            totalKm: widget.totalKm,
+                            weeklyWalks: widget.weeklyWalks,
+                            weeklyKm: widget.weeklyKm,
+                            weeklyGoalKm: widget.weeklyGoalKm,
+                            streakDays: widget.streakDays,
+                            interestedCount: widget.interestedCount,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Edit profile info'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _quickStat({required String label, required String value}) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: Colors.black54,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===== BUILD =====
 
   @override
   Widget build(BuildContext context) {
@@ -242,13 +312,12 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     return Scaffold(
-      // Match the green header tones (bottom of gradient)
       backgroundColor: const Color(0xFF4F925C),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // ===== GREEN HEADER BAR (STATIC, NO ANIMATION) =====
+            // ===== GREEN HEADER BAR =====
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: const BoxDecoration(
@@ -256,8 +325,8 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFF294630), // deep green
-                    Color(0xFF4F925C), // lighter green
+                    Color(0xFF294630),
+                    Color(0xFF4F925C),
                   ],
                 ),
               ),
@@ -292,12 +361,11 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                     ],
                   ),
 
-                  // Notifications + profile
+                  // Notifications + profile (tappable)
                   Row(
                     children: [
-                      // 🔹 Notifications tappable
                       GestureDetector(
-                        onTap: _openNotificationsSheet,
+                        onTap: _showNotificationsSheet,
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -336,9 +404,8 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // 🔹 Profile avatar tappable
                       GestureDetector(
-                        onTap: _openProfileQuickSheet,
+                        onTap: _showProfileQuickSheet,
                         child: Container(
                           width: 32,
                           height: 32,
@@ -526,14 +593,16 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: '< 3 km',
                         selected: _distanceFilter == _DistanceFilter.short,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.short);
+                          setState(
+                              () => _distanceFilter = _DistanceFilter.short);
                         },
                       ),
                       _buildFilterChip(
                         label: '3–6 km',
                         selected: _distanceFilter == _DistanceFilter.medium,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.medium);
+                          setState(
+                              () => _distanceFilter = _DistanceFilter.medium);
                         },
                       ),
                       _buildFilterChip(
@@ -767,37 +836,6 @@ class _NearbyWalkCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// Small stat widget for the profile bottom sheet (Nearby)
-class _MiniNearbyStat extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MiniNearbyStat({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade700,
-          ),
-        ),
-      ],
     );
   }
 }
