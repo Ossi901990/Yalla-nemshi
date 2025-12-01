@@ -78,6 +78,157 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     }
   }
 
+  // ====== NEW: notification bottom sheet ======
+  void _openNotificationsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFCFEF9),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        // Placeholder for now – same idea as Home
+        final notifications = <String>[
+          // 'New nearby walk: "Sunset steps" tomorrow at 18:00.',
+          // 'A walk you joined starts in 30 minutes.',
+        ];
+
+        if (notifications.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.notifications_none,
+                  size: 36,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No notifications yet',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You’ll see reminders and new nearby walks here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.notifications, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Notifications',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...notifications.map(
+                (msg) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading:
+                      const Icon(Icons.circle, size: 10, color: Colors.green),
+                  title: Text(msg),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ====== NEW: simple profile quick sheet (Nearby context) ======
+  void _openProfileQuickSheet() {
+    final nonCancelled =
+        widget.events.where((e) => !e.cancelled).toList(growable: false);
+    final joined = nonCancelled.where((e) => e.joined).length;
+    final interested = nonCancelled.where((e) => e.interested).length;
+    final upcomingCount =
+        nonCancelled.where((e) => e.dateTime.isAfter(DateTime.now())).length;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFCFEF9),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 28,
+                child: Icon(Icons.person, size: 30),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Nearby & you',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'A quick snapshot of how you’re interacting with nearby walks.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: const [
+                  // labels only – values added below
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _MiniNearbyStat(label: 'Joined', value: '$joined'),
+                  _MiniNearbyStat(label: 'Interested', value: '$interested'),
+                  _MiniNearbyStat(label: 'Upcoming', value: '$upcomingCount'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'For full profile, badges and streaks, open the Profile tab in the bottom bar.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -144,54 +295,62 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                   // Notifications + profile
                   Row(
                     children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white24,
-                            ),
-                            child: const Icon(
-                              Icons.notifications_none,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                          Positioned(
-                            right: -2,
-                            top: -2,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
+                      // 🔹 Notifications tappable
+                      GestureDetector(
+                        onTap: _openNotificationsSheet,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.red,
+                                color: Colors.white24,
                               ),
-                              child: const Text(
-                                '3',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.white,
+                              child: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red,
+                                ),
+                                child: const Text(
+                                  '3',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Colors.black87,
+                      // 🔹 Profile avatar tappable
+                      GestureDetector(
+                        onTap: _openProfileQuickSheet,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ],
@@ -608,6 +767,37 @@ class _NearbyWalkCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Small stat widget for the profile bottom sheet (Nearby)
+class _MiniNearbyStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MiniNearbyStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ],
     );
   }
 }
