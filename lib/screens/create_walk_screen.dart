@@ -27,12 +27,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   String _gender = 'Mixed';
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
-  // Text name for the meeting point (user can type it)
   String _meetingPlace = '';
-
-  // Coordinates picked from the map
   LatLng? _meetingLatLng;
-
   String _description = '';
 
   InputDecoration _fieldDecoration(String label, {String? hint}) {
@@ -116,14 +112,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       gender: _gender,
       isOwner: true,
       joined: false,
-
-      // Optional text name
       meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
-
-      // Coordinates from map (if any)
       meetingLat: _meetingLatLng?.latitude,
       meetingLng: _meetingLatLng?.longitude,
-
       description: _description.isEmpty ? null : _description,
     );
 
@@ -139,7 +130,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       backgroundColor: bgColor,
       body: Column(
         children: [
-          // ===== Gradient header (same style family as other screens) =====
+          // ===== Gradient header =====
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -196,44 +187,62 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                           ),
                         ],
                       ),
-                      // Notifications only – no profile avatar here
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white24,
-                        ),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            const Center(
-                              child: Icon(
-                                Icons.notifications_none,
-                                size: 18,
-                                color: Colors.white,
-                              ),
+                      // Notifications + profile (same pattern as Home / Nearby)
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white24,
                             ),
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.red,
-                                ),
-                                child: const Text(
-                                  '3',
-                                  style: TextStyle(
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                const Center(
+                                  child: Icon(
+                                    Icons.notifications_none,
+                                    size: 18,
                                     color: Colors.white,
-                                    fontSize: 9,
                                   ),
                                 ),
-                              ),
+                                Positioned(
+                                  right: -2,
+                                  top: -2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red,
+                                    ),
+                                    child: const Text(
+                                      '3',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              size: 18,
+                              color: Color(0xFF166534),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -249,7 +258,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Big rounded card holding the whole form
                   Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
@@ -263,7 +271,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header inside the card
                             Row(
                               children: const [
                                 Icon(
@@ -290,10 +297,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                   .bodySmall
                                   ?.copyWith(color: Colors.grey.shade700),
                             ),
-
                             const SizedBox(height: 20),
 
-                            // ------ Basics ------
+                            // ---------- Basics ----------
                             Text(
                               'Basics',
                               style: Theme.of(context)
@@ -303,21 +309,19 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             ),
                             const SizedBox(height: 8),
 
-                            // Title
                             TextFormField(
                               decoration: _fieldDecoration(
                                 'Title',
                                 hint: 'Morning walk in the park',
                               ),
                               onSaved: (val) => _title = val!.trim(),
-                              validator: (val) => (val == null ||
-                                      val.trim().isEmpty)
-                                  ? 'Required'
-                                  : null,
+                              validator: (val) =>
+                                  (val == null || val.trim().isEmpty)
+                                      ? 'Required'
+                                      : null,
                             ),
                             const SizedBox(height: 12),
 
-                            // Distance
                             TextFormField(
                               decoration: _fieldDecoration(
                                 'Distance (km)',
@@ -332,7 +336,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Gender chips
                             Text(
                               'Who can join?',
                               style: Theme.of(context)
@@ -367,7 +370,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                             const SizedBox(height: 20),
 
-                            // ------ When ------
+                            // ---------- When ----------
                             Text(
                               'When',
                               style: Theme.of(context)
@@ -406,7 +409,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                             const SizedBox(height: 20),
 
-                            // ------ Meeting point ------
+                            // ---------- Meeting point ----------
                             Text(
                               'Meeting point',
                               style: Theme.of(context)
@@ -456,7 +459,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                             const SizedBox(height: 20),
 
-                            // ------ Details ------
+                            // ---------- Details ----------
                             Text(
                               'Details',
                               style: Theme.of(context)
@@ -479,7 +482,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                             const SizedBox(height: 24),
 
-                            // Submit button
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(

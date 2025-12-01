@@ -234,6 +234,153 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // === NEW: notification bottom sheet (no design change to main page) ===
+  void _openNotificationsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFCFEF9),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        // Placeholder list – later you can hook real notifications
+        final notifications = <String>[
+          // 'Your walk "Morning in the park" starts in 45 minutes.',
+          // 'New nearby walk: "Sunset steps" tomorrow at 18:00.',
+        ];
+
+        if (notifications.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.notifications_none,
+                    size: 36, color: Colors.grey),
+                const SizedBox(height: 12),
+                const Text(
+                  'No notifications yet',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You’ll see reminders and new nearby walks here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.notifications, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Notifications',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...notifications.map(
+                (msg) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading:
+                      const Icon(Icons.circle, size: 10, color: Colors.green),
+                  title: Text(msg),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // === NEW: profile quick-view bottom sheet (no design change to main page) ===
+  void _openProfileQuickSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFCFEF9),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const CircleAvatar(
+                radius: 28,
+                child: Icon(Icons.person, size: 30),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _userName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Quick look at your progress',
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _MiniStat(label: 'Walks', value: '$_walksJoined'),
+                  _MiniStat(
+                    label: 'Total km',
+                    value: _totalKmJoined.toStringAsFixed(1),
+                  ),
+                  _MiniStat(label: 'Streak', value: '${_streakDays}d'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop(); // close sheet
+                    setState(() => _currentTab = 2); // go to Profile tab
+                  },
+                  child: const Text('View full profile'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    setState(() => _currentTab = 2);
+                    // Later, you could auto-open Edit on profile screen
+                  },
+                  child: const Text('Edit profile info'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // --- UI ---
 
   @override
@@ -270,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       // Deep green behind the top bar only – content sits on a card.
-       backgroundColor: const Color(0xFF4F925C),
+      backgroundColor: const Color(0xFF4F925C),
       body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
@@ -308,16 +455,17 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             decoration: const BoxDecoration(
-             gradient: LinearGradient(
-      colors: [
-        Color(0xFF294630), // top
-        Color(0xFF4F925C), // bottom
-      ],
-      begin: Alignment.topCenter,      // 🔹 vertical
-      end: Alignment.bottomCenter,     // 🔹 vertical
-    ),
-    borderRadius: BorderRadius.vertical(
-      bottom: Radius.circular(0),),
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF294630), // top
+                  Color(0xFF4F925C), // bottom
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(0),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -350,54 +498,62 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Row(
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white24,
-                          ),
-                          child: const Icon(
-                            Icons.notifications_none,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Positioned(
-                          right: -2,
-                          top: -2,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
+                    // 🔹 NOW TAPPABLE: notifications
+                    GestureDetector(
+                      onTap: _openNotificationsSheet,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.red,
+                              color: Colors.white24,
                             ),
-                            child: const Text(
-                              '3', // TODO: real unread count
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
+                            child: const Icon(
+                              Icons.notifications_none,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.red,
+                              ),
+                              child: const Text(
+                                '3', // TODO: real unread count
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 18,
-                        color: Color(0xFF14532D),
+                    // 🔹 NOW TAPPABLE: profile avatar
+                    GestureDetector(
+                      onTap: _openProfileQuickSheet,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          size: 18,
+                          color: Color(0xFF14532D),
+                        ),
                       ),
                     ),
                   ],
@@ -910,6 +1066,36 @@ class _WalkCard extends StatelessWidget {
         subtitle: Text(_formatDateTime(event.dateTime)),
         trailing: const Icon(Icons.chevron_right),
       ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _MiniStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ],
     );
   }
 }
