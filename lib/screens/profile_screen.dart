@@ -46,7 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _lightGreen = Color(0xFF4F925C);
   static const Color _cardBackground = Color(0xFFFFFEF8);
 
-
   @override
   void initState() {
     super.initState();
@@ -69,7 +68,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
 
@@ -81,7 +79,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _profile = updated;
     });
   }
-    String get _walkerLevel {
+
+  String get _walkerLevel {
     final km = widget.totalKm;
 
     if (km < 5) return 'New walker';
@@ -90,7 +89,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (km < 250) return 'Committed walker';
     return 'Trail pro';
   }
-
 
   void _openEditProfile() async {
     await Navigator.of(context).push(
@@ -150,6 +148,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // 👉 NEW: same notification bottom sheet as Home / Nearby
+  void _showNotificationsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final theme = Theme.of(context);
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFBFEF8),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.notifications_none,
+                size: 40,
+                color: Colors.grey.shade500,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No notifications yet',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'You’ll see reminders and new nearby walks here.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -174,11 +217,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? 0
         : (widget.weeklyKm / widget.weeklyGoalKm).clamp(0.0, 1.0);
 
-   return Scaffold(
-  // match the bottom of the gradient so corners look seamless
-  backgroundColor: _lightGreen,
-  body: Column(
-
+    return Scaffold(
+      // match the bottom of the gradient so corners look seamless
+      backgroundColor: _lightGreen,
+      body: Column(
         children: [
           // ===== HEADER (same height style as Home / Nearby) =====
           Container(
@@ -213,8 +255,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    // only notifications here (no small profile avatar)
-                    const _HeaderNotifications(),
+                    // 👉 now tappable bell that shows the sheet
+                    _HeaderNotifications(onTap: _showNotificationsSheet),
                   ],
                 ),
               ),
@@ -261,34 +303,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             _buildAvatar(profile),
                             const SizedBox(height: 8),
-                                             Text(
-                    profile?.name.isNotEmpty == true
-                        ? profile!.name
-                        : 'Your name',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Walker level under the name
-                  Text(
-                    _walkerLevel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFF4F925C), // soft green
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    profile?.bio.isNotEmpty == true
-                        ? profile!.bio
-                        : 'Add a short bio about you',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodySmall?.color,
-                    ),
-                  ),
-
+                            Text(
+                              profile?.name.isNotEmpty == true
+                                  ? profile!.name
+                                  : 'Your name',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // Walker level under the name
+                            Text(
+                              _walkerLevel,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: const Color(0xFF4F925C), // soft green
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              profile?.bio.isNotEmpty == true
+                                  ? profile!.bio
+                                  : 'Add a short bio about you',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.textTheme.bodySmall?.color,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -520,7 +561,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-       return const CircleAvatar(
+    return const CircleAvatar(
       radius: 48,
       backgroundColor: Color(0xFFB7E76A), // light green like Home
       child: Icon(
@@ -529,7 +570,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Color(0xFF166534), // deep green icon
       ),
     );
-
   }
 
   Widget _statCard({
@@ -592,45 +632,50 @@ class _HeaderLogo extends StatelessWidget {
 }
 
 class _HeaderNotifications extends StatelessWidget {
-  const _HeaderNotifications();
+  final VoidCallback onTap;
+
+  const _HeaderNotifications({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white24,
-          ),
-          child: const Icon(
-            Icons.notifications_none,
-            size: 18,
-            color: Colors.white,
-          ),
-        ),
-        Positioned(
-          right: -2,
-          top: -2,
-          child: Container(
-            padding: const EdgeInsets.all(2),
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.red,
+              color: Colors.white24,
             ),
-            child: const Text(
-              '3',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 9,
+            child: const Icon(
+              Icons.notifications_none,
+              size: 18,
+              color: Colors.white,
+            ),
+          ),
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.red,
+              ),
+              child: const Text(
+                '3',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 9,
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

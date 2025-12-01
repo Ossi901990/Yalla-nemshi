@@ -101,30 +101,41 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
   // ===== SHEETS (same behaviour as Home) =====
 
-  void _showNotificationsSheet() {
+     void _showNotificationsSheet() {
     showModalBottomSheet(
       context: context,
-      showDragHandle: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        final theme = Theme.of(context);
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFBFEF8),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Icon(
+                Icons.notifications_none,
+                size: 40,
+                color: Colors.grey.shade500,
+              ),
+              const SizedBox(height: 16),
               Text(
-                'Notifications',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                'No notifications yet',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
-                'No notifications yet. You’ll see updates here when people join or '
-                'comment on your walks.',
+                'You’ll see reminders and new nearby walks here.',
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
             ],
@@ -133,6 +144,8 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
       },
     );
   }
+
+
 
   void _showProfileQuickSheet() {
     final theme = Theme.of(context);
