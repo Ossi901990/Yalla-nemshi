@@ -27,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = 'Walker';
   DateTime _selectedDay = DateTime.now();
 
+    int _todaySteps = 3450; // TODO: replace with real steps later
+
+
   String _greetingForTime() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning';
@@ -607,53 +610,86 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                  // Greeting
-                                  Text(
-                                    '${_greetingForTime()}, $_userName 👋',
-                                    style: theme
-                                        .textTheme.titleLarge
-                                        ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          const Color(0xFF14532D),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatFullDate(today),
-                                    style: theme
-                                        .textTheme.bodySmall
-                                        ?.copyWith(
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
+                                // Greeting
+Text(
+  '${_greetingForTime()}, $_userName 👋',
+  style: theme
+      .textTheme.titleLarge
+      ?.copyWith(
+    fontWeight: FontWeight.bold,
+    color:
+        const Color(0xFF14532D),
+  ),
+),
+const SizedBox(height: 4),
+Text(
+  _formatFullDate(today),
+  style: theme
+      .textTheme.bodySmall
+      ?.copyWith(
+    color: Colors.black54,
+  ),
+),
+const SizedBox(height: 16),
 
-                                  // Today + pill calendar
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment
-                                            .spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Today',
-                                        style: theme
-                                            .textTheme.bodyMedium
-                                            ?.copyWith(
-                                          fontWeight:
-                                              FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        _formatFullDate(today),
-                                        style: theme
-                                            .textTheme.bodySmall
-                                            ?.copyWith(
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+// Small steps today pill
+Row(
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5F3D9), // soft green background
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.directions_walk,
+            size: 16,
+            color: Color(0xFF14532D),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$_todaySteps steps today',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF14532D),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+),
+const SizedBox(height: 16),
+
+// Today + pill calendar
+Row(
+  mainAxisAlignment:
+      MainAxisAlignment
+          .spaceBetween,
+  children: [
+    Text(
+      'Today',
+      style: theme
+          .textTheme.bodyMedium
+          ?.copyWith(
+        fontWeight:
+            FontWeight.bold,
+      ),
+    ),
+    Text(
+      _formatFullDate(today),
+      style: theme
+          .textTheme.bodySmall
+          ?.copyWith(
+        color: Colors.black54,
+      ),
+    ),
+  ],
+),
+
                                   const SizedBox(height: 8),
                                   TableCalendar(
                                     firstDay: DateTime.utc(
