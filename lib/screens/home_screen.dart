@@ -1,6 +1,11 @@
-// lib/screens/home_screen.dart
+// lib/screens/home_screen.dart 
+import 'dart:async';
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
@@ -9,6 +14,7 @@ import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
 import 'nearby_walks_screen.dart';
 import 'profile_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,8 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = 'Walker';
   DateTime _selectedDay = DateTime.now();
 
-    int _todaySteps = 3450; // TODO: replace with real steps later
-
+  // --- Step counter (Android, session-based for now) ---
+  StreamSubscription<StepCount>? _stepSubscription;
+  int _sessionSteps = 0;
+  int? _baselineSteps;
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -171,6 +179,58 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  // --- Step counter setup (Android only for now) ---
+
+  @override
+  void initState() {
+    super.initState();
+    _initStepCounter();
+  }
+
+  @override
+  void dispose() {
+    _stepSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initStepCounter() async {
+    // Only try on Android
+    if (!Platform.isAndroid) return;
+
+    final status = await Permission.activityRecognition.request();
+    if (!status.isGranted) {
+      return; // permission denied, keep at 0
+    }
+
+    try {
+      _stepSubscription = Pedometer.stepCountStream.listen(
+        _onStepCount,
+        onError: _onStepError,
+        cancelOnError: false,
+      );
+    } catch (_) {
+      // silently ignore for now
+    }
+  }
+
+  void _onStepCount(StepCount event) {
+    // Android pedometer gives "steps since reboot".
+    if (_baselineSteps == null) {
+      _baselineSteps = event.steps;
+    }
+
+    final steps = event.steps - (_baselineSteps ?? event.steps);
+    if (steps < 0) return;
+
+    setState(() {
+      _sessionSteps = steps;
+    });
+  }
+
+  void _onStepError(error) {
+    // You could log this or show a SnackBar if needed
   }
 
   // --- Actions ---
@@ -632,7 +692,7 @@ Text(
 ),
 const SizedBox(height: 16),
 
-// Small steps today pill
+// Small steps today/session pill
 Row(
   mainAxisAlignment: MainAxisAlignment.end,
   children: [
@@ -651,7 +711,7 @@ Row(
           ),
           const SizedBox(width: 6),
           Text(
-            '$_todaySteps steps today',
+            '$_sessionSteps steps',
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: const Color(0xFF14532D),

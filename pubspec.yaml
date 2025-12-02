@@ -39,6 +39,8 @@ dependencies:
   table_calendar: ^3.0.8
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
+  pedometer: ^4.0.0          # check pub.dev for latest version
+  permission_handler: ^11.3.0 # or latest
 
 
 
