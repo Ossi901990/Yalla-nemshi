@@ -10,6 +10,7 @@ import '../models/profile_badge.dart';
 import 'badges_info_screen.dart';
 import 'edit_profile_screen.dart';
 import 'safety_tips_screen.dart';
+import 'settings_screen.dart'; // 👈 NEW
 
 class ProfileScreen extends StatefulWidget {
   final int walksJoined;
@@ -148,7 +149,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // 👉 NEW: same notification bottom sheet as Home / Nearby
+  // 👉 NEW: open Settings screen
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const SettingsScreen(),
+      ),
+    );
+  }
+
+  // 👉 same notification bottom sheet as Home / Nearby
   void _showNotificationsSheet() {
     showModalBottomSheet(
       context: context,
@@ -255,8 +265,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    // 👉 now tappable bell that shows the sheet
-                    _HeaderNotifications(onTap: _showNotificationsSheet),
+                    // 👉 right side: bell + settings gear
+                    Row(
+                      children: [
+                        _HeaderNotifications(onTap: _showNotificationsSheet),
+                        const SizedBox(width: 12),
+                        _HeaderSettings(onTap: _openSettings),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -675,6 +691,33 @@ class _HeaderNotifications extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// 👇 NEW: gear icon widget
+class _HeaderSettings extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HeaderSettings({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white24,
+        ),
+        child: const Icon(
+          Icons.settings,
+          size: 18,
+          color: Colors.white,
+        ),
       ),
     );
   }
