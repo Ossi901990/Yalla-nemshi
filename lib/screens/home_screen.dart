@@ -155,31 +155,46 @@ class _HomeScreenState extends State<HomeScreen> {
     return '$monthName ${date.day}, ${date.year}';
   }
 
-  Widget _buildDayPill(String label, int dayNumber, bool isSelected) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: 10,
-            color: isSelected ? Colors.black87 : Colors.black45,
-            fontWeight: FontWeight.w500,
-          ),
+Widget _buildDayPill(
+  String label,
+  int dayNumber,
+  bool isSelected, {
+  required bool isDark,
+}) {
+  final labelColor = isDark
+      ? (isSelected ? Colors.white : Colors.white70)
+      : (isSelected ? Colors.black87 : Colors.black54);
+
+  final numberColor = isDark
+      ? (isSelected ? Colors.black87 : Colors.white)
+      : Colors.black87;
+
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Text(
+        label,
+        maxLines: 1,
+        style: TextStyle(
+          fontSize: 10,
+          color: labelColor,
+          fontWeight: FontWeight.w500,
         ),
-        Text(
-          '$dayNumber',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+      ),
+      Text(
+        '$dayNumber',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: numberColor,
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
+
 
   // --- Step counter setup (Android only for now) ---
 
@@ -449,6 +464,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     Widget body;
+        final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
 
     switch (_currentTab) {
       case 0:
@@ -491,7 +509,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       // Deep green behind the top bar only – content sits on a card.
-      backgroundColor: const Color(0xFF4F925C),
+       backgroundColor:
+          isDark ? theme.colorScheme.background : const Color(0xFF4F925C),
       body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
@@ -518,131 +537,159 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHomeTab(BuildContext context) {
-    final theme = Theme.of(context);
-    final today = DateTime.now();
+Widget _buildHomeTab(BuildContext context) {
+  final theme = Theme.of(context);
+  final today = DateTime.now();
+  final isDark = theme.brightness == Brightness.dark;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // ===== TOP GRADIENT APP BAR (ONLY HEADER) =====
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF294630), // top
-                  Color(0xFF4F925C), // bottom
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(0),
-              ),
+  return SafeArea(
+    child: Column(
+      children: [
+        // ===== TOP GRADIENT APP BAR (ONLY HEADER) =====
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? const [
+                      Color(0xFF020908), // darker top
+                      Color(0xFF0B1A13), // darker bottom
+                    ]
+                  : const [
+                      Color(0xFF294630), // top
+                      Color(0xFF4F925C), // bottom
+                    ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(0),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white24,
+                    ),
+                    child: const Icon(
+                      Icons.directions_walk,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Yalla Nemshi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  // 🔹 Tappable notifications
+                  GestureDetector(
+                    onTap: _openNotificationsSheet,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white24,
+                          ),
+                          child: const Icon(
+                            Icons.notifications_none,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red,
+                            ),
+                            child: const Text(
+                              '3', // TODO: real unread count
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // 🔹 Tappable profile avatar
+                  GestureDetector(
+                    onTap: _openProfileQuickSheet,
+                    child: Container(
                       width: 32,
                       height: 32,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white24,
+                        color: Colors.white,
                       ),
                       child: const Icon(
-                        Icons.directions_walk,
+                        Icons.person,
                         size: 18,
-                        color: Colors.white,
+                        color: Color(0xFF14532D),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Yalla Nemshi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    // 🔹 NOW TAPPABLE: notifications
-                    GestureDetector(
-                      onTap: _openNotificationsSheet,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white24,
-                            ),
-                            child: const Icon(
-                              Icons.notifications_none,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Positioned(
-                            right: -2,
-                            top: -2,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.red,
-                              ),
-                              child: const Text(
-                                '3', // TODO: real unread count
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // 🔹 NOW TAPPABLE: profile avatar
-                    GestureDetector(
-                      onTap: _openProfileQuickSheet,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Color(0xFF14532D),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
+        ),
 
-          // ===== MAIN CONTENT CARD (ROUNDED TOP, NO GREEN ON SIDES) =====
-          Expanded(
+        // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF020908)
+                  : const Color(0xFFF7F9F2),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+              // ✅ show home background only in dark mode
+              image: isDark
+                  ? const DecorationImage(
+                      image:
+                          AssetImage('assets/images/home_bg_dark.jpg'),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                    )
+                  : null,
+            ),
+            // overlay so text stays readable on top of the photo
             child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF7F9F2),
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : Colors.transparent,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
@@ -656,9 +703,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Big inner card that contains greeting, calendar & "Your walks"
+                          // Big inner card: greeting + calendar + "Your walks"
                           Card(
-                            color: const Color(0xFFFBFEF8),
+                            color: isDark
+                                ? theme.colorScheme.surface
+                                : const Color(0xFFFBFEF8),
                             elevation: 0.5,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(24),
@@ -670,92 +719,110 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                // Greeting
-Text(
-  '${_greetingForTime()}, $_userName 👋',
-  style: theme
-      .textTheme.titleLarge
-      ?.copyWith(
-    fontWeight: FontWeight.bold,
-    color:
-        const Color(0xFF14532D),
-  ),
-),
-const SizedBox(height: 4),
-Text(
-  _formatFullDate(today),
-  style: theme
-      .textTheme.bodySmall
-      ?.copyWith(
-    color: Colors.black54,
-  ),
-),
-const SizedBox(height: 16),
+                                  // Greeting
+                                  Text(
+                                    '${_greetingForTime()}, $_userName 👋',
+                                    style: theme
+                                        .textTheme.titleLarge
+                                        ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          const Color(0xFF14532D),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatFullDate(today),
+                                    style: theme
+                                        .textTheme.bodySmall
+                                        ?.copyWith(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
 
-// Small steps today/session pill
-Row(
-  mainAxisAlignment: MainAxisAlignment.end,
-  children: [
-    Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5F3D9), // soft green background
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.directions_walk,
-            size: 16,
-            color: Color(0xFF14532D),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$_sessionSteps steps',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF14532D),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 16),
+                                  // Steps pill
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets
+                                            .symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              const Color(0xFFE5F3D9),
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                                  999),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.directions_walk,
+                                              size: 16,
+                                              color:
+                                                  Color(0xFF14532D),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '$_sessionSteps steps',
+                                              style: theme.textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                fontWeight:
+                                                    FontWeight.w600,
+                                                color:
+                                                    const Color(0xFF14532D),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
 
-// Today + pill calendar
-Row(
-  mainAxisAlignment:
-      MainAxisAlignment
-          .spaceBetween,
-  children: [
-    Text(
-      'Today',
-      style: theme
-          .textTheme.bodyMedium
-          ?.copyWith(
-        fontWeight:
-            FontWeight.bold,
-      ),
-    ),
-    Text(
-      _formatFullDate(today),
-      style: theme
-          .textTheme.bodySmall
-          ?.copyWith(
-        color: Colors.black54,
-      ),
-    ),
-  ],
-),
+                                  // Today + date row
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Today',
+                                        style: theme
+                                            .textTheme.bodyMedium
+                                            ?.copyWith(
+                                          fontWeight:
+                                              FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatFullDate(today),
+                                        style: theme
+                                            .textTheme.bodySmall
+                                            ?.copyWith(
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
 
                                   const SizedBox(height: 8),
+
+                                  // Calendar
                                   TableCalendar(
-                                    firstDay: DateTime.utc(
-                                        2020, 1, 1),
-                                    lastDay: DateTime.utc(
-                                        2030, 12, 31),
+                                    firstDay:
+                                        DateTime.utc(2020, 1, 1),
+                                    lastDay:
+                                        DateTime.utc(2030, 12, 31),
                                     focusedDay: _selectedDay,
                                     selectedDayPredicate: (day) =>
                                         isSameDay(
@@ -788,14 +855,34 @@ Row(
                                         final label = labels[
                                             day.weekday - 1];
 
+                                        if (isDark) {
+                                          // Dark: text only
+                                          return Padding(
+                                            padding:
+                                                const EdgeInsets
+                                                    .symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            child: _buildDayPill(
+                                              label,
+                                              day.day,
+                                              false,
+                                              isDark: isDark,
+                                            ),
+                                          );
+                                        }
+
+                                        // Light: white pill
                                         return Container(
-                                          margin: const EdgeInsets
-                                              .symmetric(
+                                          margin:
+                                              const EdgeInsets
+                                                  .symmetric(
                                             horizontal: 4,
                                             vertical: 0,
                                           ),
-                                          padding: const EdgeInsets
-                                              .symmetric(
+                                          padding:
+                                              const EdgeInsets
+                                                  .symmetric(
                                             vertical: 4,
                                             horizontal: 10,
                                           ),
@@ -811,6 +898,7 @@ Row(
                                             label,
                                             day.day,
                                             false,
+                                            isDark: isDark,
                                           ),
                                         );
                                       },
@@ -830,13 +918,15 @@ Row(
                                             day.weekday - 1];
 
                                         return Container(
-                                          margin: const EdgeInsets
-                                              .symmetric(
+                                          margin:
+                                              const EdgeInsets
+                                                  .symmetric(
                                             horizontal: 4,
                                             vertical: 0,
                                           ),
-                                          padding: const EdgeInsets
-                                              .symmetric(
+                                          padding:
+                                              const EdgeInsets
+                                                  .symmetric(
                                             vertical: 4,
                                             horizontal: 10,
                                           ),
@@ -853,6 +943,7 @@ Row(
                                             label,
                                             day.day,
                                             true,
+                                            isDark: isDark,
                                           ),
                                         );
                                       },
@@ -889,8 +980,8 @@ Row(
                                   const SizedBox(height: 8),
                                   Text(
                                     'Start a walk now or join others nearby. Your steps, your pace.',
-                                    style: theme
-                                        .textTheme.bodyMedium,
+                                    style:
+                                        theme.textTheme.bodyMedium,
                                   ),
                                   const SizedBox(height: 16),
                                   SizedBox(
@@ -898,8 +989,8 @@ Row(
                                     child: FilledButton.icon(
                                       onPressed:
                                           _openCreateWalk,
-                                      style: FilledButton
-                                          .styleFrom(
+                                      style:
+                                          FilledButton.styleFrom(
                                         backgroundColor:
                                             const Color(
                                                 0xFF14532D),
@@ -943,7 +1034,7 @@ Row(
 
                                   const SizedBox(height: 20),
 
-                                  // Your walks INSIDE the main card
+                                  // Your walks inside main card
                                   Text(
                                     'Your walks',
                                     style: theme
@@ -955,11 +1046,14 @@ Row(
                                   ),
                                   const SizedBox(height: 8),
                                   if (_myHostedWalks.isEmpty)
-                                    const Text(
+                                    Text(
                                       'No walks yet.\nTap "Start walk" above to create your first one.',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black54,
+                                      style: theme
+                                          .textTheme.bodyMedium
+                                          ?.copyWith(
+                                        color: isDark
+                                            ? Colors.white70
+                                            : Colors.black54,
                                       ),
                                     )
                                   else
@@ -1011,8 +1105,9 @@ Row(
                           Row(
                             children: [
                               _StatCard(
-                                  label: 'Walks joined',
-                                  value: '$_walksJoined'),
+                                label: 'Walks joined',
+                                value: '$_walksJoined',
+                              ),
                               _StatCard(
                                 label: 'Events hosted',
                                 value: '$_eventsHosted',
@@ -1032,10 +1127,12 @@ Row(
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 }
 
 // ===== Smaller components =====
