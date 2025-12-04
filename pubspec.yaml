@@ -35,4 +35,5 @@ flutter:
 
   assets:
     - assets/images/home_bg_dark.jpg
+    - assets/images/home_bg_light.jpg
 
