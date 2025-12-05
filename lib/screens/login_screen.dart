@@ -1,6 +1,31 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+/// ===== COLOR PALETTE =====
+const kBgTop = Color(0xFF04120B);
+const kBgMid = Color(0xFF062219);
+const kBgBottom = Color(0xFF0C3624);
+
+const kCardOverlay = Colors.black;
+const kCardBorder = Colors.white;
+
+const kPrimaryText = Colors.white;
+const kSecondaryText = Colors.white;
+const kHintText = Colors.white;
+const kIconColor = Colors.white;
+
+const kButtonGradientStart = Color(0xFFFD5E77); // pink
+const kButtonGradientEnd = Color(0xFFFD7F5E);   // orange
+
+const kSignUpAccent = Color(0xFFF86C81);
+
+const kFieldFill = Colors.white;
+const kFieldBorder = Colors.white;
+
+const kSocialGlassFill = Colors.white;
+const kSocialGlassBorder = Colors.white;
+const kSocialShadow = Colors.black;
+
 class LoginScreen extends StatefulWidget {
   static const routeName = '/login';
 
@@ -32,248 +57,253 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onSocialTap(String provider) {
     // TODO: hook to Google / Microsoft / Facebook / Apple
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$provider sign-in coming soon ✨')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$provider sign-in coming soon ✨')),
+    );
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    body: Stack(
-      children: [
-        // 🔹 Background image behind everything
-        Positioned.fill(
-          child: Image.asset(
-            'assets/images/walk_group.jpg',   // ✅ correct path
-            fit: BoxFit.cover,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // 🔹 Background image behind everything
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/walk_group.jpg',
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
 
-        // 🔹 Semi-transparent dark gradient overlay
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF04120B).withOpacity(0.7),
-                  const Color(0xFF062219).withOpacity(0.85),
-                  const Color(0xFF0C3624).withOpacity(0.9),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+          // 🔹 Semi-transparent dark gradient overlay
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    kBgTop.withOpacity(0.7),
+                    kBgMid.withOpacity(0.85),
+                    kBgBottom.withOpacity(0.9),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
             ),
           ),
-        ),
 
-        // 🔹 Content (top icon + bottom sheet card)
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 80),
+          // 🔹 Content (top icon + bottom sheet card)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 80),
 
-            // 👉 REMOVE this block if you don’t want the walking icon
-            Center(
-              child: Container(
-                height: 110,
-                width: 110,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withOpacity(0.35),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.2),
+              // Top circle icon
+              Center(
+                child: Container(
+                  height: 110,
+                  width: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kCardOverlay.withOpacity(0.35),
+                    border: Border.all(
+                      color: kCardBorder.withOpacity(0.2),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.directions_walk,
+                    size: 56,
+                    color: kIconColor,
                   ),
                 ),
-                child: const Icon(
-                  Icons.directions_walk,
-                  size: 56,
-                  color: Colors.white,
-                ),
               ),
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Glass card that fills downwards
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.45),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(32),
-                        topRight: Radius.circular(32),
+              // Glass card that fills downwards
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                      decoration: BoxDecoration(
+                        color: kCardOverlay.withOpacity(0.45),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
+                        ),
+                        border: Border.all(
+                          color: kCardBorder.withOpacity(0.15),
+                        ),
                       ),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.15),
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Welcome back!',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Log in to continue walking with Yalla Nemshi',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white.withOpacity(0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Email
-                          _buildLabeledField(
-                            label: 'Email',
-                            icon: Icons.email_outlined,
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Password
-                          _buildLabeledField(
-                            label: 'Password',
-                            icon: Icons.lock_outline,
-                            controller: _passwordController,
-                            obscureText: true,
-                          ),
-
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {
-                                // TODO: password reset
-                              },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                foregroundColor:
-                                    Colors.white.withOpacity(0.8),
-                                textStyle: const TextStyle(fontSize: 12),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Welcome back!',
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: kPrimaryText,
                               ),
-                              child: const Text('Forgot Password?'),
                             ),
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Log in to continue walking with Yalla Nemshi',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: kSecondaryText.withOpacity(0.7),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
 
-                          const SizedBox(height: 8),
+                            // Email
+                            _buildLabeledField(
+                              label: 'Email',
+                              icon: Icons.email_outlined,
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 16),
 
-                          _GradientButton(
-                            text: 'Sign in',
-                            onPressed: _login,
-                          ),
+                            // Password
+                            _buildLabeledField(
+                              label: 'Password',
+                              icon: Icons.lock_outline,
+                              controller: _passwordController,
+                              obscureText: true,
+                            ),
 
-                          const SizedBox(height: 16),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Divider(
-                                  color: Colors.white.withOpacity(0.2),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {
+                                  // TODO: password reset
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  foregroundColor:
+                                      kSecondaryText.withOpacity(0.8),
+                                  textStyle: const TextStyle(fontSize: 12),
                                 ),
+                                child: const Text('Forgot Password?'),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0),
-                                child: Text(
-                                  'or continue with',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
-                                    fontSize: 12,
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            _GradientButton(
+                              text: 'Sign in',
+                              onPressed: _login,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Divider(
+                                    color:
+                                        kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
-                              ),
-                              Expanded(
-                                child: Divider(
-                                  color: Colors.white.withOpacity(0.2),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0),
+                                  child: Text(
+                                    'or continue with',
+                                    style: TextStyle(
+                                      color: kSecondaryText
+                                          .withOpacity(0.7),
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _SocialIconButton(
-                                icon: Icons.g_mobiledata,
-                                tooltip: 'Sign in with Google',
-                                onTap: () => _onSocialTap('Google'),
-                              ),
-                              _SocialIconButton(
-                                icon: Icons.mail_outline,
-                                tooltip: 'Sign in with Microsoft',
-                                onTap: () => _onSocialTap('Microsoft'),
-                              ),
-                              _SocialIconButton(
-                                icon: Icons.apple,
-                                tooltip: 'Sign in with Apple',
-                                onTap: () => _onSocialTap('Apple'),
-                              ),
-                              _SocialIconButton(
-                                icon: Icons.facebook,
-                                tooltip: 'Sign in with Facebook',
-                                onTap: () => _onSocialTap('Facebook'),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Don’t have an account? ",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 13,
+                                Expanded(
+                                  child: Divider(
+                                    color:
+                                        kSecondaryText.withOpacity(0.2),
+                                  ),
                                 ),
-                              ),
-                              TextButton(
-                                onPressed: _goToSignup,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFFF86C81),
-                                  textStyle: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _SocialIconButton(
+                                  icon: Icons.g_mobiledata,
+                                  tooltip: 'Sign in with Google',
+                                  onTap: () => _onSocialTap('Google'),
+                                ),
+                                _SocialIconButton(
+                                  icon: Icons.mail_outline,
+                                  tooltip: 'Sign in with Microsoft',
+                                  onTap: () => _onSocialTap('Microsoft'),
+                                ),
+                                _SocialIconButton(
+                                  icon: Icons.apple,
+                                  tooltip: 'Sign in with Apple',
+                                  onTap: () => _onSocialTap('Apple'),
+                                ),
+                                _SocialIconButton(
+                                  icon: Icons.facebook,
+                                  tooltip: 'Sign in with Facebook',
+                                  onTap: () => _onSocialTap('Facebook'),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "Don’t have an account? ",
+                                  style: TextStyle(
+                                    color: kSecondaryText
+                                        .withOpacity(0.7),
                                     fontSize: 13,
                                   ),
                                 ),
-                                child: const Text('Sign up'),
-                              ),
-                            ],
-                          ),
-                        ],
+                                TextButton(
+                                  onPressed: _goToSignup,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: kSignUpAccent,
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  child: const Text('Sign up'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildLabeledField({
     required String label,
@@ -288,7 +318,7 @@ Widget build(BuildContext context) {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
+            color: kSecondaryText.withOpacity(0.8),
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -298,24 +328,29 @@ Widget build(BuildContext context) {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-            prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.9)),
+            hintStyle: TextStyle(
+              color: kHintText.withOpacity(0.5),
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: kIconColor.withOpacity(0.9),
+            ),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.06),
+            fillColor: kFieldFill.withOpacity(0.06),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: Colors.white.withOpacity(0.15),
+                color: kFieldBorder.withOpacity(0.15),
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: Colors.white.withOpacity(0.8),
+                color: kFieldBorder.withOpacity(0.8),
                 width: 1.3,
               ),
             ),
@@ -339,13 +374,13 @@ class _GradientButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFFFD5E77), // pink
-            Color(0xFFFD7F5E), // orange
+            kButtonGradientStart,
+            kButtonGradientEnd,
           ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
-        borderRadius: BorderRadius.circular(18), // 🔹 less rounded
+        borderRadius: BorderRadius.circular(18),
       ),
       child: SizedBox(
         width: double.infinity,
@@ -353,14 +388,17 @@ class _GradientButton extends StatelessWidget {
         child: TextButton(
           onPressed: onPressed,
           style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: kPrimaryText,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18), // 🔹 match radius
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
           child: Text(
             text,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -392,17 +430,23 @@ class _SocialIconButton extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: Colors.white.withOpacity(0.08),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            color: kSocialGlassFill.withOpacity(0.08),
+            border: Border.all(
+              color: kSocialGlassBorder.withOpacity(0.2),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.4),
+                color: kSocialShadow.withOpacity(0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: Icon(icon, color: Colors.white, size: 22),
+          child: Icon(
+            icon,
+            color: kPrimaryText,
+            size: 22,
+          ),
         ),
       ),
     );
