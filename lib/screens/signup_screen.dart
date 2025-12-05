@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// ===== SAME COLOR PALETTE AS LOGIN =====
 const kBgTop = Color(0xFF04120B);
@@ -36,10 +37,11 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final _nameController = TextEditingController();
+ final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void dispose() {
@@ -50,10 +52,60 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _register() {
-    // TODO: replace with real Firebase sign up
-    Navigator.of(context).pushReplacementNamed('/home');
+Future<void> _register() async {
+  final name = _nameController.text.trim();
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
+  final confirm = _confirmController.text.trim();
+
+  if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please fill in all fields.')),
+    );
+    return;
   }
+
+  if (password != confirm) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Passwords do not match.')),
+    );
+    return;
+  }
+
+  try {
+    final cred = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    // Save display name
+    await cred.user?.updateDisplayName(name);
+
+    // ✅ Success → go to home
+    Navigator.of(context).pushReplacementNamed('/home');
+  } on FirebaseAuthException catch (e) {
+    String message = 'Sign up failed. Please try again.';
+
+    if (e.code == 'email-already-in-use') {
+      message = 'An account already exists for that email.';
+    } else if (e.code == 'invalid-email') {
+      message = 'Please enter a valid email address.';
+    } else if (e.code == 'weak-password') {
+      message = 'Password is too weak. Try a stronger one.';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('An unexpected error occurred. Please try again.'),
+      ),
+    );
+  }
+}
+
 
   void _goToLogin() {
     Navigator.of(context).pushReplacementNamed('/login');

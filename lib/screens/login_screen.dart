@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// ===== COLOR PALETTE =====
 const kBgTop = Color(0xFF04120B);
@@ -38,6 +39,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
 
   @override
   void dispose() {
@@ -46,10 +49,50 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    // TODO: replace with real Firebase auth
-    Navigator.of(context).pushReplacementNamed('/home');
+Future<void> _login() async {
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
+
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter both email and password.'),
+      ),
+    );
+    return;
   }
+
+  try {
+    await _auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    // ✅ Success → go to home
+    Navigator.of(context).pushReplacementNamed('/home');
+  } on FirebaseAuthException catch (e) {
+    String message = 'Login failed. Please try again.';
+
+    if (e.code == 'user-not-found') {
+      message = 'No user found with that email.';
+    } else if (e.code == 'wrong-password') {
+      message = 'Incorrect password. Please try again.';
+    } else if (e.code == 'invalid-email') {
+      message = 'Please enter a valid email address.';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('An unexpected error occurred. Please try again.'),
+      ),
+    );
+  }
+}
+
 
   void _goToSignup() {
     Navigator.of(context).pushNamed('/signup');
