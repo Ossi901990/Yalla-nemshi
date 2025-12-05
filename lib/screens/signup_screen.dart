@@ -37,7 +37,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
- final _nameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -52,60 +52,56 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-Future<void> _register() async {
-  final name = _nameController.text.trim();
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
-  final confirm = _confirmController.text.trim();
+  Future<void> _register() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirm = _confirmController.text.trim();
 
-  if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please fill in all fields.')),
-    );
-    return;
-  }
-
-  if (password != confirm) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Passwords do not match.')),
-    );
-    return;
-  }
-
-  try {
-    final cred = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    // Save display name
-    await cred.user?.updateDisplayName(name);
-
-    // ✅ Success → go to home
-    Navigator.of(context).pushReplacementNamed('/home');
-  } on FirebaseAuthException catch (e) {
-    String message = 'Sign up failed. Please try again.';
-
-    if (e.code == 'email-already-in-use') {
-      message = 'An account already exists for that email.';
-    } else if (e.code == 'invalid-email') {
-      message = 'Please enter a valid email address.';
-    } else if (e.code == 'weak-password') {
-      message = 'Password is too weak. Try a stronger one.';
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirm.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields.')),
+      );
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('An unexpected error occurred. Please try again.'),
-      ),
-    );
-  }
-}
+    if (password != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match.')),
+      );
+      return;
+    }
 
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      await cred.user?.updateDisplayName(name);
+
+      // ✅ Success → go to home
+      Navigator.of(context).pushReplacementNamed('/home');
+    } on FirebaseAuthException catch (e) {
+      // Show full error while we debug
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sign up failed: [${e.code}] ${e.message ?? ''}',
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred. Please try again.'),
+        ),
+      );
+    }
+  }
 
   void _goToLogin() {
     Navigator.of(context).pushReplacementNamed('/login');
@@ -321,8 +317,7 @@ Future<void> _register() async {
                             const SizedBox(height: 16),
 
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Already have an account? ",
@@ -405,7 +400,8 @@ Future<void> _register() async {
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
                 color: kFieldBorder.withOpacity(0.8),
-                width: 1.3),
+                width: 1.3,
+              ),
             ),
           ),
         ),
@@ -495,8 +491,8 @@ class _SocialIconButton extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.person,
+          child: Icon(
+            icon,                // ✅ use the icon passed in
             color: kPrimaryText,
             size: 22,
           ),

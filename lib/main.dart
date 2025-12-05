@@ -14,12 +14,12 @@ Future<void> main() async {
     // 🔹 Web: use the firebaseConfig values you just saw
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8LTT8",
-        authDomain: "yallanemshiapp.firebaseapp.com",
-        projectId: "yallanemshiapp",
-        storageBucket: "yallanemshiapp.firebasestorage.app",
-        messagingSenderId: "695876088604",
-        appId: "1:695876088604:web:d7b5d37c1ff68131dcc0d9",
+         apiKey: "AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8lTT8",
+  authDomain: "yallanemshiapp.firebaseapp.com",
+  projectId: "yallanemshiapp",
+  storageBucket: "yallanemshiapp.firebasestorage.app",
+  messagingSenderId: "695876088604",
+  appId: "1:695876088604:web:d7b5d37c1ff68131dcc0d9"
         // measurementId: "G-XXXXXXX", // <- only if your snippet shows this line
       ),
     );
