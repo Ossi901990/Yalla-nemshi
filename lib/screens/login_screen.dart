@@ -38,31 +38,52 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        // 🌌 Dark green gradient background
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF04120B), Color(0xFF062219), Color(0xFF0C3624)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Stack(
+      children: [
+        // 🔹 Background image behind everything
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/walk_group.jpg',   // ✅ correct path
+            fit: BoxFit.cover,
           ),
         ),
-        child: Column(
+
+        // 🔹 Semi-transparent dark gradient overlay
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF04120B).withOpacity(0.7),
+                  const Color(0xFF062219).withOpacity(0.85),
+                  const Color(0xFF0C3624).withOpacity(0.9),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+
+        // 🔹 Content (top icon + bottom sheet card)
+        Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 80),
 
-            // Top circle icon (stays “floating” above the card)
+            // 👉 REMOVE this block if you don’t want the walking icon
             Center(
               child: Container(
                 height: 110,
                 width: 110,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.08),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  color: Colors.black.withOpacity(0.35),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                  ),
                 ),
                 child: const Icon(
                   Icons.directions_walk,
@@ -74,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 24),
 
-            // 🧊 Glass card that fills to bottom & sides
+            // Glass card that fills downwards
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
@@ -86,12 +107,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
+                      color: Colors.black.withOpacity(0.45),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(32),
                         topRight: Radius.circular(32),
                       ),
-                      border: Border.all(color: Colors.white.withOpacity(0.15)),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.15),
+                      ),
                     ),
                     child: SingleChildScrollView(
                       child: Column(
@@ -142,7 +165,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
-                                foregroundColor: Colors.white.withOpacity(0.8),
+                                foregroundColor:
+                                    Colors.white.withOpacity(0.8),
                                 textStyle: const TextStyle(fontSize: 12),
                               ),
                               child: const Text('Forgot Password?'),
@@ -151,12 +175,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 8),
 
-                          // 🎨 Gradient sign-in button
-                          _GradientButton(text: 'Sign in', onPressed: _login),
+                          _GradientButton(
+                            text: 'Sign in',
+                            onPressed: _login,
+                          ),
 
                           const SizedBox(height: 16),
 
-                          // ---- OR separator ----
                           Row(
                             children: [
                               Expanded(
@@ -166,8 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                ),
+                                    horizontal: 8.0),
                                 child: Text(
                                   'or continue with',
                                   style: TextStyle(
@@ -185,7 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // 🧊 Social glass buttons
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
@@ -214,7 +237,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 16),
 
-                          // Bottom link
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -228,9 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextButton(
                                 onPressed: _goToSignup,
                                 style: TextButton.styleFrom(
-                                  foregroundColor: const Color(
-                                    0xFFF86C81,
-                                  ), // accent
+                                  foregroundColor: const Color(0xFFF86C81),
                                   textStyle: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
@@ -249,9 +269,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
+
 
   Widget _buildLabeledField({
     required String label,

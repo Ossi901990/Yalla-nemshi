@@ -38,7 +38,7 @@ flutter:
   assets:
     - assets/images/home_bg_dark.jpg
     - assets/images/home_bg_light.jpg
-    - assets/images/walk_group.png
+    - assets/images/walk_group.jpg
     
 
 
