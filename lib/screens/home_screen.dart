@@ -510,7 +510,9 @@ Widget _buildDayPill(
     return Scaffold(
       // Deep green behind the top bar only – content sits on a card.
        backgroundColor:
-          isDark ? theme.colorScheme.background : const Color(0xFF4F925C),
+          isDark ? 
+         const Color(0xFF0B1A13) // match your dark header bottom color
+      : const Color(0xFF4F925C), // your light header bottom color
       body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
@@ -667,7 +669,7 @@ Widget _buildHomeTab(BuildContext context) {
             width: double.infinity,
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF020908)
+                  ? const Color.fromARGB(255, 9, 2, 7)
                   : const Color(0xFFF7F9F2),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(24),

@@ -1,14 +1,38 @@
 import 'package:flutter/material.dart';
-
+import 'package:firebase_core/firebase_core.dart';
 import 'services/notification_service.dart';
 import 'screens/home_screen.dart';
 import 'theme_controller.dart';
+import 'screens/login_screen.dart';
+import 'screens/signup_screen.dart';
+import 'package:flutter/foundation.dart';  
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    // 🔹 Web: use the firebaseConfig values you just saw
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8LTT8",
+        authDomain: "yallanemshiapp.firebaseapp.com",
+        projectId: "yallanemshiapp",
+        storageBucket: "yallanemshiapp.firebasestorage.app",
+        messagingSenderId: "695876088604",
+        appId: "1:695876088604:web:d7b5d37c1ff68131dcc0d9",
+        // measurementId: "G-XXXXXXX", // <- only if your snippet shows this line
+      ),
+    );
+  } else {
+    // 🔹 Android (uses google-services.json)
+    await Firebase.initializeApp();
+  }
+
   await NotificationService.instance.init();
   runApp(const MyApp());
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -19,13 +43,23 @@ class MyApp extends StatelessWidget {
       valueListenable: ThemeController.instance.themeMode,
       builder: (context, mode, _) {
         return MaterialApp(
-          title: 'Yalla Nemshi',
-          debugShowCheckedModeBanner: false,
-          themeMode: mode,          // 🔹 listens to your switch in Settings
-          theme: _lightTheme,       // 🔹 light theme
-          darkTheme: _darkTheme,    // 🔹 dark theme
-          home: const HomeScreen(),
-        );
+  title: 'Yalla Nemshi',
+  debugShowCheckedModeBanner: false,
+  themeMode: mode,        // still using your ThemeController
+  theme: _lightTheme,
+  darkTheme: _darkTheme,
+
+  // ⬇️ NEW: start at the login screen
+  initialRoute: LoginScreen.routeName,
+
+  // ⬇️ NEW: define your routes
+  routes: {
+    LoginScreen.routeName: (context) => const LoginScreen(),
+    SignupScreen.routeName: (context) => const SignupScreen(),
+    '/home': (context) => const HomeScreen(),
+  },
+);
+
       },
     );
   }
