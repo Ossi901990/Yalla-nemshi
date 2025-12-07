@@ -1,6 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+
+
 
 /// ===== COLOR PALETTE =====
 const kBgTop = Color(0xFF04120B);
@@ -40,6 +44,38 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+Future<void> _signInWithGoogle() async {
+  try {
+    if (!kIsWeb) {
+      // For now, only web is supported – emulator later
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google sign-in is currently available on web preview only.'),
+        ),
+      );
+      return;
+    }
+
+    // 🔹 Web: use Firebase popup directly (no google_sign_in plugin)
+    final googleProvider = GoogleAuthProvider();
+    googleProvider.addScope('email');
+
+    await _auth.signInWithPopup(googleProvider);
+
+    // ✅ Success → go to home
+    Navigator.of(context).pushReplacementNamed('/home');
+  } on FirebaseAuthException catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Google sign-in failed: ${e.message ?? ''}')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Google sign-in failed. Please try again.'),
+      ),
+    );
+  }
+}
 
 
   @override
@@ -287,7 +323,7 @@ Future<void> _login() async {
                                 _SocialIconButton(
                                   icon: Icons.g_mobiledata,
                                   tooltip: 'Sign in with Google',
-                                  onTap: () => _onSocialTap('Google'),
+                                  onTap: _signInWithGoogle, 
                                 ),
                                 _SocialIconButton(
                                   icon: Icons.mail_outline,
