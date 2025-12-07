@@ -665,24 +665,25 @@ Widget _buildHomeTab(BuildContext context) {
         Expanded(
           child: Container(
             width: double.infinity,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color.fromARGB(255, 9, 2, 7)
-                  : const Color(0xFFF7F9F2),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
-              ),
-              // ✅ show home background only in dark mode
-              image: isDark
-                  ? const DecorationImage(
-                      image:
-                          AssetImage('assets/images/bg_minimal_dark.png'),
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                    )
-                  : null,
-            ),
+               decoration: BoxDecoration(
+      color: isDark
+          ? const Color.fromARGB(255, 9, 2, 7)
+          : const Color(0xFFF7F9F2),
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(24),
+        topRight: Radius.circular(24),
+      ),
+      image: DecorationImage(
+        image: AssetImage(
+          isDark
+              ? 'assets/images/bg_minimal_dark.png'
+              : 'assets/images/bg_minimal_light.png', // change name if needed
+        ),
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+      ),
+    ),
+
             // overlay so text stays readable on top of the photo
             child: Container(
               decoration: BoxDecoration(
