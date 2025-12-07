@@ -37,9 +37,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/home_bg_dark.jpg
-    - assets/images/home_bg_light.jpg
+    - assets/images/bg_minimal_dark.png
+    - assets/images/bg_minimal_light.png
     - assets/images/walk_group.jpg
     
-
 

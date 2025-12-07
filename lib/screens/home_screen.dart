@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<WalkEvent> _events = [];
 
   // TODO: Replace with real user name from profile/auth.
-  String _userName = 'Walker';
+  final String _userName = 'Walker';
   DateTime _selectedDay = DateTime.now();
 
   // --- Step counter (Android, session-based for now) ---
@@ -232,9 +232,7 @@ Widget _buildDayPill(
 
   void _onStepCount(StepCount event) {
     // Android pedometer gives "steps since reboot".
-    if (_baselineSteps == null) {
-      _baselineSteps = event.steps;
-    }
+    _baselineSteps ??= event.steps;
 
     final steps = event.steps - (_baselineSteps ?? event.steps);
     if (steps < 0) return;
@@ -679,7 +677,7 @@ Widget _buildHomeTab(BuildContext context) {
               image: isDark
                   ? const DecorationImage(
                       image:
-                          AssetImage('assets/images/home_bg_dark.jpg'),
+                          AssetImage('assets/images/bg_minimal_dark.png'),
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
                     )
