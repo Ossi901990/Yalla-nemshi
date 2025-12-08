@@ -4,6 +4,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/walk_event.dart';
+import '../services/app_preferences.dart';
 
 class NotificationService {
   NotificationService._internal();
@@ -43,9 +44,16 @@ class NotificationService {
   /// Schedule a reminder ~1 hour before the walk starts.
   /// If the walk is in less than 1 hour, no reminder is scheduled.
   Future<void> scheduleWalkReminder(WalkEvent event) async {
+    // ✅ NEW: respect user setting from Settings panel
+    final enabled = await AppPreferences.getWalkRemindersEnabled();
+    if (!enabled) {
+      // User turned walk reminders off → do nothing
+      return;
+    }
+
     if (!_initialized) return;
 
-    // ✅ REAL MODE: 1 hour before the event
+    // REAL MODE: 1 hour before the event
     final scheduledTime = event.dateTime.subtract(const Duration(hours: 1));
 
     // If it's already in the past, don't schedule anything
@@ -56,8 +64,8 @@ class NotificationService {
     final id = _eventNotificationId(event.id);
 
     // Friendlier body depending on how close the event is
-   final bool moreThanHourAway = event.dateTime
-    .isAfter(DateTime.now().add(const Duration(hours: 1)));
+    final bool moreThanHourAway = event.dateTime
+        .isAfter(DateTime.now().add(const Duration(hours: 1)));
 
     final String body = moreThanHourAway
         ? '${event.title} starts in about 1 hour.'
@@ -75,16 +83,15 @@ class NotificationService {
 
     try {
       await _plugin.zonedSchedule(
-  id,
-  'Upcoming walk',
-  body,
-  tz.TZDateTime.from(scheduledTime, tz.local),
-  details,
-  matchDateTimeComponents: DateTimeComponents.dateAndTime,
-  // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM permission
-  androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-);
-
+        id,
+        'Upcoming walk',
+        body,
+        tz.TZDateTime.from(scheduledTime, tz.local),
+        details,
+        matchDateTimeComponents: DateTimeComponents.dateAndTime,
+        // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM permission
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
     } catch (e) {
       // ignore: avoid_print
       print('Notification schedule error: $e');
@@ -97,4 +104,53 @@ class NotificationService {
     final id = _eventNotificationId(event.id);
     await _plugin.cancel(id);
   }
+
+  /// 🔔 Instant alert when a *new nearby* walk appears.
+  /// Uses the "Nearby walks alerts" toggle in Settings.
+  Future<void> showNearbyWalkAlert(WalkEvent event) async {
+    // Respect user setting
+    final enabled = await AppPreferences.getNearbyAlertsEnabled();
+    if (!enabled) {
+      print('[NOTIFY] Nearby alerts OFF – not showing for "${event.title}".');
+      return;
+    }
+
+    if (!_initialized) {
+      print(
+        '[NOTIFY] NotificationService not initialized – '
+        'skipping nearby alert for "${event.title}".',
+      );
+      return;
+    }
+
+    // Separate channel + id namespace from the scheduled reminders
+    final id = _eventNotificationId('nearby_${event.id}');
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'nearby_walks',
+        'Nearby walks',
+        channelDescription: 'Alerts when new walks appear near you',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
+
+    final subtitle =
+        '${event.distanceKm.toStringAsFixed(1)} km • ${event.gender}';
+
+    try {
+      print('[NOTIFY] Showing nearby alert (id=$id) for "${event.title}".');
+
+      await _plugin.show(
+        id,
+        'New nearby walk',
+        '${event.title} • $subtitle',
+        details,
+      );
+    } catch (e) {
+      print('[NOTIFY] Error showing nearby alert for "${event.title}": $e');
+    }
+  }
+
 }

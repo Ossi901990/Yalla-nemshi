@@ -10,8 +10,9 @@ import '../models/profile_badge.dart';
 import 'badges_info_screen.dart';
 import 'edit_profile_screen.dart';
 import 'safety_tips_screen.dart';
-import 'settings_screen.dart'; // 👈 NEW
 import '../theme_controller.dart';
+import '../services/app_preferences.dart';
+
 
 
 class ProfileScreen extends StatefulWidget {
@@ -156,14 +157,6 @@ void _openSettingsPanel() {
   final theme = Theme.of(context);
   final bool isDarkNow = theme.brightness == Brightness.dark;
 
-  // Local state for the panel
-  bool darkModeEnabled = isDarkNow;
-  bool walkReminders = true;
-  bool nearbyAlerts = true;
-  double defaultDistanceKm = 3.0;
-  String defaultGender = 'Mixed';
-  bool useSystemTheme = false; // UI only for now (coming soon)
-
   showGeneralDialog(
     context: context,
     barrierLabel: 'Settings',
@@ -171,13 +164,47 @@ void _openSettingsPanel() {
     barrierColor: Colors.black26,
     transitionDuration: const Duration(milliseconds: 220),
     pageBuilder: (ctx, animation, secondaryAnimation) {
+      // ===== Local state for the panel (backed by SharedPreferences) =====
+      bool darkModeEnabled = isDarkNow;
+      double defaultDistanceKm =
+          AppPreferences.defaultDistanceKmFallback;
+      String defaultGender =
+          AppPreferences.defaultGenderFallback;
+      bool walkReminders =
+          AppPreferences.walkRemindersFallback;
+      bool nearbyAlerts =
+          AppPreferences.nearbyAlertsFallback;
+      bool useSystemTheme = false; // still UI-only for now
+
+      bool loadedFromPrefs = false;
+
       return StatefulBuilder(
         builder: (ctx, setModalState) {
           final innerTheme = Theme.of(ctx);
           final double topOffset =
-              MediaQuery.of(ctx).padding.top + 56 + 4; // just below green bar
+              MediaQuery.of(ctx).padding.top + 56 + 4;
           final double maxHeight =
-              MediaQuery.of(ctx).size.height * 0.75; // avoid overflow
+              MediaQuery.of(ctx).size.height * 0.75;
+
+          // 🔄 One-time async load from SharedPreferences
+          if (!loadedFromPrefs) {
+            loadedFromPrefs = true;
+            () async {
+              final d = await AppPreferences.getDefaultDistanceKm();
+              final g = await AppPreferences.getDefaultGender();
+              final wr =
+                  await AppPreferences.getWalkRemindersEnabled();
+              final na =
+                  await AppPreferences.getNearbyAlertsEnabled();
+
+              setModalState(() {
+                defaultDistanceKm = d;
+                defaultGender = g;
+                walkReminders = wr;
+                nearbyAlerts = na;
+              });
+            }();
+          }
 
           return Stack(
             children: [
@@ -282,7 +309,8 @@ void _openSettingsPanel() {
                                   const Icon(Icons.phone_iphone_outlined),
                               title: const Text('Use system theme'),
                               subtitle: const Text(
-                                  'Coming soon – follow device setting'),
+                                'Coming soon – follow device setting',
+                              ),
                               trailing: Switch(
                                 value: useSystemTheme,
                                 onChanged: null, // disabled for now
@@ -311,7 +339,8 @@ void _openSettingsPanel() {
                                 setModalState(() {
                                   walkReminders = val;
                                 });
-                                // TODO: wire to notification prefs
+                                AppPreferences
+                                    .setWalkRemindersEnabled(val);
                               },
                             ),
                             SwitchListTile(
@@ -324,7 +353,8 @@ void _openSettingsPanel() {
                                 setModalState(() {
                                   nearbyAlerts = val;
                                 });
-                                // TODO: wire to notification prefs
+                                AppPreferences
+                                    .setNearbyAlertsEnabled(val);
                               },
                             ),
 
@@ -371,7 +401,8 @@ void _openSettingsPanel() {
                                     setModalState(() {
                                       defaultDistanceKm = value;
                                     });
-                                    // TODO: use this to prefill Create Walk
+                                    AppPreferences
+                                        .setDefaultDistanceKm(value);
                                   },
                                 ),
                               ],
@@ -412,7 +443,8 @@ void _openSettingsPanel() {
                                     setModalState(() {
                                       defaultGender = val;
                                     });
-                                    // TODO: use this to prefill Create Walk
+                                    AppPreferences
+                                        .setDefaultGender(val);
                                   },
                                 ),
                               ),
@@ -433,8 +465,8 @@ void _openSettingsPanel() {
                             ListTile(
                               contentPadding: EdgeInsets.zero,
                               leading: const Icon(Icons.shield_outlined),
-                              title:
-                                  const Text('Walking safety & tips'),
+                              title: const Text(
+                                  'Walking safety & tips'),
                               onTap: () {
                                 Navigator.of(ctx).pop();
                                 Navigator.of(context).push(
@@ -461,7 +493,8 @@ void _openSettingsPanel() {
                             ListTile(
                               contentPadding: EdgeInsets.zero,
                               leading: const Icon(Icons.article_outlined),
-                              title: const Text('Terms & privacy policy'),
+                              title:
+                                  const Text('Terms & privacy policy'),
                               onTap: () {
                                 showDialog(
                                   context: ctx,
@@ -515,6 +548,7 @@ void _openSettingsPanel() {
     },
   );
 }
+
 
 
 

@@ -248,38 +248,60 @@ Widget _buildDayPill(
 
   // --- Actions ---
 
-  void _onEventCreated(WalkEvent newEvent) {
-    setState(() {
-      _events.add(newEvent);
-    });
-  }
+void _onEventCreated(WalkEvent newEvent) {
+  setState(() {
+    _events.add(newEvent);
+  });
 
-  void _toggleJoin(WalkEvent event) {
-    setState(() {
-      final index = _events.indexWhere((e) => e.id == event.id);
-      if (index == -1) return;
-      final current = _events[index];
-      _events[index] = current.copyWith(joined: !current.joined);
-    });
-  }
+  // 🔔 Schedule reminder for the walk you just created (host)
+  NotificationService.instance.scheduleWalkReminder(newEvent);
+}
 
-  void _toggleInterested(WalkEvent event) {
-    setState(() {
-      final index = _events.indexWhere((e) => e.id == event.id);
-      if (index == -1) return;
-      final current = _events[index];
-      _events[index] = current.copyWith(interested: !current.interested);
-    });
-  }
+void _toggleJoin(WalkEvent event) {
+  setState(() {
+    final index = _events.indexWhere((e) => e.id == event.id);
+    if (index == -1) return;
 
-  void _cancelHostedWalk(WalkEvent event) {
-    setState(() {
-      final index = _events.indexWhere((e) => e.id == event.id);
-      if (index == -1) return;
-      final current = _events[index];
-      _events[index] = current.copyWith(cancelled: true);
-    });
-  }
+    final current = _events[index];
+    final bool wasJoined = current.joined;
+    final updated = current.copyWith(joined: !current.joined);
+
+    _events[index] = updated;
+
+    // 🔔 If user just JOINED → schedule reminder
+    if (!wasJoined && updated.joined) {
+      NotificationService.instance.scheduleWalkReminder(updated);
+    }
+    // 🔕 If user just LEFT → cancel reminder
+    else if (wasJoined && !updated.joined) {
+      NotificationService.instance.cancelWalkReminder(updated);
+    }
+  });
+}
+
+void _toggleInterested(WalkEvent event) {
+  setState(() {
+    final index = _events.indexWhere((e) => e.id == event.id);
+    if (index == -1) return;
+    final current = _events[index];
+    _events[index] = current.copyWith(interested: !current.interested);
+  });
+}
+
+void _cancelHostedWalk(WalkEvent event) {
+  setState(() {
+    final index = _events.indexWhere((e) => e.id == event.id);
+    if (index == -1) return;
+    final current = _events[index];
+    final updated = current.copyWith(cancelled: true);
+    _events[index] = updated;
+
+    // 🔕 Cancel any reminder for this event
+    NotificationService.instance.cancelWalkReminder(updated);
+  });
+}
+
+
 
   void _navigateToDetails(WalkEvent event) {
     Navigator.of(context).push(

@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/walk_event.dart';
 import 'map_pick_screen.dart';
+import '../services/app_preferences.dart'; // 👈 NEW
 
 class CreateWalkScreen extends StatefulWidget {
   final void Function(WalkEvent) onEventCreated;
@@ -23,8 +24,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   final _formKey = GlobalKey<FormState>();
 
   String _title = '';
-  double _distanceKm = 3.0;
-  String _gender = 'Mixed';
+  double _distanceKm = 3.0;       // will be overridden by prefs
+  String _gender = 'Mixed';       // will be overridden by prefs
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
   // Text name for the meeting point (user can type it)
@@ -34,6 +35,23 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   LatLng? _meetingLatLng;
 
   String _description = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultsFromPrefs(); // 👈 load saved defaults
+  }
+
+  Future<void> _loadDefaultsFromPrefs() async {
+    final distance = await AppPreferences.getDefaultDistanceKm();
+    final gender = await AppPreferences.getDefaultGender();
+
+    if (!mounted) return;
+    setState(() {
+      _distanceKm = distance;
+      _gender = gender;
+    });
+  }
 
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
@@ -104,292 +122,310 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   }
 
   @override
-Widget build(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  return Scaffold(
-    // ✅ match Home / Nearby / Profile
-    backgroundColor:
-        isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
-    body: SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          // ===== HEADER (same gradient pattern) =====
-          Container(
-            height: 56,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? const [
-                        Color(0xFF020908), // darker top
-                        Color(0xFF0B1A13), // darker bottom
-                      ]
-                    : const [
-                        Color(0xFF294630), // top
-                        Color(0xFF4F925C), // bottom
-                      ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white24,
-                    ),
-                    child: const Icon(
-                      Icons.directions_walk,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Yalla Nemshi',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ===== MAIN SHEET WITH BG IMAGE (matches Home/Profile) =====
-          Expanded(
-            child: Container(
+    return Scaffold(
+      // ✅ match Home / Nearby / Profile
+      backgroundColor:
+          isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ===== HEADER (same gradient pattern) =====
+            Container(
+              height: 56,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color.fromARGB(255, 9, 2, 7)
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                image: DecorationImage(
-                  image: AssetImage(
-                    isDark
-                        ? 'assets/images/bg_minimal_dark.png'
-                        : 'assets/images/bg_minimal_light.png',
-                  ),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? const [
+                          Color(0xFF020908), // darker top
+                          Color(0xFF0B1A13), // darker bottom
+                        ]
+                      : const [
+                          Color(0xFF294630), // top
+                          Color(0xFF4F925C), // bottom
+                        ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
-              // overlay so text & form stay readable
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: const [
+                    // logo
+                    _HeaderLogo(),
+                    SizedBox(width: 8),
+                    Text(
+                      'Yalla Nemshi',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ===== MAIN SHEET WITH BG IMAGE (matches Home/Profile) =====
+            Expanded(
               child: Container(
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.black.withOpacity(0.35)
-                      : Colors.transparent,
+                      ? const Color.fromARGB(255, 9, 2, 7)
+                      : const Color(0xFFF7F9F2),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
+                  image: DecorationImage(
+                    image: AssetImage(
+                      isDark
+                          ? 'assets/images/bg_minimal_dark.png'
+                          : 'assets/images/bg_minimal_light.png',
+                    ),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                  ),
                 ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title + subtitle
-                      Text(
-                        'Create walk',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          // ✅ same pattern as Profile: white in dark, deep green in light
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF294630),
+                // overlay so text & form stay readable
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.black.withOpacity(0.35)
+                        : Colors.transparent,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title + subtitle
+                        Text(
+                          'Create walk',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF294630),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Set your walk details and invite others to join.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isDark ? Colors.white70 : Colors.black54,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Set your walk details and invite others to join.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color:
+                                isDark ? Colors.white70 : Colors.black54,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                      // ===== FORM (unchanged logic) =====
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            // Title
-                            TextFormField(
-                              decoration: const InputDecoration(
-                                labelText: 'Title',
-                              ),
-                              onSaved: (val) => _title = val!.trim(),
-                              validator: (val) =>
-                                  (val == null || val.trim().isEmpty)
-                                      ? 'Required'
-                                      : null,
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Distance
-                            TextFormField(
-                              decoration: const InputDecoration(
-                                labelText: 'Distance (km)',
-                              ),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                              initialValue: _distanceKm.toStringAsFixed(1),
-                              onSaved: (val) => _distanceKm =
-                                  double.tryParse(val ?? '') ?? 3.0,
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Gender filter
-                            DropdownButtonFormField<String>(
-                              initialValue: _gender,
-                              decoration: const InputDecoration(
-                                labelText: 'Who can join?',
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'Mixed',
-                                  child: Text('Mixed'),
+                        // ===== FORM =====
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              // Title
+                              TextFormField(
+                                decoration: const InputDecoration(
+                                  labelText: 'Title',
                                 ),
-                                DropdownMenuItem(
-                                  value: 'Women only',
-                                  child: Text('Women only'),
+                                onSaved: (val) => _title = val!.trim(),
+                                validator: (val) =>
+                                    (val == null || val.trim().isEmpty)
+                                        ? 'Required'
+                                        : null,
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Distance
+                              TextFormField(
+                                key: ValueKey(
+                                    _distanceKm), // 👈 so initialValue updates
+                                decoration: const InputDecoration(
+                                  labelText: 'Distance (km)',
                                 ),
-                                DropdownMenuItem(
-                                  value: 'Men only',
-                                  child: Text('Men only'),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                initialValue:
+                                    _distanceKm.toStringAsFixed(1),
+                                onSaved: (val) => _distanceKm =
+                                    double.tryParse(val ?? '') ?? 3.0,
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Gender filter
+                              DropdownButtonFormField<String>(
+                                value: _gender, // 👈 binds to state
+                                decoration: const InputDecoration(
+                                  labelText: 'Who can join?',
                                 ),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() => _gender = val);
-                                }
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Date & time
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                'Date & time',
-                                style: theme.textTheme.titleMedium,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'Mixed',
+                                    child: Text('Mixed'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Women only',
+                                    child: Text('Women only'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Men only',
+                                    child: Text('Men only'),
+                                  ),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _gender = val);
+                                  }
+                                },
                               ),
-                              subtitle: Text(
-                                _dateTime.toString(),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? Colors.white70
-                                      : Colors.black87,
+                              const SizedBox(height: 12),
+
+                              // Date & time
+                              ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  'Date & time',
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                                subtitle: Text(
+                                  _dateTime.toString(),
+                                  style: theme.textTheme.bodySmall
+                                      ?.copyWith(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black87,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon:
+                                      const Icon(Icons.calendar_today),
+                                  onPressed: _pickDateTime,
                                 ),
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.calendar_today),
-                                onPressed: _pickDateTime,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
+                              const SizedBox(height: 12),
 
-                            // Meeting point name + pick on map
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Meeting point',
-                                style: theme.textTheme.titleMedium,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Optional custom name
-                            TextFormField(
-                              decoration: const InputDecoration(
-                                labelText: 'Location name (optional)',
-                                hintText: 'e.g. Rainbow St. entrance',
-                              ),
-                              onSaved: (val) =>
-                                  _meetingPlace = (val ?? '').trim(),
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Button to pick on map
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _pickOnMap,
-                                icon: const Icon(Icons.map_outlined),
-                                label: const Text('Pick on map'),
-                              ),
-                            ),
-
-                            const SizedBox(height: 4),
-
-                            // Show status of picked coordinates
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                _meetingLatLng == null
-                                    ? 'No location chosen yet'
-                                    : 'Picked: '
-                                        'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
-                                        'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Description
-                            TextFormField(
-                              decoration: const InputDecoration(
-                                labelText: 'Description (optional)',
-                              ),
-                              maxLines: 3,
-                              onSaved: (val) =>
-                                  _description = (val ?? '').trim(),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Submit button
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton(
-                                onPressed: _submit,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      const Color(0xFF14532D),
-                                  foregroundColor: Colors.white,
+                              // Meeting point name + pick on map
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Meeting point',
+                                  style: theme.textTheme.titleMedium,
                                 ),
-                                child: const Text('Create walk'),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+
+                              // Optional custom name
+                              TextFormField(
+                                decoration: const InputDecoration(
+                                  labelText: 'Location name (optional)',
+                                  hintText:
+                                      'e.g. Rainbow St. entrance',
+                                ),
+                                onSaved: (val) => _meetingPlace =
+                                    (val ?? '').trim(),
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Button to pick on map
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _pickOnMap,
+                                  icon:
+                                      const Icon(Icons.map_outlined),
+                                  label: const Text('Pick on map'),
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              // Show status of picked coordinates
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _meetingLatLng == null
+                                      ? 'No location chosen yet'
+                                      : 'Picked: '
+                                          'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
+                                          'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // Description
+                              TextFormField(
+                                decoration: const InputDecoration(
+                                  labelText: 'Description (optional)',
+                                ),
+                                maxLines: 3,
+                                onSaved: (val) => _description =
+                                    (val ?? '').trim(),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // Submit button
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: _submit,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor:
+                                        const Color(0xFF14532D),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Create walk'),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
+
+// Small reusable header logo (matches other screens)
+class _HeaderLogo extends StatelessWidget {
+  const _HeaderLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white24,
+      ),
+      child: const Icon(
+        Icons.directions_walk,
+        size: 18,
+        color: Colors.white,
+      ),
+    );
+  }
 }
