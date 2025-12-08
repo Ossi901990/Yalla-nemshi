@@ -11,6 +11,8 @@ import 'badges_info_screen.dart';
 import 'edit_profile_screen.dart';
 import 'safety_tips_screen.dart';
 import 'settings_screen.dart'; // 👈 NEW
+import '../theme_controller.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   final int walksJoined;
@@ -149,14 +151,167 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // 👉 NEW: open Settings screen
-  void _openSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const SettingsScreen(),
-      ),
-    );
-  }
+  // 👉 SETTINGS PANEL: small card that slides down from the gear (top-right)
+void _openSettingsPanel() {
+  final theme = Theme.of(context);
+  final bool isDarkNow = theme.brightness == Brightness.dark;
+  bool darkModeEnabled = isDarkNow;
+
+  showGeneralDialog(
+    context: context,
+    barrierLabel: 'Settings',
+    barrierDismissible: true,
+    barrierColor: Colors.black26,
+    transitionDuration: const Duration(milliseconds: 220),
+    pageBuilder: (ctx, animation, secondaryAnimation) {
+      return StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final innerTheme = Theme.of(ctx);
+          // ✅ position just below the green header (56) + status bar
+          final double topOffset =
+              MediaQuery.of(ctx).padding.top + 56 + 4;
+
+          return Stack(
+            children: [
+              Positioned(
+                right: 8,
+                top: topOffset,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 320,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBFEF8),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    padding:
+                        const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header row: title + close icon
+                        Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Settings',
+                              style: innerTheme
+                                  .textTheme.titleMedium
+                                  ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF294630),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () =>
+                                  Navigator.of(ctx).pop(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        Text(
+                          'Appearance',
+                          style: innerTheme.textTheme.bodyMedium
+                              ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        Card(
+                          margin: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: ListTile(
+                            leading: Icon(
+                              darkModeEnabled
+                                  ? Icons.dark_mode_outlined
+                                  : Icons.light_mode_outlined,
+                            ),
+                            title: const Text('Dark mode'),
+                            subtitle: Text(
+                              darkModeEnabled
+                                  ? 'Using dark theme'
+                                  : 'Using light theme',
+                            ),
+                            trailing: Switch(
+                              value: darkModeEnabled,
+                              onChanged: (value) {
+                                setModalState(() {
+                                  darkModeEnabled = value;
+                                });
+                                ThemeController.instance
+                                    .setDarkMode(value);
+                              },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Text(
+                          'More',
+                          style: innerTheme.textTheme.bodyMedium
+                              ?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.info_outline),
+                          title: const Text('About Yalla Nemshi'),
+                          subtitle: const Text('Version 1.0.0'),
+                          onTap: () {
+                            showAboutDialog(
+                              context: ctx,
+                              applicationName: 'Yalla Nemshi',
+                              applicationVersion: '1.0.0',
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+    transitionBuilder: (ctx, animation, secondary, child) {
+      final curved =
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.15, -0.2),
+          end: Offset.zero,
+        ).animate(curved),
+        child: FadeTransition(
+          opacity: curved,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+
 
   // 👉 same notification bottom sheet as Home / Nearby
   void _showNotificationsSheet() {
@@ -203,89 +358,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+ @override
+Widget build(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
 
-    if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final profile = _profile;
-
-    final allBadges = computeBadges(
-      walksJoined: widget.walksJoined,
-      eventsHosted: widget.eventsHosted,
-      totalKm: widget.totalKm,
+  if (_loading) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
-    final achievedBadges =
-        allBadges.where((b) => b.achieved).toList(growable: false);
+  }
 
-    final double weeklyProgress = widget.weeklyGoalKm <= 0
-        ? 0
-        : (widget.weeklyKm / widget.weeklyGoalKm).clamp(0.0, 1.0);
+  final profile = _profile;
 
-    return Scaffold(
-      // match the bottom of the gradient so corners look seamless
-      backgroundColor: _lightGreen,
-      body: Column(
-        children: [
-          // ===== HEADER (same height style as Home / Nearby) =====
-          Container(
-            height: 56, // same height as Home & Nearby
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_deepGreen, _lightGreen],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+  final allBadges = computeBadges(
+    walksJoined: widget.walksJoined,
+    eventsHosted: widget.eventsHosted,
+    totalKm: widget.totalKm,
+  );
+  final achievedBadges =
+      allBadges.where((b) => b.achieved).toList(growable: false);
+
+  final double weeklyProgress = widget.weeklyGoalKm <= 0
+      ? 0
+      : (widget.weeklyKm / widget.weeklyGoalKm).clamp(0.0, 1.0);
+
+  return Scaffold(
+    // ✅ match Home/Nearby scaffold background
+    backgroundColor:
+        isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+    body: Column(
+      children: [
+        // ===== HEADER (same gradient style as Home / Nearby) =====
+        Container(
+          height: 56, // keep your header height
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? const [
+                      Color(0xFF020908), // darker top
+                      Color(0xFF0B1A13), // darker bottom
+                    ]
+                  : const [
+                      Color(0xFF294630), // top
+                      Color(0xFF4F925C), // bottom
+                    ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: const [
-                        // logo
-                        _HeaderLogo(),
-                        SizedBox(width: 8),
-                        Text(
-                          'Yalla Nemshi',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: const [
+                      // logo
+                      _HeaderLogo(),
+                      SizedBox(width: 8),
+                      Text(
+                        'Yalla Nemshi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
-                      ],
-                    ),
-                    // 👉 right side: bell + settings gear
-                    Row(
-                      children: [
-                        _HeaderNotifications(onTap: _showNotificationsSheet),
-                        const SizedBox(width: 12),
-                        _HeaderSettings(onTap: _openSettings),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                  // right side: bell + settings gear
+                  Row(
+                    children: [
+                      _HeaderNotifications(onTap: _showNotificationsSheet),
+                      const SizedBox(width: 12),
+                      _HeaderSettings(onTap: _openSettingsPanel),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
+        ),
 
-          // ===== MAIN ROUNDED CARD AREA =====
-          Expanded(
+        // ===== MAIN SHEET WITH BG IMAGE (MATCH HOME) =====
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color.fromARGB(255, 9, 2, 7)
+                  : const Color(0xFFF7F9F2),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              image: DecorationImage(
+                image: AssetImage(
+                  isDark
+                      ? 'assets/images/bg_minimal_dark.png'
+                      : 'assets/images/bg_minimal_light.png',
+                ),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
+            ),
+            // overlay so content stays readable on dark bg
             child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: _cardBackground,
-                borderRadius: BorderRadius.vertical(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : Colors.transparent,
+                borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
               ),
@@ -299,14 +485,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'My profile',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: _deepGreen,
+                        // ✅ dark mode = white, light mode = deep green
+                        color: isDark ? Colors.white : _deepGreen,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Track your progress and edit your walking details.',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
+                        color: isDark
+                            ? Colors.white70
+                            : Colors.black54,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -323,7 +512,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               profile?.name.isNotEmpty == true
                                   ? profile!.name
                                   : 'Your name',
-                              style: theme.textTheme.titleLarge?.copyWith(
+                              style:
+                                  theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -332,7 +522,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Text(
                               _walkerLevel,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: const Color(0xFF4F925C), // soft green
+                                color: const Color(0xFF4F925C),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -342,8 +532,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ? profile!.bio
                                   : 'Add a short bio about you',
                               textAlign: TextAlign.center,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.textTheme.bodySmall?.color,
+                              style:
+                                  theme.textTheme.bodyMedium?.copyWith(
+                                color:
+                                    theme.textTheme.bodySmall?.color,
                               ),
                             ),
                           ],
@@ -389,8 +581,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Text(
                               '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
                               '${widget.weeklyKm.toStringAsFixed(1)} / ${widget.weeklyGoalKm.toStringAsFixed(1)} km',
-                              style:
-                                  theme.textTheme.bodyMedium?.copyWith(
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -400,7 +592,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: LinearProgressIndicator(
                                 value: weeklyProgress,
                                 minHeight: 6,
-                                backgroundColor: Colors.green.shade50,
+                                backgroundColor:
+                                    Colors.green.shade50,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -426,7 +619,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceEvenly,
                       children: [
                         _statCard(
                           label: 'Walks joined',
@@ -498,7 +692,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             CircleAvatar(
                                               radius: 18,
                                               backgroundColor:
-                                                  theme.colorScheme
+                                                  theme
+                                                      .colorScheme
                                                       .primary,
                                               child: Icon(
                                                 b.icon,
@@ -560,10 +755,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildAvatar(UserProfile? profile) {
     final imgPath = profile?.profileImagePath;

@@ -104,69 +104,97 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+Widget build(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      // match app style (green behind rounded sheet)
-      backgroundColor: const Color(0xFF4F925C),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // ===== SIMPLE HEADER (logo + app name only, NO buttons) =====
-            Container(
-              height: 56,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF294630),
-                    Color(0xFF4F925C),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white24,
-                      ),
-                      child: const Icon(
-                        Icons.directions_walk,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Yalla Nemshi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
+  return Scaffold(
+    // ✅ match Home / Nearby / Profile
+    backgroundColor:
+        isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+    body: SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          // ===== HEADER (same gradient pattern) =====
+          Container(
+            height: 56,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? const [
+                        Color(0xFF020908), // darker top
+                        Color(0xFF0B1A13), // darker bottom
+                      ]
+                    : const [
+                        Color(0xFF294630), // top
+                        Color(0xFF4F925C), // bottom
+                      ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white24,
+                    ),
+                    child: const Icon(
+                      Icons.directions_walk,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Yalla Nemshi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
-            // ===== MAIN SHEET (ROUNDED TOP) =====
-            Expanded(
+          // ===== MAIN SHEET WITH BG IMAGE (matches Home/Profile) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color.fromARGB(255, 9, 2, 7)
+                    : const Color(0xFFF7F9F2),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                image: DecorationImage(
+                  image: AssetImage(
+                    isDark
+                        ? 'assets/images/bg_minimal_dark.png'
+                        : 'assets/images/bg_minimal_light.png',
+                  ),
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+              ),
+              // overlay so text & form stay readable
               child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFBFEF8),
-                  borderRadius: BorderRadius.vertical(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.35)
+                      : Colors.transparent,
+                  borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
                 ),
@@ -180,32 +208,36 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         'Create walk',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF294630),
+                          // ✅ same pattern as Profile: white in dark, deep green in light
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF294630),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Set your walk details and invite others to join.',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.black54,
+                          color: isDark ? Colors.white70 : Colors.black54,
                         ),
                       ),
                       const SizedBox(height: 20),
 
-                      // ===== FORM =====
+                      // ===== FORM (unchanged logic) =====
                       Form(
                         key: _formKey,
                         child: Column(
                           children: [
                             // Title
                             TextFormField(
-                              decoration:
-                                  const InputDecoration(labelText: 'Title'),
+                              decoration: const InputDecoration(
+                                labelText: 'Title',
+                              ),
                               onSaved: (val) => _title = val!.trim(),
-                              validator: (val) => (val == null ||
-                                      val.trim().isEmpty)
-                                  ? 'Required'
-                                  : null,
+                              validator: (val) =>
+                                  (val == null || val.trim().isEmpty)
+                                      ? 'Required'
+                                      : null,
                             ),
                             const SizedBox(height: 12),
 
@@ -227,7 +259,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             DropdownButtonFormField<String>(
                               initialValue: _gender,
                               decoration: const InputDecoration(
-                                  labelText: 'Who can join?'),
+                                labelText: 'Who can join?',
+                              ),
                               items: const [
                                 DropdownMenuItem(
                                   value: 'Mixed',
@@ -253,8 +286,18 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             // Date & time
                             ListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Date & time'),
-                              subtitle: Text(_dateTime.toString()),
+                              title: Text(
+                                'Date & time',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              subtitle: Text(
+                                _dateTime.toString(),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                ),
+                              ),
                               trailing: IconButton(
                                 icon: const Icon(Icons.calendar_today),
                                 onPressed: _pickDateTime,
@@ -343,9 +386,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
