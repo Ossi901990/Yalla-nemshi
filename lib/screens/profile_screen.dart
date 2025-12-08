@@ -155,7 +155,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 void _openSettingsPanel() {
   final theme = Theme.of(context);
   final bool isDarkNow = theme.brightness == Brightness.dark;
+
+  // Local state for the panel
   bool darkModeEnabled = isDarkNow;
+  bool walkReminders = true;
+  bool nearbyAlerts = true;
+  double defaultDistanceKm = 3.0;
+  String defaultGender = 'Mixed';
+  bool useSystemTheme = false; // UI only for now (coming soon)
 
   showGeneralDialog(
     context: context,
@@ -167,9 +174,10 @@ void _openSettingsPanel() {
       return StatefulBuilder(
         builder: (ctx, setModalState) {
           final innerTheme = Theme.of(ctx);
-          // ✅ position just below the green header (56) + status bar
           final double topOffset =
-              MediaQuery.of(ctx).padding.top + 56 + 4;
+              MediaQuery.of(ctx).padding.top + 56 + 4; // just below green bar
+          final double maxHeight =
+              MediaQuery.of(ctx).size.height * 0.75; // avoid overflow
 
           return Stack(
             children: [
@@ -178,112 +186,307 @@ void _openSettingsPanel() {
                 top: topOffset,
                 child: Material(
                   color: Colors.transparent,
-                  child: Container(
-                    width: 320,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFBFEF8),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.12),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header row: title + close icon
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxHeight),
+                    child: Container(
+                      width: 320,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFBFEF8),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Header row: title + close
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Settings',
+                                  style: innerTheme
+                                      .textTheme.titleMedium
+                                      ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF294630),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () =>
+                                      Navigator.of(ctx).pop(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // ===== Appearance =====
                             Text(
-                              'Settings',
-                              style: innerTheme
-                                  .textTheme.titleMedium
+                              'Appearance',
+                              style: innerTheme.textTheme.bodyMedium
                                   ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF294630),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () =>
-                                  Navigator.of(ctx).pop(),
+                            const SizedBox(height: 8),
+
+                            Card(
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                leading: Icon(
+                                  darkModeEnabled
+                                      ? Icons.dark_mode_outlined
+                                      : Icons.light_mode_outlined,
+                                ),
+                                title: const Text('Dark mode'),
+                                subtitle: Text(
+                                  darkModeEnabled
+                                      ? 'Using dark theme'
+                                      : 'Using light theme',
+                                ),
+                                trailing: Switch(
+                                  value: darkModeEnabled,
+                                  onChanged: (value) {
+                                    setModalState(() {
+                                      darkModeEnabled = value;
+                                      // when user manually changes dark mode,
+                                      // we consider "use system theme" off
+                                      useSystemTheme = false;
+                                    });
+                                    ThemeController.instance
+                                        .setDarkMode(value);
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading:
+                                  const Icon(Icons.phone_iphone_outlined),
+                              title: const Text('Use system theme'),
+                              subtitle: const Text(
+                                  'Coming soon – follow device setting'),
+                              trailing: Switch(
+                                value: useSystemTheme,
+                                onChanged: null, // disabled for now
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ===== Notifications =====
+                            Text(
+                              'Notifications',
+                              style: innerTheme.textTheme.bodyMedium
+                                  ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Walk reminders'),
+                              subtitle: const Text(
+                                  'Notify me before walks I join'),
+                              value: walkReminders,
+                              onChanged: (val) {
+                                setModalState(() {
+                                  walkReminders = val;
+                                });
+                                // TODO: wire to notification prefs
+                              },
+                            ),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Nearby walks alerts'),
+                              subtitle: const Text(
+                                  'Alert me when a new walk is created nearby'),
+                              value: nearbyAlerts,
+                              onChanged: (val) {
+                                setModalState(() {
+                                  nearbyAlerts = val;
+                                });
+                                // TODO: wire to notification prefs
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ===== Preferences =====
+                            Text(
+                              'Preferences',
+                              style: innerTheme.textTheme.bodyMedium
+                                  ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Default distance
+                            Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Default walk distance'),
+                                    Text(
+                                      '${defaultDistanceKm.toStringAsFixed(1)} km',
+                                      style: innerTheme
+                                          .textTheme.bodySmall
+                                          ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Slider(
+                                  min: 1.0,
+                                  max: 10.0,
+                                  divisions: 18,
+                                  value: defaultDistanceKm,
+                                  label:
+                                      '${defaultDistanceKm.toStringAsFixed(1)} km',
+                                  onChanged: (value) {
+                                    setModalState(() {
+                                      defaultDistanceKm = value;
+                                    });
+                                    // TODO: use this to prefill Create Walk
+                                  },
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Default gender preference
+                            InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Default gender preference',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: defaultGender,
+                                  isExpanded: true,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Mixed',
+                                      child: Text('Mixed'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Women only',
+                                      child: Text('Women only'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Men only',
+                                      child: Text('Men only'),
+                                    ),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val == null) return;
+                                    setModalState(() {
+                                      defaultGender = val;
+                                    });
+                                    // TODO: use this to prefill Create Walk
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ===== More =====
+                            Text(
+                              'More',
+                              style: innerTheme.textTheme.bodyMedium
+                                  ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.shield_outlined),
+                              title:
+                                  const Text('Walking safety & tips'),
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const SafetyTipsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.info_outline),
+                              title: const Text('About Yalla Nemshi'),
+                              subtitle: const Text('Version 1.0.0'),
+                              onTap: () {
+                                showAboutDialog(
+                                  context: ctx,
+                                  applicationName: 'Yalla Nemshi',
+                                  applicationVersion: '1.0.0',
+                                );
+                              },
+                            ),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.article_outlined),
+                              title: const Text('Terms & privacy policy'),
+                              onTap: () {
+                                showDialog(
+                                  context: ctx,
+                                  builder: (dCtx) => AlertDialog(
+                                    title: const Text(
+                                        'Terms & privacy policy'),
+                                    content: const Text(
+                                      'This is a placeholder.\n\n'
+                                      'Later you can link to a web page or detailed in-app text '
+                                      'with your real terms and privacy policy.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(dCtx).pop(),
+                                        child: const Text('Close'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-
-                        Text(
-                          'Appearance',
-                          style: innerTheme.textTheme.bodyMedium
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        Card(
-                          margin: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ListTile(
-                            leading: Icon(
-                              darkModeEnabled
-                                  ? Icons.dark_mode_outlined
-                                  : Icons.light_mode_outlined,
-                            ),
-                            title: const Text('Dark mode'),
-                            subtitle: Text(
-                              darkModeEnabled
-                                  ? 'Using dark theme'
-                                  : 'Using light theme',
-                            ),
-                            trailing: Switch(
-                              value: darkModeEnabled,
-                              onChanged: (value) {
-                                setModalState(() {
-                                  darkModeEnabled = value;
-                                });
-                                ThemeController.instance
-                                    .setDarkMode(value);
-                              },
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        Text(
-                          'More',
-                          style: innerTheme.textTheme.bodyMedium
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.info_outline),
-                          title: const Text('About Yalla Nemshi'),
-                          subtitle: const Text('Version 1.0.0'),
-                          onTap: () {
-                            showAboutDialog(
-                              context: ctx,
-                              applicationName: 'Yalla Nemshi',
-                              applicationVersion: '1.0.0',
-                            );
-                          },
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -294,8 +497,10 @@ void _openSettingsPanel() {
       );
     },
     transitionBuilder: (ctx, animation, secondary, child) {
-      final curved =
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
 
       return SlideTransition(
         position: Tween<Offset>(
@@ -310,6 +515,7 @@ void _openSettingsPanel() {
     },
   );
 }
+
 
 
 
