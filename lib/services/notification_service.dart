@@ -5,6 +5,9 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/walk_event.dart';
 import '../services/app_preferences.dart';
+import '../models/app_notification.dart';
+import '../services/notification_storage.dart';
+
 
 class NotificationService {
   NotificationService._internal();
@@ -44,7 +47,7 @@ class NotificationService {
   /// Schedule a reminder ~1 hour before the walk starts.
   /// If the walk is in less than 1 hour, no reminder is scheduled.
   Future<void> scheduleWalkReminder(WalkEvent event) async {
-    // ✅ NEW: respect user setting from Settings panel
+    // Respect user setting from Settings panel
     final enabled = await AppPreferences.getWalkRemindersEnabled();
     if (!enabled) {
       // User turned walk reminders off → do nothing
@@ -64,8 +67,8 @@ class NotificationService {
     final id = _eventNotificationId(event.id);
 
     // Friendlier body depending on how close the event is
-    final bool moreThanHourAway = event.dateTime
-        .isAfter(DateTime.now().add(const Duration(hours: 1)));
+    final bool moreThanHourAway =
+        event.dateTime.isAfter(DateTime.now().add(const Duration(hours: 1)));
 
     final String body = moreThanHourAway
         ? '${event.title} starts in about 1 hour.'
@@ -91,6 +94,16 @@ class NotificationService {
         matchDateTimeComponents: DateTimeComponents.dateAndTime,
         // Use inexact alarms so we don't need SCHEDULE_EXACT_ALARM permission
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+
+      // ✅ Log this notification locally for the bottom sheet
+      await NotificationStorage.add(
+        AppNotification(
+          id: id.toString(),
+          title: 'Walk reminder',
+          message: body,
+          timestamp: DateTime.now(),
+        ),
       );
     } catch (e) {
       // ignore: avoid_print
@@ -139,18 +152,29 @@ class NotificationService {
     final subtitle =
         '${event.distanceKm.toStringAsFixed(1)} km • ${event.gender}';
 
+    final body = '${event.title} • $subtitle';
+
     try {
       print('[NOTIFY] Showing nearby alert (id=$id) for "${event.title}".');
 
       await _plugin.show(
         id,
         'New nearby walk',
-        '${event.title} • $subtitle',
+        body,
         details,
+      );
+
+      // ✅ Log this nearby alert locally for the bottom sheet
+      await NotificationStorage.add(
+        AppNotification(
+          id: id.toString(),
+          title: 'New nearby walk',
+          message: body,
+          timestamp: DateTime.now(),
+        ),
       );
     } catch (e) {
       print('[NOTIFY] Error showing nearby alert for "${event.title}": $e');
     }
   }
-
 }

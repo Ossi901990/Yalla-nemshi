@@ -9,11 +9,17 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
+import '../services/profile_storage.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
 import 'nearby_walks_screen.dart';
 import 'profile_screen.dart';
+import '../models/app_notification.dart';
+import '../services/notification_storage.dart';
+
+
+
 
 
 class HomeScreen extends StatefulWidget {
@@ -29,8 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
 
-  // TODO: Replace with real user name from profile/auth.
-  final String _userName = 'Walker';
+    // Loaded from saved profile (falls back to "Walker")
+  String _userName = 'Walker';
+
+
   DateTime _selectedDay = DateTime.now();
 
   // --- Step counter (Android, session-based for now) ---
@@ -155,6 +163,32 @@ class _HomeScreenState extends State<HomeScreen> {
     return '$monthName ${date.day}, ${date.year}';
   }
 
+ String _formatNotificationTime(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final thatDay = DateTime(dt.year, dt.month, dt.day);
+
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final timePart = '$hh:$mm';
+
+    if (thatDay == today) {
+      return 'Today • $timePart';
+    }
+
+    final yesterday = today.subtract(const Duration(days: 1));
+    if (thatDay == yesterday) {
+      return 'Yesterday • $timePart';
+    }
+
+    // Fallback: simple date
+    final dd = dt.day.toString().padLeft(2, '0');
+    final mm2 = dt.month.toString().padLeft(2, '0');
+    final yyyy = dt.year.toString();
+    return '$dd/$mm2/$yyyy • $timePart';
+  }
+
+
 Widget _buildDayPill(
   String label,
   int dayNumber,
@@ -198,11 +232,13 @@ Widget _buildDayPill(
 
   // --- Step counter setup (Android only for now) ---
 
-  @override
-  void initState() {
-    super.initState();
-    _initStepCounter();
-  }
+    @override
+void initState() {
+  super.initState();
+  _initStepCounter();
+  _loadUserName(); // ✅ load saved profile name
+}
+
 
   @override
   void dispose() {
@@ -218,7 +254,7 @@ Widget _buildDayPill(
     if (!status.isGranted) {
       return; // permission denied, keep at 0
     }
-
+     
     try {
       _stepSubscription = Pedometer.stepCountStream.listen(
         _onStepCount,
@@ -229,6 +265,19 @@ Widget _buildDayPill(
       // silently ignore for now
     }
   }
+  Future<void> _loadUserName() async {
+  final profile = await ProfileStorage.loadProfile();
+
+  if (!mounted) return;
+
+  setState(() {
+    if (profile != null && profile.name.trim().isNotEmpty) {
+      _userName = profile.name.trim();
+    } else {
+      _userName = 'Walker';
+    }
+  });
+}
 
   void _onStepCount(StepCount event) {
     // Android pedometer gives "steps since reboot".
@@ -256,6 +305,17 @@ void _onEventCreated(WalkEvent newEvent) {
   // 🔔 Schedule reminder for the walk you just created (host)
   NotificationService.instance.scheduleWalkReminder(newEvent);
 }
+
+/// Call this when a *new nearby* walk arrives from your backend / API.
+void _onNewNearbyWalk(WalkEvent event) {
+  setState(() {
+    _events.add(event);      // add to main list
+  });
+
+  // 🔔 Instant “nearby walk” notification (honors Settings toggle)
+  NotificationService.instance.showNearbyWalkAlert(event);
+}
+
 
 void _toggleJoin(WalkEvent event) {
   setState(() {
@@ -332,78 +392,124 @@ void _cancelHostedWalk(WalkEvent event) {
     );
   }
 
-  // === NEW: notification bottom sheet (no design change to main page) ===
-  void _openNotificationsSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFFFCFEF9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        // Placeholder list – later you can hook real notifications
-        final notifications = <String>[
-          // 'Your walk "Morning in the park" starts in 45 minutes.',
-          // 'New nearby walk: "Sunset steps" tomorrow at 18:00.',
-        ];
+// === NEW: notification bottom sheet (uses stored notifications) ===
+Future<void> _openNotificationsSheet() async {
+  // Load history from SharedPreferences
+ final List<AppNotification> notifications =
+    await NotificationStorage.getNotifications();
 
-        if (notifications.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.notifications_none,
-                    size: 36, color: Colors.grey),
-                const SizedBox(height: 12),
-                const Text(
-                  'No notifications yet',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You’ll see reminders and new nearby walks here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        }
 
+  // Newest first
+  notifications.sort(
+    (a, b) => b.timestamp.compareTo(a.timestamp),
+  );
+
+  if (!mounted) return;
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFFFCFEF9),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) {
+      // ✅ If nothing stored yet → same placeholder as before
+      if (notifications.isEmpty) {
         return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.notifications_none,
+                  size: 36, color: Colors.grey),
+              const SizedBox(height: 12),
+              const Text(
+                'No notifications yet',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'You’ll see reminders and new nearby walks here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      }
+
+      // ✅ Real notifications list
+      return SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                children: const [
-                  Icon(Icons.notifications, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Notifications',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    Row(
+      children: const [
+        Icon(Icons.notifications, size: 20),
+        SizedBox(width: 8),
+        Text(
+          'Notifications',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+      ],
+    ),
+
+    // 🔹 NEW: Clear button (top-right)
+    TextButton(
+      onPressed: () async {
+        await NotificationStorage.clearNotifications();
+        Navigator.of(context).pop();      // close sheet
+        _openNotificationsSheet();        // reopen with updated list
+      },
+      child: const Text(
+        'Clear',
+        style: TextStyle(
+          color: Colors.red,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+  ],
+),
+
               const SizedBox(height: 12),
               ...notifications.map(
-                (msg) => ListTile(
+                (n) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading:
-                      const Icon(Icons.circle, size: 10, color: Colors.green),
-                  title: Text(msg),
+                  leading: const Icon(
+                    Icons.circle,
+                    size: 10,
+                    color: Colors.green,
+                  ),
+                  title: Text(
+                    n.title,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(n.message),
+                  trailing: Text(
+                    _formatNotificationTime(n.timestamp),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
 
   // === NEW: profile quick-view bottom sheet (no design change to main page) ===
   void _openProfileQuickSheet() {
@@ -540,6 +646,10 @@ void _cancelHostedWalk(WalkEvent event) {
           setState(() {
             _currentTab = index;
           });
+          // 🔄 Reload name when returning to Home tab
+    if (index == 0) {
+      _loadUserName();
+    }
         },
         items: const [
           BottomNavigationBarItem(
