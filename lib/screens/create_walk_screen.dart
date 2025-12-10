@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/walk_event.dart';
 import 'map_pick_screen.dart';
-import '../services/app_preferences.dart'; // 👈 NEW
+import '../services/app_preferences.dart'; 
 
 class CreateWalkScreen extends StatefulWidget {
   final void Function(WalkEvent) onEventCreated;
@@ -24,8 +24,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   final _formKey = GlobalKey<FormState>();
 
   String _title = '';
-  double _distanceKm = 3.0;       // will be overridden by prefs
-  String _gender = 'Mixed';       // will be overridden by prefs
+  double _distanceKm = 3.0;
+  String _gender = 'Mixed';
+
+
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
   // Text name for the meeting point (user can type it)
@@ -52,6 +54,25 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       _gender = gender;
     });
   }
+
+  String _formatDateTime(DateTime dt) {
+  // Short weekday names
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  final w = weekdays[dt.weekday - 1];
+  final m = months[dt.month - 1];
+  final d = dt.day.toString().padLeft(2, '0');
+  final hh = dt.hour.toString().padLeft(2, '0');
+  final mm = dt.minute.toString().padLeft(2, '0');
+
+  // Example: "Tue, 10 Dec • 18:30"
+  return '$w, $d $m • $hh:$mm';
+}
+
 
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
@@ -249,20 +270,33 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                               const SizedBox(height: 12),
 
                               // Distance
-                              TextFormField(
-                                key: ValueKey(
-                                    _distanceKm), // 👈 so initialValue updates
-                                decoration: const InputDecoration(
-                                  labelText: 'Distance (km)',
-                                ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                initialValue:
-                                    _distanceKm.toStringAsFixed(1),
-                                onSaved: (val) => _distanceKm =
-                                    double.tryParse(val ?? '') ?? 3.0,
-                              ),
+TextFormField(
+  key: ValueKey(_distanceKm), // 👈 so initialValue updates
+  decoration: const InputDecoration(
+    labelText: 'Distance (km)',
+  ),
+  keyboardType:
+      const TextInputType.numberWithOptions(decimal: true),
+  initialValue: _distanceKm.toStringAsFixed(1),
+
+  // ✅ NEW: validation
+  validator: (val) {
+    final d = double.tryParse(val ?? '');
+    if (d == null) {
+      return 'Please enter a number';
+    }
+    if (d <= 0) {
+      return 'Distance must be greater than 0';
+    }
+    if (d > 100) {
+      return 'That’s a long walk! Try under 100 km';
+    }
+    return null; // OK
+  },
+
+  onSaved: (val) =>
+      _distanceKm = double.tryParse(val ?? '') ?? 3.0,
+),
                               const SizedBox(height: 12),
 
                               // Gender filter
@@ -301,14 +335,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                   style: theme.textTheme.titleMedium,
                                 ),
                                 subtitle: Text(
-                                  _dateTime.toString(),
-                                  style: theme.textTheme.bodySmall
-                                      ?.copyWith(
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.black87,
-                                  ),
-                                ),
+  _formatDateTime(_dateTime),
+  style: theme.textTheme.bodySmall?.copyWith(
+    color: isDark ? Colors.white70 : Colors.black87,
+  ),
+),
+
                                 trailing: IconButton(
                                   icon:
                                       const Icon(Icons.calendar_today),
@@ -352,20 +384,80 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                               const SizedBox(height: 4),
 
-                              // Show status of picked coordinates
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  _meetingLatLng == null
-                                      ? 'No location chosen yet'
-                                      : 'Picked: '
-                                          'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
-                                          'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
-                                  style: theme.textTheme.bodySmall,
-                                ),
-                              ),
+                              // Show status + optional mini map preview
+if (_meetingLatLng == null)
+  Align(
+    alignment: Alignment.centerLeft,
+    child: Text(
+      'No location chosen yet',
+      style: theme.textTheme.bodySmall,
+    ),
+  )
+else
+  Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Location selected on map',
+        style: theme.textTheme.bodySmall,
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
+        'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: Colors.grey.shade600,
+        ),
+      ),
+      const SizedBox(height: 8),
 
-                              const SizedBox(height: 16),
+      // 🔍 Mini map preview (read-only)
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 160,
+          width: double.infinity,
+          child: AbsorbPointer(
+            // make it non-interactive so it doesn't fight the scroll
+            absorbing: true,
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _meetingLatLng!,
+                zoom: 15,
+              ),
+              markers: {
+                Marker(
+                  markerId: const MarkerId('meeting_point'),
+                  position: _meetingLatLng!,
+                ),
+              },
+              zoomControlsEnabled: false,
+              myLocationButtonEnabled: false,
+              compassEnabled: false,
+              scrollGesturesEnabled: false,
+              tiltGesturesEnabled: false,
+              rotateGesturesEnabled: false,
+              zoomGesturesEnabled: false,
+              liteModeEnabled: true, // nicer & lighter on Android
+            ),
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 4),
+      TextButton.icon(
+        onPressed: _pickOnMap, // reopen map to adjust
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        icon: const Icon(Icons.map_outlined, size: 16),
+        label: const Text('Change location'),
+      ),
+    ],
+  ),
+
+const SizedBox(height: 16),
 
                               // Description
                               TextFormField(
