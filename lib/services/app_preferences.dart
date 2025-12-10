@@ -1,17 +1,20 @@
+// lib/services/app_preferences.dart
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppPreferences {
-  // Keys
+  // ===== Keys =====
   static const _keyDefaultDistanceKm = 'default_distance_km';
   static const _keyDefaultGender = 'default_gender';
   static const _keyWalkReminders = 'walk_reminders_enabled';
   static const _keyNearbyAlerts = 'nearby_alerts_enabled';
+  static const _keyWeeklyGoalKm = 'weekly_goal_km'; // 👈 NEW
 
   // ===== DEFAULT VALUES (used if nothing saved yet) =====
   static const double defaultDistanceKmFallback = 3.0;
   static const String defaultGenderFallback = 'Mixed';
   static const bool walkRemindersFallback = true;
   static const bool nearbyAlertsFallback = true;
+  static const double weeklyGoalKmFallback = 10.0; // 👈 NEW
 
   // ===== Distance =====
   static Future<double> getDefaultDistanceKm() async {
@@ -59,5 +62,17 @@ class AppPreferences {
   static Future<void> setNearbyAlertsEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNearbyAlerts, enabled);
+  }
+
+  // ===== Weekly goal (km) =====
+  static Future<double> getWeeklyGoalKm() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_keyWeeklyGoalKm) ??
+        weeklyGoalKmFallback;
+  }
+
+  static Future<void> setWeeklyGoalKm(double km) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyWeeklyGoalKm, km);
   }
 }

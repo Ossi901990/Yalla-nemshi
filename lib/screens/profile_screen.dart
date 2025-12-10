@@ -13,6 +13,10 @@ import 'safety_tips_screen.dart';
 import '../theme_controller.dart';
 import '../services/app_preferences.dart';
 
+import 'package:flutter/foundation.dart'; 
+
+
+
 
 
 class ProfileScreen extends StatefulWidget {
@@ -26,6 +30,8 @@ class ProfileScreen extends StatefulWidget {
   final int streakDays;
   final double weeklyGoalKm;
 
+  final ValueChanged<double>? onWeeklyGoalChanged; // 👈 NEW
+
   const ProfileScreen({
     super.key,
     required this.walksJoined,
@@ -36,6 +42,7 @@ class ProfileScreen extends StatefulWidget {
     required this.weeklyWalks,
     required this.streakDays,
     required this.weeklyGoalKm,
+    this.onWeeklyGoalChanged, // 👈 NEW
   });
 
   @override
@@ -50,9 +57,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _lightGreen = Color(0xFF4F925C);
   static const Color _cardBackground = Color(0xFFFFFEF8);
 
+  late double _weeklyGoalKmLocal; // 👈 NEW
+
   @override
   void initState() {
     super.initState();
+    _weeklyGoalKmLocal = widget.weeklyGoalKm; // 👈 NEW
     _loadProfile();
   }
 
@@ -83,6 +93,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _profile = updated;
     });
   }
+
+    Future<void> _removeProfileImage() async {
+    if (_profile == null) return;
+
+    final cleared = _profile!.copyWith(profileImagePath: null);
+    await ProfileStorage.saveProfile(cleared);
+
+    if (!mounted) return;
+    setState(() {
+      _profile = cleared;
+    });
+  }
+
+  void _onAvatarTap() {
+    final hasPhoto =
+        _profile?.profileImagePath != null && _profile!.profileImagePath!.isNotEmpty;
+
+    // If there is no photo yet, just open the picker directly
+    if (!hasPhoto) {
+      _pickAndSaveImage();
+      return;
+    }
+
+    // If there *is* a photo, show a small bottom sheet menu
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Change photo'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickAndSaveImage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Remove photo',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  await _removeProfileImage();
+                },
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   String get _walkerLevel {
     final km = widget.totalKm;
@@ -358,6 +429,14 @@ void _openSettingsPanel() {
                               },
                             ),
 
+                            ListTile(
+  leading: const Icon(Icons.flag_outlined),
+  title: const Text('Weekly distance goal'),
+  subtitle: Text('${_weeklyGoalKmLocal.toStringAsFixed(1)} km per week'),
+  onTap: _showWeeklyGoalPicker,
+),
+
+
                             const SizedBox(height: 16),
 
                             // ===== Preferences =====
@@ -549,7 +628,84 @@ void _openSettingsPanel() {
   );
 }
 
+Future<void> _showWeeklyGoalPicker() async {
+  double tempValue = _weeklyGoalKmLocal.clamp(1.0, 50.0);
 
+  final result = await showModalBottomSheet<double>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) {
+      return StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Weekly distance goal',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${tempValue.toStringAsFixed(1)} km per week',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Slider(
+                  min: 2,
+                  max: 30,
+                  divisions: 28,
+                  value: tempValue,
+                  label: '${tempValue.toStringAsFixed(1)} km',
+                  onChanged: (v) {
+                    setModalState(() {
+                      tempValue = v;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(tempValue),
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+
+  if (result != null) {
+    // Save to preferences
+    await AppPreferences.setWeeklyGoalKm(result);
+
+    if (!mounted) return;
+    setState(() {
+      _weeklyGoalKmLocal = result;
+    });
+
+    // Inform HomeScreen so it updates its copy
+    widget.onWeeklyGoalChanged?.call(result);
+  }
+}
 
 
 
@@ -619,9 +775,10 @@ Widget build(BuildContext context) {
   final achievedBadges =
       allBadges.where((b) => b.achieved).toList(growable: false);
 
-  final double weeklyProgress = widget.weeklyGoalKm <= 0
-      ? 0
-      : (widget.weeklyKm / widget.weeklyGoalKm).clamp(0.0, 1.0);
+  final double weeklyProgress = _weeklyGoalKmLocal <= 0
+    ? 0
+    : (widget.weeklyKm / _weeklyGoalKmLocal).clamp(0.0, 1.0);
+
 
   return Scaffold(
     // ✅ match Home/Nearby scaffold background
@@ -743,7 +900,7 @@ Widget build(BuildContext context) {
                     // Avatar, name, bio
                     Center(
                       child: GestureDetector(
-                        onTap: _pickAndSaveImage,
+                        onTap: _onAvatarTap,
                         child: Column(
                           children: [
                             _buildAvatar(profile),
@@ -820,7 +977,8 @@ Widget build(BuildContext context) {
                           children: [
                             Text(
                               '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                              '${widget.weeklyKm.toStringAsFixed(1)} / ${widget.weeklyGoalKm.toStringAsFixed(1)} km',
+                              '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+
                               style: theme.textTheme.bodyMedium
                                   ?.copyWith(
                                 fontWeight: FontWeight.w600,

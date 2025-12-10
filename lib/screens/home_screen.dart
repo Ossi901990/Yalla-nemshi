@@ -17,6 +17,8 @@ import 'nearby_walks_screen.dart';
 import 'profile_screen.dart';
 import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
+import '../services/app_preferences.dart';
+
 
 
 
@@ -74,7 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _events.where((e) => e.interested && !e.cancelled).length;
 
   // Weekly statistics (for "This week" card)
-  static const double _weeklyGoalKm = 10.0;
+// Now loaded from AppPreferences instead of hard-coded.
+double _weeklyGoalKm = 10.0;
+
 
   DateTime get _today {
     final now = DateTime.now();
@@ -236,8 +240,10 @@ Widget _buildDayPill(
 void initState() {
   super.initState();
   _initStepCounter();
-  _loadUserName(); // ✅ load saved profile name
+  _loadUserName();   // ✅ load saved profile name
+  _loadWeeklyGoal(); // ✅ load saved weekly goal
 }
+
 
 
   @override
@@ -245,6 +251,21 @@ void initState() {
     _stepSubscription?.cancel();
     super.dispose();
   }
+  Future<void> _loadWeeklyGoal() async {
+  final value = await AppPreferences.getWeeklyGoalKm();
+  setState(() {
+    _weeklyGoalKm = value;
+  });
+}
+
+/// Called when user changes their weekly goal from the Profile settings panel.
+Future<void> _updateWeeklyGoal(double newKm) async {
+  setState(() {
+    _weeklyGoalKm = newKm;
+  });
+  await AppPreferences.setWeeklyGoalKm(newKm);
+}
+
 
   Future<void> _initStepCounter() async {
     // Only try on Android
@@ -619,18 +640,20 @@ Future<void> _openNotificationsSheet() async {
   break;
 
       case 2:
-      default:
-        body = ProfileScreen(
-          walksJoined: _walksJoined,
-          eventsHosted: _eventsHosted,
-          totalKm: _totalKmJoined,
-          weeklyWalks: _weeklyWalkCount,
-          weeklyKm: _weeklyKm,
-          weeklyGoalKm: _weeklyGoalKm,
-          streakDays: _streakDays,
-          interestedCount: _interestedCount,
-        );
-        break;
+default:
+  body = ProfileScreen(
+    walksJoined: _walksJoined,
+    eventsHosted: _eventsHosted,
+    totalKm: _totalKmJoined,
+    weeklyWalks: _weeklyWalkCount,
+    weeklyKm: _weeklyKm,
+    weeklyGoalKm: _weeklyGoalKm,
+    streakDays: _streakDays,
+    interestedCount: _interestedCount,
+    onWeeklyGoalChanged: _updateWeeklyGoal, // 👈 NEW
+  );
+  break;
+
     }
 
     return Scaffold(
