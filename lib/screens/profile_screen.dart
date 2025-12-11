@@ -855,8 +855,8 @@ Widget build(BuildContext context) {
               image: DecorationImage(
                 image: AssetImage(
                   isDark
-                      ? 'assets/images/bg_minimal_dark.png'
-                      : 'assets/images/bg_minimal_light.png',
+                      ? 'assets/images/Dark_Grey_Background.png'
+                      : 'assets/images/Light_Beige_background.png',
                 ),
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
@@ -1047,79 +1047,173 @@ Widget build(BuildContext context) {
 
                     const SizedBox(height: 24),
 
-                    // ===== Badges section =====
-                    Text(
-                      'Badges',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      elevation: 0.5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (achievedBadges.isEmpty)
-                              Text(
-                                'Badges will appear here as you walk more.',
-                                style: theme.textTheme.bodySmall,
-                              )
-                            else
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: achievedBadges
-                                    .take(6)
-                                    .map(
-                                      (b) => GestureDetector(
-                                        onTap: () =>
-                                            _showBadgeDetails(b),
-                                        child: Column(
-                                          mainAxisSize:
-                                              MainAxisSize.min,
-                                          children: [
-                                            CircleAvatar(
-                                              radius: 18,
-                                              backgroundColor:
-                                                  theme
-                                                      .colorScheme
-                                                      .primary,
-                                              child: Icon(
-                                                b.icon,
-                                                size: 18,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () =>
-                                    _openBadgesPage(allBadges),
-                                child: const Text('View all'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+  // ===== Badges section =====
+Text(
+  'Badges',
+  style: theme.textTheme.titleMedium?.copyWith(
+    fontWeight: FontWeight.bold,
+  ),
+),
+const SizedBox(height: 8),
 
-                    const SizedBox(height: 24),
+// Main badges card (earned badges preview + "View all")
+Card(
+  elevation: 0.5,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(16),
+  ),
+  child: Padding(
+    padding: const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 10,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (achievedBadges.isEmpty)
+          Text(
+            'Badges will appear here as you walk more.',
+            style: theme.textTheme.bodySmall,
+          )
+        else
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: achievedBadges
+                .take(6)
+                .map(
+                  (b) => GestureDetector(
+                    onTap: () => _showBadgeDetails(b),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: theme.colorScheme.primary,
+                          child: Icon(
+                            b.icon,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => _openBadgesPage(allBadges),
+            child: const Text('View all'),
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
+const SizedBox(height: 12),
+
+// ===== Next badge progress (simple version) =====
+Builder(
+  builder: (context) {
+    final theme = Theme.of(context);
+
+    // We allow this to be nullable
+    ProfileBadge? nextBadge;
+
+    if (allBadges.isNotEmpty) {
+      // If there is at least one badge, pick the first NOT achieved
+      // or fall back to the last one (just to have something to show)
+      nextBadge = allBadges.firstWhere(
+        (b) => !b.achieved,
+        orElse: () => allBadges.last,
+      );
+    } else {
+      // No badges defined at all
+      nextBadge = null;
+    }
+
+    // If there are no badges, or all of them are achieved:
+    if (nextBadge == null || allBadges.every((b) => b.achieved)) {
+      return Text(
+        'You’ve unlocked all current badges. New ones will appear as Yalla Nemshi grows.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: Colors.black54,
+        ),
+      );
+    }
+
+    // Normal "Next badge" card
+    return Card(
+      elevation: 0.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor:
+                  theme.colorScheme.primary.withOpacity(0.1),
+              child: Icon(
+                nextBadge.icon,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Next badge to unlock',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    nextBadge.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    nextBadge.description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Keep walking to unlock this badge.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.black45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  },
+),
+
+
+const SizedBox(height: 24),
+
 
                     // ===== Actions =====
                     SizedBox(

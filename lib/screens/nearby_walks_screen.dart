@@ -452,25 +452,14 @@ Widget build(BuildContext context) {
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF020908)
-                    : const Color(0xFFF7F9F2),
+                    ? const Color(0xFF1A1A1A)
+                    : const Color(0xFFFAF7F0),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(28),
                   topRight: Radius.circular(28),
                 ),
-                image: isDark
-                    ? const DecorationImage(
-                        image:
-                            AssetImage('assets/images/bg_minimal_dark.png'),
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      )
-                    : const DecorationImage(
-                        image:
-                            AssetImage('assets/images/bg_minimal_light.png'),
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      ),
+
+
               ),
               // same overlay idea as Home so text stays readable
               child: Container(

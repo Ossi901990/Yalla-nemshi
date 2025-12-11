@@ -209,8 +209,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   image: DecorationImage(
                     image: AssetImage(
                       isDark
-                          ? 'assets/images/bg_minimal_dark.png'
-                          : 'assets/images/bg_minimal_light.png',
+                          ? 'assets/images/Dark_Grey_Background.png'
+                          : 'assets/images/Light_Beige_background.png',
                     ),
                     fit: BoxFit.cover,
                     alignment: Alignment.topCenter,

@@ -831,8 +831,8 @@ Widget _buildHomeTab(BuildContext context) {
       image: DecorationImage(
         image: AssetImage(
           isDark
-              ? 'assets/images/bg_minimal_dark.png'
-              : 'assets/images/bg_minimal_light.png', // change name if needed
+              ? 'assets/images/Dark_Grey_Background.png'
+              : 'assets/images/Light_Beige_background.png', 
         ),
         fit: BoxFit.cover,
         alignment: Alignment.topCenter,
