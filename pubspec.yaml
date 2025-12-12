@@ -38,7 +38,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/Dark_Grey_Background.png
     - assets/images/Light_Beige_background.png
     - assets/images/walk_group.jpg
     

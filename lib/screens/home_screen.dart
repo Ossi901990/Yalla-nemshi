@@ -18,8 +18,21 @@ import 'profile_screen.dart';
 import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
+import 'dart:math' as math;
 
 
+// ===== Dark Theme (Neo/Night Forest) palette =====
+const kDarkBg = Color(0xFF071B26);          // primary background
+const kDarkSurface = Color(0xFF0C2430);     // cards / sheets
+const kDarkSurface2 = Color(0xFF0E242E);    // nav / secondary surfaces
+
+const kMint = Color(0xFF8BD5BA);            // primary accent
+const kMintBright = Color(0xFFA4E4C5);      // highlight accent
+
+const kTextPrimary = Color(0xFFD9F5EA);     // big text
+const kTextSecondary = Color(0xFF9BB9B1);   // normal text
+const kTextMuted = Color(0xFF6A8580);       // hints / placeholders
+const kOnMint = Color(0xFF0C1A17);          // text on mint buttons
 
 
 
@@ -658,37 +671,40 @@ default:
 
     return Scaffold(
       // Deep green behind the top bar only – content sits on a card.
-       backgroundColor:
-          isDark ? 
-         const Color(0xFF0B1A13) // match your dark header bottom color
-      : const Color(0xFF4F925C), // your light header bottom color
+       backgroundColor: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+
       body: body,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTab,
-        onTap: (index) {
-          setState(() {
-            _currentTab = index;
-          });
-          // 🔄 Reload name when returning to Home tab
+  currentIndex: _currentTab,
+  onTap: (index) {
+    setState(() {
+      _currentTab = index;
+    });
     if (index == 0) {
       _loadUserName();
     }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            label: 'Nearby',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
-      ),
+  },
+  type: BottomNavigationBarType.fixed,
+  backgroundColor: isDark ? kDarkSurface2 : Colors.white,
+  elevation: 0,
+  selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
+  unselectedItemColor: isDark ? kTextMuted : Colors.black54,
+  items: const [
+    BottomNavigationBarItem(
+      icon: Icon(Icons.home_outlined),
+      label: 'Home',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.map_outlined),
+      label: 'Nearby',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.person_outline),
+      label: 'Profile',
+    ),
+  ],
+),
+
     );
   }
 
@@ -700,31 +716,149 @@ Widget _buildHomeTab(BuildContext context) {
   return SafeArea(
     child: Column(
       children: [
-        // ===== TOP GRADIENT APP BAR (ONLY HEADER) =====
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isDark
-                  ? const [
-                      Color(0xFF020908), // darker top
-                      Color(0xFF0B1A13), // darker bottom
-                    ]
-                  : const [
-                      Color(0xFF294630), // top
-                      Color(0xFF4F925C), // bottom
-                    ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+// ===== HEADER =====
+if (isDark)
+  // --- Dark: floating header (no bar) ---
+  Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+              child: const Icon(
+                Icons.directions_walk,
+                size: 30,
+                color: kMintBright,
+              ),
             ),
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(0),
+            const SizedBox(width: 10),
+            const Text(
+              'Yalla Nemshi',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: kTextPrimary,
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          ],
+        ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _openNotificationsSheet,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_none,
+                      size: 18,
+                      color: kTextPrimary,
+                    ),
+                  ),
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.red,
+                      ),
+                      child: const Text(
+                        '3',
+                        style: TextStyle(color: Colors.white, fontSize: 9),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: _openProfileQuickSheet,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 18,
+                  color: kTextPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  )
+else
+  // --- Light: keep the gradient bar ---
+  Container(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Color(0xFF294630),
+          Color(0xFF4F925C),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white24,
+              ),
+              child: const Icon(
+                Icons.directions_walk,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Yalla Nemshi',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _openNotificationsSheet,
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   Container(
                     width: 32,
@@ -734,215 +868,149 @@ Widget _buildHomeTab(BuildContext context) {
                       color: Colors.white24,
                     ),
                     child: const Icon(
-                      Icons.directions_walk,
+                      Icons.notifications_none,
                       size: 18,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Yalla Nemshi',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  // 🔹 Tappable notifications
-                  GestureDetector(
-                    onTap: _openNotificationsSheet,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white24,
-                          ),
-                          child: const Icon(
-                            Icons.notifications_none,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Positioned(
-                          right: -2,
-                          top: -2,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.red,
-                            ),
-                            child: const Text(
-                              '3', // TODO: real unread count
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // 🔹 Tappable profile avatar
-                  GestureDetector(
-                    onTap: _openProfileQuickSheet,
+                  Positioned(
+                    right: -2,
+                    top: -2,
                     child: Container(
-                      width: 32,
-                      height: 32,
+                      padding: const EdgeInsets.all(2),
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white,
+                        color: Colors.red,
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 18,
-                        color: Color(0xFF14532D),
+                      child: const Text(
+                        '3',
+                        style: TextStyle(color: Colors.white, fontSize: 9),
                       ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: _openProfileQuickSheet,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 18,
+                  color: Color(0xFF14532D),
+                ),
+              ),
+            ),
+          ],
         ),
+      ],
+    ),
+  ),
+
+
 
         // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
         Expanded(
           child: Container(
             width: double.infinity,
-               decoration: BoxDecoration(
-      color: isDark
-          ? const Color.fromARGB(255, 9, 2, 7)
-          : const Color(0xFFF7F9F2),
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(24),
-        topRight: Radius.circular(24),
-      ),
-      image: DecorationImage(
-        image: AssetImage(
-          isDark
-              ? 'assets/images/Dark_Grey_Background.png'
-              : 'assets/images/Light_Beige_background.png', 
-        ),
-        fit: BoxFit.cover,
-        alignment: Alignment.topCenter,
-      ),
-    ),
+     decoration: BoxDecoration(
+  color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+  borderRadius: const BorderRadius.only(
+    topLeft: Radius.circular(24),
+    topRight: Radius.circular(24),
+  ),
+),
+
 
             // overlay so text stays readable on top of the photo
             child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.black.withOpacity(0.35)
-                    : Colors.transparent,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
+decoration: BoxDecoration(
+  borderRadius: const BorderRadius.only(
+    topLeft: Radius.circular(24),
+    topRight: Radius.circular(24),
+  ),
+  gradient: isDark
+      ? const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF071B26), // top
+            Color(0xFF041016), // bottom
+          ],
+        )
+      : const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFF7F3EA),
+            Color(0xFFEEE6DA),
+          ],
+        ),
+),
+
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
                       padding:
                           const EdgeInsets.fromLTRB(16, 20, 16, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Big inner card: greeting + calendar + "Your walks"
-                          Card(
-                            color: isDark
-                                ? theme.colorScheme.surface
-                                : const Color(0xFFFBFEF8),
-                            elevation: 0.5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                  16, 16, 16, 20),
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  // Greeting
-                                  Text(
-                                    '${_greetingForTime()}, $_userName 👋',
-                                    style: theme
-                                        .textTheme.titleLarge
-                                        ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          const Color(0xFF14532D),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatFullDate(today),
-                                    style: theme
-                                        .textTheme.bodySmall
-                                        ?.copyWith(
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
+                   child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    // Big inner card: greeting + calendar + "Your walks"
+    Card(
+      color: isDark ? kDarkSurface : const Color(0xFFFBFEF8),
+      elevation: 0.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${_greetingForTime()}, $_userName 👋',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isDark ? kTextPrimary : const Color(0xFF14532D),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatFullDate(today),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isDark ? kTextSecondary : Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    ),
+    const SizedBox(width: 12),
+    _StepsRing(
+  steps: 9000,
+  goal: 10000,     // you can change later
+  isDark: isDark,
+),
 
-                                  // Steps pill
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets
-                                            .symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              const Color(0xFFE5F3D9),
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  999),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.directions_walk,
-                                              size: 16,
-                                              color:
-                                                  Color(0xFF14532D),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '$_sessionSteps steps',
-                                              style: theme.textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                fontWeight:
-                                                    FontWeight.w600,
-                                                color:
-                                                    const Color(0xFF14532D),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
+  ],
+),
+const SizedBox(height: 16),
+
 
                                   // Today + date row
                                   Row(
@@ -1042,14 +1110,11 @@ Widget _buildHomeTab(BuildContext context) {
                                             vertical: 4,
                                             horizontal: 10,
                                           ),
-                                          decoration:
-                                              BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius
-                                                    .circular(
-                                                        999),
-                                          ),
+                                          decoration: BoxDecoration(
+  color: isDark ? kDarkSurface2 : const Color(0xFFE5F3D9),
+  borderRadius: BorderRadius.circular(999),
+),
+
                                           child: _buildDayPill(
                                             label,
                                             day.day,
@@ -1086,15 +1151,11 @@ Widget _buildHomeTab(BuildContext context) {
                                             vertical: 4,
                                             horizontal: 10,
                                           ),
-                                          decoration:
-                                              BoxDecoration(
-                                            color: const Color(
-                                                0xFFB7E76A),
-                                            borderRadius:
-                                                BorderRadius
-                                                    .circular(
-                                                        999),
-                                          ),
+                                          decoration: BoxDecoration(
+  color: isDark ? kDarkSurface2 : const Color(0xFFE5F3D9),
+  borderRadius: BorderRadius.circular(999),
+),
+
                                           child: _buildDayPill(
                                             label,
                                             day.day,
@@ -1145,14 +1206,16 @@ Widget _buildHomeTab(BuildContext context) {
                                     child: FilledButton.icon(
                                       onPressed:
                                           _openCreateWalk,
-                                      style:
-                                          FilledButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(
-                                                0xFF14532D),
-                                        foregroundColor:
-                                            Colors.white,
-                                      ),
+                                      style: FilledButton.styleFrom(
+  backgroundColor: kMintBright,   // mint button
+  foregroundColor: kOnMint,       // dark text/icon
+  padding: const EdgeInsets.symmetric(vertical: 16),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+  textStyle: const TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+  ),
+),
                                       icon: const Icon(Icons
                                           .directions_walk_outlined),
                                       label: const Text(
@@ -1230,7 +1293,7 @@ Widget _buildHomeTab(BuildContext context) {
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
 
                           // ===== WEEKLY SUMMARY =====
                           Text(
@@ -1247,7 +1310,7 @@ Widget _buildHomeTab(BuildContext context) {
                             kmGoal: _weeklyGoalKm,
                             streakDays: _streakDays,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
 
                           // ===== QUICK STATS =====
                           Text(
@@ -1309,13 +1372,25 @@ class _WeeklySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = (kmGoal == 0) ? 0.0 : (kmSoFar / kmGoal).clamp(0.0, 1.0);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final progress =
+        (kmGoal <= 0) ? 0.0 : (kmSoFar / kmGoal).clamp(0.0, 1.0).toDouble();
+
+    final titleColor = isDark ? kTextPrimary : (theme.textTheme.titleMedium?.color);
+    final bodyColor = isDark ? kTextSecondary : (theme.textTheme.bodySmall?.color);
 
     return Card(
+      color: isDark ? kDarkSurface : null,
+      elevation: isDark ? 0 : 0.5,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.06),
+        ),
       ),
-      elevation: 0.5,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1325,16 +1400,20 @@ class _WeeklySummaryCard extends StatelessWidget {
               '$walks walk${walks == 1 ? '' : 's'} • '
               '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
+                color: titleColor,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
                 value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.green.shade100,
+                minHeight: 8,
+                backgroundColor: isDark ? kDarkSurface2 : Colors.black12,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDark ? kMintBright : const Color(0xFF14532D),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -1342,7 +1421,9 @@ class _WeeklySummaryCard extends StatelessWidget {
               streakDays > 0
                   ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
                   : 'Start a walk today to begin your streak!',
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: bodyColor,
+              ),
             ),
           ],
         ),
@@ -1350,6 +1431,7 @@ class _WeeklySummaryCard extends StatelessWidget {
     );
   }
 }
+
 
 class _StatCard extends StatelessWidget {
   final String label;
@@ -1360,13 +1442,21 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Expanded(
       child: Card(
+        color: isDark ? kDarkSurface : null,
         margin: const EdgeInsets.only(right: 8),
+        elevation: isDark ? 0 : 0.5,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.06),
+          ),
         ),
-        elevation: 0.5,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Column(
@@ -1374,14 +1464,17 @@ class _StatCard extends StatelessWidget {
               Text(
                 value,
                 style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? kTextPrimary : null,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? kTextSecondary : null,
+                ),
               ),
             ],
           ),
@@ -1390,6 +1483,7 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
 
 class _WalkCard extends StatelessWidget {
   final WalkEvent event;
@@ -1457,5 +1551,182 @@ class _MiniStat extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _StepsRing extends StatelessWidget {
+  final int steps;
+  final int goal;
+  final bool isDark;
+
+  const _StepsRing({
+    required this.steps,
+    required this.goal,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final double progress =
+        (goal <= 0) ? 0.0 : (steps / goal).clamp(0.0, 1.0).toDouble();
+
+    // Make it look like the reference (bigger + centered text)
+    const double size = 120;
+    const double stroke = 14;
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(size, size),
+            painter: _GradientRingPainter(
+              progress: progress,
+              strokeWidth: stroke,
+              // Track behind the ring
+              trackColor: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.10),
+              // These create the “fade in/out” feel
+              startColor: (isDark ? kMint : const Color(0xFF14532D))
+                  .withValues(alpha: 0.35),
+              endColor: (isDark ? kMintBright : const Color(0xFF14532D))
+                  .withValues(alpha: 1.0),
+            ),
+          ),
+
+          // Text
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$steps',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? kTextPrimary : Colors.black87,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Steps',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isDark ? kTextSecondary : Colors.black54,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GradientRingPainter extends CustomPainter {
+  final double progress; // 0..1
+  final double strokeWidth;
+  final Color trackColor;
+  final Color startColor;
+  final Color endColor;
+
+  const _GradientRingPainter({
+    required this.progress,
+    required this.strokeWidth,
+    required this.trackColor,
+    required this.startColor,
+    required this.endColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = progress.clamp(0.0, 1.0);
+    final rect = Offset.zero & size;
+
+    // Keep ring inside bounds (avoid clipping)
+    final inset = strokeWidth / 2;
+    final ringRect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - strokeWidth,
+      size.height - strokeWidth,
+    );
+
+    final center = ringRect.center;
+    final radius = ringRect.width / 2;
+
+    const startAngle = -math.pi / 2; // top
+    final sweepAngle = 2 * math.pi * p;
+
+   // Track ring (full circle behind) — use drawCircle so no seam/join
+final trackPaint = Paint()
+  ..color = trackColor
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = strokeWidth
+  ..strokeCap = StrokeCap.butt;
+
+canvas.drawCircle(center, radius, trackPaint);
+
+if (p <= 0) return;
+
+// Gradient along ONLY the progress arc: very faded start -> solid end
+final gradient = SweepGradient(
+  startAngle: startAngle,
+  endAngle: startAngle + sweepAngle,
+  tileMode: TileMode.clamp,
+  colors: [
+    startColor.withValues(alpha: 0.12), // super light at the beginning
+    endColor,                           // darker at the end
+  ],
+  stops: const [0.0, 1.0],
+);
+
+final progressPaint = Paint()
+  ..shader = gradient.createShader(ringRect)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = strokeWidth
+  ..strokeCap = StrokeCap.round; // smooth rounded end
+
+canvas.drawArc(ringRect, startAngle, sweepAngle, false, progressPaint);
+
+
+    // Manual round caps (smooth)
+    Offset pointOnCircle(double angle) {
+      return Offset(
+        center.dx + radius * math.cos(angle),
+        center.dy + radius * math.sin(angle),
+      );
+    }
+
+    final capRadius = strokeWidth / 2;
+
+    final startCapPaint = Paint()
+      ..color = startColor.withValues(alpha: 0.35)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(pointOnCircle(startAngle), capRadius, startCapPaint);
+
+    final endCapPaint = Paint()
+      ..color = endColor
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(
+      pointOnCircle(startAngle + sweepAngle),
+      capRadius,
+      endCapPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GradientRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.startColor != startColor ||
+        oldDelegate.endColor != endColor;
   }
 }
