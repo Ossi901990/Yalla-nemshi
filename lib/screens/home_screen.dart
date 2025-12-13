@@ -19,6 +19,8 @@ import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
 import 'dart:math' as math;
+import 'walk_chat_screen.dart';
+
 
 // ===== Dark Theme (Neo/Night Forest) palette =====
 const kDarkBg = Color(0xFF071B26); // primary background
@@ -1243,6 +1245,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ],
                                     ),
+                                    ElevatedButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const WalkChatScreen(
+          walkId: 'walk_test_1',
+          walkTitle: 'Test Walk Chat',
+        ),
+      ),
+    );
+  },
+  child: const Text('Open Chat (Test)'),
+),
+
 
                                     const SizedBox(height: 20),
 
