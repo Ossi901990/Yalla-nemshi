@@ -123,9 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -147,16 +145,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   child: ListTile(
                     leading: Icon(
-                      isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                      isDark
+                          ? Icons.dark_mode_outlined
+                          : Icons.light_mode_outlined,
                     ),
                     title: const Text('Dark mode'),
-                    subtitle: Text(isDark ? 'Using dark theme' : 'Using light theme'),
+                    subtitle: Text(
+                      isDark ? 'Using dark theme' : 'Using light theme',
+                    ),
                     trailing: Switch(
                       value: isDark,
-                      onChanged: (value) {
+                      onChanged: (value) async {
                         _useSystemTheme = false;
                         ThemeController.instance.setDarkMode(value);
-                        setState(() {}); // rebuild to refresh the UI
+                        await Future.delayed(const Duration(milliseconds: 50));
+                        if (!mounted) return;
+                        setState(() {}); // rebuild so isDark updates
                       },
                     ),
                   ),
@@ -169,10 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.phone_iphone_outlined),
                   title: const Text('Use system theme'),
                   subtitle: const Text('Coming soon – follow device setting'),
-                  trailing: Switch(
-                    value: _useSystemTheme,
-                    onChanged: null,
-                  ),
+                  trailing: Switch(value: _useSystemTheme, onChanged: null),
                 ),
 
                 const SizedBox(height: 16),
@@ -194,24 +195,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (val) async {
                     setState(() => _walkReminders = val);
                     await AppPreferences.setWalkRemindersEnabled(val);
+                    await _bootstrap(); // re-sync from prefs
                   },
                 ),
 
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Nearby walks alerts'),
-                  subtitle: const Text('Alert me when a new walk is created nearby'),
+                  subtitle: const Text(
+                    'Alert me when a new walk is created nearby',
+                  ),
                   value: _nearbyAlerts,
                   onChanged: (val) async {
                     setState(() => _nearbyAlerts = val);
                     await AppPreferences.setNearbyAlertsEnabled(val);
+                    await _bootstrap(); // re-sync from prefs
                   },
                 ),
 
                 ListTile(
                   leading: const Icon(Icons.flag_outlined),
                   title: const Text('Weekly distance goal'),
-                  subtitle: Text('${_weeklyGoalKmLocal.toStringAsFixed(1)} km per week'),
+                  subtitle: Text(
+                    '${_weeklyGoalKmLocal.toStringAsFixed(1)} km per week',
+                  ),
                   onTap: _showWeeklyGoalPicker,
                 ),
 
@@ -265,7 +272,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Default gender preference',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -273,8 +283,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isExpanded: true,
                       items: const [
                         DropdownMenuItem(value: 'Mixed', child: Text('Mixed')),
-                        DropdownMenuItem(value: 'Women only', child: Text('Women only')),
-                        DropdownMenuItem(value: 'Men only', child: Text('Men only')),
+                        DropdownMenuItem(
+                          value: 'Women only',
+                          child: Text('Women only'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Men only',
+                          child: Text('Men only'),
+                        ),
                       ],
                       onChanged: (val) async {
                         if (val == null) return;
@@ -301,7 +317,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Walking safety & tips'),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SafetyTipsScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const SafetyTipsScreen(),
+                      ),
                     );
                   },
                 ),

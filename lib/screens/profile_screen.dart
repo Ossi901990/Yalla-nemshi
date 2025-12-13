@@ -2,19 +2,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
 import '../models/profile_badge.dart';
+
 import 'badges_info_screen.dart';
 import 'edit_profile_screen.dart';
 import 'safety_tips_screen.dart';
-import '../theme_controller.dart';
-import '../services/app_preferences.dart';
-import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart'; // for routeName
 import 'settings_screen.dart';
-
+import '../services/app_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   final int walksJoined;
@@ -51,8 +51,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
 
   static const Color _deepGreen = Color(0xFF294630);
-  static const Color _lightGreen = Color(0xFF4F925C);
-  static const Color _cardBackground = Color(0xFFFFFEF8);
 
   late double _weeklyGoalKmLocal;
 
@@ -61,6 +59,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _weeklyGoalKmLocal = widget.weeklyGoalKm;
     _loadProfile();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _weeklyGoalKmLocal = widget.weeklyGoalKm;
   }
 
   Future<void> _loadProfile() async {
@@ -81,14 +85,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
-
     if (picked == null) return;
 
     final updated = _profile!.copyWith(profileImagePath: picked.path);
     await ProfileStorage.saveProfile(updated);
-    setState(() {
-      _profile = updated;
-    });
+    setState(() => _profile = updated);
   }
 
   Future<void> _removeProfileImage() async {
@@ -98,9 +99,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await ProfileStorage.saveProfile(cleared);
 
     if (!mounted) return;
-    setState(() {
-      _profile = cleared;
-    });
+    setState(() => _profile = cleared);
   }
 
   void _onAvatarTap() {
@@ -152,7 +151,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String get _walkerLevel {
     final km = widget.totalKm;
-
     if (km < 5) return 'New walker';
     if (km < 25) return 'Getting active';
     if (km < 100) return 'Regular walker';
@@ -160,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return 'Trail pro';
   }
 
-  void _openEditProfile() async {
+  Future<void> _openEditProfile() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EditProfileScreen(profile: _profile)),
     );
@@ -212,464 +210,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ).push(MaterialPageRoute(builder: (_) => const SafetyTipsScreen()));
   }
 
-  /// 🔹 Sign out from Firebase and go back to Login
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
-
     if (!mounted) return;
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      LoginScreen.routeName,
-      (route) => false,
-    );
-  }
-
-  void _openSettingsPanel() {
-    final theme = Theme.of(context);
-    final bool isDarkNow = theme.brightness == Brightness.dark;
-
-    showGeneralDialog(
-      context: context,
-      barrierLabel: 'Settings',
-      barrierDismissible: true,
-      barrierColor: Colors.black26,
-      transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (ctx, animation, secondaryAnimation) {
-        bool darkModeEnabled = isDarkNow;
-        double defaultDistanceKm = AppPreferences.defaultDistanceKmFallback;
-        String defaultGender = AppPreferences.defaultGenderFallback;
-        bool walkReminders = AppPreferences.walkRemindersFallback;
-        bool nearbyAlerts = AppPreferences.nearbyAlertsFallback;
-        bool useSystemTheme = false;
-
-        bool loadedFromPrefs = false;
-
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            final innerTheme = Theme.of(ctx);
-            final double topOffset = MediaQuery.of(ctx).padding.top + 56 + 4;
-            final double maxHeight = MediaQuery.of(ctx).size.height * 0.75;
-
-            if (!loadedFromPrefs) {
-              loadedFromPrefs = true;
-              () async {
-                final d = await AppPreferences.getDefaultDistanceKm();
-                final g = await AppPreferences.getDefaultGender();
-                final wr = await AppPreferences.getWalkRemindersEnabled();
-                final na = await AppPreferences.getNearbyAlertsEnabled();
-
-                setModalState(() {
-                  defaultDistanceKm = d;
-                  defaultGender = g;
-                  walkReminders = wr;
-                  nearbyAlerts = na;
-                });
-              }();
-            }
-
-            return Stack(
-              children: [
-                Positioned(
-                  right: 8,
-                  top: topOffset,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: maxHeight),
-                      child: Container(
-                        width: 320,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFBFEF8),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
-                              blurRadius: 16,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Settings',
-                                    style: innerTheme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF294630),
-                                        ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () => Navigator.of(ctx).pop(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-
-                              // ===== Appearance =====
-                              Text(
-                                'Appearance',
-                                style: innerTheme.textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-
-                              Card(
-                                margin: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: ListTile(
-                                  leading: Icon(
-                                    darkModeEnabled
-                                        ? Icons.dark_mode_outlined
-                                        : Icons.light_mode_outlined,
-                                  ),
-                                  title: const Text('Dark mode'),
-                                  subtitle: Text(
-                                    darkModeEnabled
-                                        ? 'Using dark theme'
-                                        : 'Using light theme',
-                                  ),
-                                  trailing: Switch(
-                                    value: darkModeEnabled,
-                                    onChanged: (value) {
-                                      setModalState(() {
-                                        darkModeEnabled = value;
-                                        useSystemTheme = false;
-                                      });
-                                      ThemeController.instance.setDarkMode(
-                                        value,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.phone_iphone_outlined,
-                                ),
-                                title: const Text('Use system theme'),
-                                subtitle: const Text(
-                                  'Coming soon – follow device setting',
-                                ),
-                                trailing: Switch(
-                                  value: useSystemTheme,
-                                  onChanged: null,
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              // ===== Notifications =====
-                              Text(
-                                'Notifications',
-                                style: innerTheme.textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('Walk reminders'),
-                                subtitle: const Text(
-                                  'Notify me before walks I join',
-                                ),
-                                value: walkReminders,
-                                onChanged: (val) {
-                                  setModalState(() {
-                                    walkReminders = val;
-                                  });
-                                  AppPreferences.setWalkRemindersEnabled(val);
-                                },
-                              ),
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('Nearby walks alerts'),
-                                subtitle: const Text(
-                                  'Alert me when a new walk is created nearby',
-                                ),
-                                value: nearbyAlerts,
-                                onChanged: (val) {
-                                  setModalState(() {
-                                    nearbyAlerts = val;
-                                  });
-                                  AppPreferences.setNearbyAlertsEnabled(val);
-                                },
-                              ),
-
-                              ListTile(
-                                leading: const Icon(Icons.flag_outlined),
-                                title: const Text('Weekly distance goal'),
-                                subtitle: Text(
-                                  '${_weeklyGoalKmLocal.toStringAsFixed(1)} km per week',
-                                ),
-                                onTap: _showWeeklyGoalPicker,
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              // ===== Preferences =====
-                              Text(
-                                'Preferences',
-                                style: innerTheme.textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text('Default walk distance'),
-                                      Text(
-                                        '${defaultDistanceKm.toStringAsFixed(1)} km',
-                                        style: innerTheme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  Slider(
-                                    min: 1.0,
-                                    max: 10.0,
-                                    divisions: 18,
-                                    value: defaultDistanceKm,
-                                    label:
-                                        '${defaultDistanceKm.toStringAsFixed(1)} km',
-                                    onChanged: (value) {
-                                      setModalState(() {
-                                        defaultDistanceKm = value;
-                                      });
-                                      AppPreferences.setDefaultDistanceKm(
-                                        value,
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Default gender preference',
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: defaultGender,
-                                    isExpanded: true,
-                                    items: const [
-                                      DropdownMenuItem(
-                                        value: 'Mixed',
-                                        child: Text('Mixed'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'Women only',
-                                        child: Text('Women only'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'Men only',
-                                        child: Text('Men only'),
-                                      ),
-                                    ],
-                                    onChanged: (val) {
-                                      if (val == null) return;
-                                      setModalState(() {
-                                        defaultGender = val;
-                                      });
-                                      AppPreferences.setDefaultGender(val);
-                                    },
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              // ===== More =====
-                              Text(
-                                'More',
-                                style: innerTheme.textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.shield_outlined),
-                                title: const Text('Walking safety & tips'),
-                                onTap: () {
-                                  Navigator.of(ctx).pop();
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const SafetyTipsScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.info_outline),
-                                title: const Text('About Yalla Nemshi'),
-                                subtitle: const Text('Version 1.0.0'),
-                                onTap: () {
-                                  showAboutDialog(
-                                    context: ctx,
-                                    applicationName: 'Yalla Nemshi',
-                                    applicationVersion: '1.0.0',
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.article_outlined),
-                                title: const Text('Terms & privacy policy'),
-                                onTap: () {
-                                  showDialog(
-                                    context: ctx,
-                                    builder: (dCtx) => AlertDialog(
-                                      title: const Text(
-                                        'Terms & privacy policy',
-                                      ),
-                                      content: const Text(
-                                        'This is a placeholder.\n\n'
-                                        'Later you can link to a web page or detailed in-app text '
-                                        'with your real terms and privacy policy.',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(dCtx).pop(),
-                                          child: const Text('Close'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-      transitionBuilder: (ctx, animation, secondary, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-        );
-
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.15, -0.2),
-            end: Offset.zero,
-          ).animate(curved),
-          child: FadeTransition(opacity: curved, child: child),
-        );
-      },
-    );
-  }
-
-  Future<void> _showWeeklyGoalPicker() async {
-    double tempValue = _weeklyGoalKmLocal.clamp(1.0, 50.0);
-
-    final result = await showModalBottomSheet<double>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Weekly distance goal',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${tempValue.toStringAsFixed(1)} km per week',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  Slider(
-                    min: 2,
-                    max: 30,
-                    divisions: 28,
-                    value: tempValue,
-                    label: '${tempValue.toStringAsFixed(1)} km',
-                    onChanged: (v) {
-                      setModalState(() {
-                        tempValue = v;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () => Navigator.of(ctx).pop(tempValue),
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (result != null) {
-      await AppPreferences.setWeeklyGoalKm(result);
-
-      if (!mounted) return;
-      setState(() {
-        _weeklyGoalKmLocal = result;
-      });
-
-      widget.onWeeklyGoalChanged?.call(result);
-    }
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
   }
 
   void _showNotificationsSheet() {
@@ -732,6 +279,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       eventsHosted: widget.eventsHosted,
       totalKm: widget.totalKm,
     );
+
     final achievedBadges = allBadges
         .where((b) => b.achieved)
         .toList(growable: false);
@@ -753,14 +301,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark
-                    ? const [
-                        Color(0xFF020908),
-                        Color(0xFF0B1A13),
-                      ]
-                    : const [
-                        Color(0xFF294630),
-                        Color(0xFF4F925C),
-                      ],
+                    ? const [Color(0xFF020908), Color(0xFF0B1A13)]
+                    : const [Color(0xFF294630), Color(0xFF4F925C)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -791,13 +333,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _HeaderNotifications(onTap: _showNotificationsSheet),
                         const SizedBox(width: 12),
                         _HeaderSettings(
-  onTap: () {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-    );
-  },
-),
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SettingsScreen(),
+                              ),
+                            );
 
+                            final wg = await AppPreferences.getWeeklyGoalKm();
+                            if (!mounted) return;
+
+                            setState(() => _weeklyGoalKmLocal = wg);
+
+                            widget.onWeeklyGoalChanged?.call(wg);
+                          },
+                        ),
                       ],
                     ),
                   ],
@@ -1028,29 +578,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Wrap(
                                   spacing: 10,
                                   runSpacing: 10,
-                                  children: achievedBadges
-                                      .take(6)
-                                      .map(
-                                        (b) => GestureDetector(
-                                          onTap: () => _showBadgeDetails(b),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              CircleAvatar(
-                                                radius: 18,
-                                                backgroundColor:
-                                                    theme.colorScheme.primary,
-                                                child: Icon(
-                                                  b.icon,
-                                                  size: 18,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ],
+                                  children: achievedBadges.take(6).map((b) {
+                                    return GestureDetector(
+                                      onTap: () => _showBadgeDetails(b),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor:
+                                                theme.colorScheme.primary,
+                                            child: Icon(
+                                              b.icon,
+                                              size: 18,
+                                              color: Colors.white,
+                                            ),
                                           ),
-                                        ),
-                                      )
-                                      .toList(),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
                                 ),
                               const SizedBox(height: 8),
                               Align(
@@ -1082,8 +629,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: OutlinedButton.icon(
                           onPressed: _openSafetyTips,
                           icon: const Icon(Icons.shield_outlined),
-                          label:
-                              const Text('Walking safety & community tips'),
+                          label: const Text('Walking safety & community tips'),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -1094,7 +640,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: const Icon(Icons.logout),
                           label: const Text('Sign out'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red.shade700,
+                            foregroundColor: Colors.red,
                           ),
                         ),
                       ),
@@ -1119,9 +665,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAvatar(UserProfile? profile) {
     final imgPath = profile?.profileImagePath;
 
-    if (imgPath != null &&
-        imgPath.isNotEmpty &&
-        File(imgPath).existsSync()) {
+    if (imgPath != null && imgPath.isNotEmpty && File(imgPath).existsSync()) {
       return CircleAvatar(
         radius: 48,
         backgroundImage: FileImage(File(imgPath)),
@@ -1131,11 +675,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return const CircleAvatar(
       radius: 48,
       backgroundColor: Color(0xFFB7E76A),
-      child: Icon(
-        Icons.person,
-        size: 48,
-        color: Color(0xFF166534),
-      ),
+      child: Icon(Icons.person, size: 48, color: Color(0xFF166534)),
     );
   }
 
@@ -1148,8 +688,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Expanded(
       child: Card(
         elevation: 0.5,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Column(
