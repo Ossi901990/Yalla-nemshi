@@ -13,6 +13,8 @@ import '../services/app_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart'; // for routeName
+import 'settings_screen.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   final int walksJoined;
@@ -788,7 +790,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _HeaderNotifications(onTap: _showNotificationsSheet),
                         const SizedBox(width: 12),
-                        _HeaderSettings(onTap: _openSettingsPanel),
+                        _HeaderSettings(
+  onTap: () {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+  },
+),
+
                       ],
                     ),
                   ],
