@@ -1,4 +1,4 @@
-// lib/screens/home_screen.dart 
+// lib/screens/home_screen.dart
 import 'dart:async';
 import 'dart:io' show Platform;
 
@@ -20,22 +20,18 @@ import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
 import 'dart:math' as math;
 
-
 // ===== Dark Theme (Neo/Night Forest) palette =====
-const kDarkBg = Color(0xFF071B26);          // primary background
-const kDarkSurface = Color(0xFF0C2430);     // cards / sheets
-const kDarkSurface2 = Color(0xFF0E242E);    // nav / secondary surfaces
+const kDarkBg = Color(0xFF071B26); // primary background
+const kDarkSurface = Color(0xFF0C2430); // cards / sheets
+const kDarkSurface2 = Color(0xFF0E242E); // nav / secondary surfaces
 
-const kMint = Color(0xFF8BD5BA);            // primary accent
-const kMintBright = Color(0xFFA4E4C5);      // highlight accent
+const kMint = Color(0xFF8BD5BA); // primary accent
+const kMintBright = Color(0xFFA4E4C5); // highlight accent
 
-const kTextPrimary = Color(0xFFD9F5EA);     // big text
-const kTextSecondary = Color(0xFF9BB9B1);   // normal text
-const kTextMuted = Color(0xFF6A8580);       // hints / placeholders
-const kOnMint = Color(0xFF0C1A17);          // text on mint buttons
-
-
-
+const kTextPrimary = Color(0xFFD9F5EA); // big text
+const kTextSecondary = Color(0xFF9BB9B1); // normal text
+const kTextMuted = Color(0xFF6A8580); // hints / placeholders
+const kOnMint = Color(0xFF0C1A17); // text on mint buttons
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,9 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
 
-    // Loaded from saved profile (falls back to "Walker")
+  // Loaded from saved profile (falls back to "Walker")
   String _userName = 'Walker';
-
 
   DateTime _selectedDay = DateTime.now();
 
@@ -89,9 +84,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _events.where((e) => e.interested && !e.cancelled).length;
 
   // Weekly statistics (for "This week" card)
-// Now loaded from AppPreferences instead of hard-coded.
-double _weeklyGoalKm = 10.0;
-
+  // Now loaded from AppPreferences instead of hard-coded.
+  double _weeklyGoalKm = 10.0;
 
   DateTime get _today {
     final now = DateTime.now();
@@ -180,7 +174,7 @@ double _weeklyGoalKm = 10.0;
     return '$monthName ${date.day}, ${date.year}';
   }
 
- String _formatNotificationTime(DateTime dt) {
+  String _formatNotificationTime(DateTime dt) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final thatDay = DateTime(dt.year, dt.month, dt.day);
@@ -205,80 +199,75 @@ double _weeklyGoalKm = 10.0;
     return '$dd/$mm2/$yyyy • $timePart';
   }
 
+  Widget _buildDayPill(
+    String label,
+    int dayNumber,
+    bool isSelected, {
+    required bool isDark,
+  }) {
+    final labelColor = isDark
+        ? (isSelected ? Colors.white : Colors.white70)
+        : (isSelected ? Colors.black87 : Colors.black54);
 
-Widget _buildDayPill(
-  String label,
-  int dayNumber,
-  bool isSelected, {
-  required bool isDark,
-}) {
-  final labelColor = isDark
-      ? (isSelected ? Colors.white : Colors.white70)
-      : (isSelected ? Colors.black87 : Colors.black54);
+    final numberColor = isDark
+        ? (isSelected ? Colors.black87 : Colors.white)
+        : Colors.black87;
 
-  final numberColor = isDark
-      ? (isSelected ? Colors.black87 : Colors.white)
-      : Colors.black87;
-
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Text(
-        label,
-        maxLines: 1,
-        style: TextStyle(
-          fontSize: 10,
-          color: labelColor,
-          fontWeight: FontWeight.w500,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 10,
+            color: labelColor,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-      Text(
-        '$dayNumber',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: numberColor,
+        Text(
+          '$dayNumber',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: numberColor,
+          ),
         ),
-      ),
-    ],
-  );
-}
-
-
+      ],
+    );
+  }
 
   // --- Step counter setup (Android only for now) ---
 
-    @override
-void initState() {
-  super.initState();
-  _initStepCounter();
-  _loadUserName();   // ✅ load saved profile name
-  _loadWeeklyGoal(); // ✅ load saved weekly goal
-}
-
-
+  @override
+  void initState() {
+    super.initState();
+    _initStepCounter();
+    _loadUserName(); // ✅ load saved profile name
+    _loadWeeklyGoal(); // ✅ load saved weekly goal
+  }
 
   @override
   void dispose() {
     _stepSubscription?.cancel();
     super.dispose();
   }
+
   Future<void> _loadWeeklyGoal() async {
-  final value = await AppPreferences.getWeeklyGoalKm();
-  setState(() {
-    _weeklyGoalKm = value;
-  });
-}
+    final value = await AppPreferences.getWeeklyGoalKm();
+    setState(() {
+      _weeklyGoalKm = value;
+    });
+  }
 
-/// Called when user changes their weekly goal from the Profile settings panel.
-Future<void> _updateWeeklyGoal(double newKm) async {
-  setState(() {
-    _weeklyGoalKm = newKm;
-  });
-  await AppPreferences.setWeeklyGoalKm(newKm);
-}
-
+  /// Called when user changes their weekly goal from the Profile settings panel.
+  Future<void> _updateWeeklyGoal(double newKm) async {
+    setState(() {
+      _weeklyGoalKm = newKm;
+    });
+    await AppPreferences.setWeeklyGoalKm(newKm);
+  }
 
   Future<void> _initStepCounter() async {
     // Only try on Android
@@ -288,7 +277,7 @@ Future<void> _updateWeeklyGoal(double newKm) async {
     if (!status.isGranted) {
       return; // permission denied, keep at 0
     }
-     
+
     try {
       _stepSubscription = Pedometer.stepCountStream.listen(
         _onStepCount,
@@ -299,19 +288,20 @@ Future<void> _updateWeeklyGoal(double newKm) async {
       // silently ignore for now
     }
   }
+
   Future<void> _loadUserName() async {
-  final profile = await ProfileStorage.loadProfile();
+    final profile = await ProfileStorage.loadProfile();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    if (profile != null && profile.name.trim().isNotEmpty) {
-      _userName = profile.name.trim();
-    } else {
-      _userName = 'Walker';
-    }
-  });
-}
+    setState(() {
+      if (profile != null && profile.name.trim().isNotEmpty) {
+        _userName = profile.name.trim();
+      } else {
+        _userName = 'Walker';
+      }
+    });
+  }
 
   void _onStepCount(StepCount event) {
     // Android pedometer gives "steps since reboot".
@@ -331,71 +321,68 @@ Future<void> _updateWeeklyGoal(double newKm) async {
 
   // --- Actions ---
 
-void _onEventCreated(WalkEvent newEvent) {
-  setState(() {
-    _events.add(newEvent);
-  });
+  void _onEventCreated(WalkEvent newEvent) {
+    setState(() {
+      _events.add(newEvent);
+    });
 
-  // 🔔 Schedule reminder for the walk you just created (host)
-  NotificationService.instance.scheduleWalkReminder(newEvent);
-}
+    // 🔔 Schedule reminder for the walk you just created (host)
+    NotificationService.instance.scheduleWalkReminder(newEvent);
+  }
 
-/// Call this when a *new nearby* walk arrives from your backend / API.
-void _onNewNearbyWalk(WalkEvent event) {
-  setState(() {
-    _events.add(event);      // add to main list
-  });
+  /// Call this when a *new nearby* walk arrives from your backend / API.
+  void _onNewNearbyWalk(WalkEvent event) {
+    setState(() {
+      _events.add(event); // add to main list
+    });
 
-  // 🔔 Instant “nearby walk” notification (honors Settings toggle)
-  NotificationService.instance.showNearbyWalkAlert(event);
-}
+    // 🔔 Instant “nearby walk” notification (honors Settings toggle)
+    NotificationService.instance.showNearbyWalkAlert(event);
+  }
 
+  void _toggleJoin(WalkEvent event) {
+    setState(() {
+      final index = _events.indexWhere((e) => e.id == event.id);
+      if (index == -1) return;
 
-void _toggleJoin(WalkEvent event) {
-  setState(() {
-    final index = _events.indexWhere((e) => e.id == event.id);
-    if (index == -1) return;
+      final current = _events[index];
+      final bool wasJoined = current.joined;
+      final updated = current.copyWith(joined: !current.joined);
 
-    final current = _events[index];
-    final bool wasJoined = current.joined;
-    final updated = current.copyWith(joined: !current.joined);
+      _events[index] = updated;
 
-    _events[index] = updated;
+      // 🔔 If user just JOINED → schedule reminder
+      if (!wasJoined && updated.joined) {
+        NotificationService.instance.scheduleWalkReminder(updated);
+      }
+      // 🔕 If user just LEFT → cancel reminder
+      else if (wasJoined && !updated.joined) {
+        NotificationService.instance.cancelWalkReminder(updated);
+      }
+    });
+  }
 
-    // 🔔 If user just JOINED → schedule reminder
-    if (!wasJoined && updated.joined) {
-      NotificationService.instance.scheduleWalkReminder(updated);
-    }
-    // 🔕 If user just LEFT → cancel reminder
-    else if (wasJoined && !updated.joined) {
+  void _toggleInterested(WalkEvent event) {
+    setState(() {
+      final index = _events.indexWhere((e) => e.id == event.id);
+      if (index == -1) return;
+      final current = _events[index];
+      _events[index] = current.copyWith(interested: !current.interested);
+    });
+  }
+
+  void _cancelHostedWalk(WalkEvent event) {
+    setState(() {
+      final index = _events.indexWhere((e) => e.id == event.id);
+      if (index == -1) return;
+      final current = _events[index];
+      final updated = current.copyWith(cancelled: true);
+      _events[index] = updated;
+
+      // 🔕 Cancel any reminder for this event
       NotificationService.instance.cancelWalkReminder(updated);
-    }
-  });
-}
-
-void _toggleInterested(WalkEvent event) {
-  setState(() {
-    final index = _events.indexWhere((e) => e.id == event.id);
-    if (index == -1) return;
-    final current = _events[index];
-    _events[index] = current.copyWith(interested: !current.interested);
-  });
-}
-
-void _cancelHostedWalk(WalkEvent event) {
-  setState(() {
-    final index = _events.indexWhere((e) => e.id == event.id);
-    if (index == -1) return;
-    final current = _events[index];
-    final updated = current.copyWith(cancelled: true);
-    _events[index] = updated;
-
-    // 🔕 Cancel any reminder for this event
-    NotificationService.instance.cancelWalkReminder(updated);
-  });
-}
-
-
+    });
+  }
 
   void _navigateToDetails(WalkEvent event) {
     Navigator.of(context).push(
@@ -426,124 +413,126 @@ void _cancelHostedWalk(WalkEvent event) {
     );
   }
 
-// === NEW: notification bottom sheet (uses stored notifications) ===
-Future<void> _openNotificationsSheet() async {
-  // Load history from SharedPreferences
- final List<AppNotification> notifications =
-    await NotificationStorage.getNotifications();
+  // === NEW: notification bottom sheet (uses stored notifications) ===
+  Future<void> _openNotificationsSheet() async {
+    // Load history from SharedPreferences
+    final List<AppNotification> notifications =
+        await NotificationStorage.getNotifications();
 
+    // Newest first
+    notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-  // Newest first
-  notifications.sort(
-    (a, b) => b.timestamp.compareTo(a.timestamp),
-  );
+    if (!mounted) return;
 
-  if (!mounted) return;
-
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: const Color(0xFFFCFEF9),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (ctx) {
-      // ✅ If nothing stored yet → same placeholder as before
-      if (notifications.isEmpty) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.notifications_none,
-                  size: 36, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text(
-                'No notifications yet',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'You’ll see reminders and new nearby walks here.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      }
-
-      // ✅ Real notifications list
-      return SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  children: [
-    Row(
-      children: const [
-        Icon(Icons.notifications, size: 20),
-        SizedBox(width: 8),
-        Text(
-          'Notifications',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-      ],
-    ),
-
-    // 🔹 NEW: Clear button (top-right)
-    TextButton(
-      onPressed: () async {
-        await NotificationStorage.clearNotifications();
-        Navigator.of(context).pop();      // close sheet
-        _openNotificationsSheet();        // reopen with updated list
-      },
-      child: const Text(
-        'Clear',
-        style: TextStyle(
-          color: Colors.red,
-          fontWeight: FontWeight.w600,
-        ),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFFCFEF9),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    ),
-  ],
-),
+      builder: (ctx) {
+        // ✅ If nothing stored yet → same placeholder as before
+        if (notifications.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.notifications_none,
+                  size: 36,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'No notifications yet',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You’ll see reminders and new nearby walks here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        }
 
-              const SizedBox(height: 12),
-              ...notifications.map(
-                (n) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.circle,
-                    size: 10,
-                    color: Colors.green,
-                  ),
-                  title: Text(
-                    n.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(n.message),
-                  trailing: Text(
-                    _formatNotificationTime(n.timestamp),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade600,
+        // ✅ Real notifications list
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.notifications, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Notifications',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // 🔹 NEW: Clear button (top-right)
+                    TextButton(
+                      onPressed: () async {
+                        await NotificationStorage.clearNotifications();
+                        Navigator.of(context).pop(); // close sheet
+                        _openNotificationsSheet(); // reopen with updated list
+                      },
+                      child: const Text(
+                        'Clear',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+                ...notifications.map(
+                  (n) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.circle,
+                      size: 10,
+                      color: Colors.green,
+                    ),
+                    title: Text(
+                      n.title,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(n.message),
+                    trailing: Text(
+                      _formatNotificationTime(n.timestamp),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
-
+        );
+      },
+    );
+  }
 
   // === NEW: profile quick-view bottom sheet (no design change to main page) ===
   void _openProfileQuickSheet() {
@@ -624,734 +613,730 @@ Future<void> _openNotificationsSheet() async {
   @override
   Widget build(BuildContext context) {
     Widget body;
-        final theme = Theme.of(context);
+    final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
 
     switch (_currentTab) {
       case 0:
         body = _buildHomeTab(context);
         break;
-     case 1:
-  body = NearbyWalksScreen(
-    events: _nearbyWalks,
-    onToggleJoin: _toggleJoin,
-    onToggleInterested: _toggleInterested,
-    onTapEvent: _navigateToDetails,
-    onCancelHosted: _cancelHostedWalk,
-    // Stats for quick profile sheet + full profile screen
-    walksJoined: _walksJoined,
-    eventsHosted: _eventsHosted,
-    totalKm: _totalKmJoined,
-    interestedCount: _interestedCount,
-    weeklyKm: _weeklyKm,
-    weeklyWalks: _weeklyWalkCount,
-    streakDays: _streakDays,
-    weeklyGoalKm: _weeklyGoalKm,
-    userName: _userName,
-  );
-  break;
+      case 1:
+        body = NearbyWalksScreen(
+          events: _nearbyWalks,
+          onToggleJoin: _toggleJoin,
+          onToggleInterested: _toggleInterested,
+          onTapEvent: _navigateToDetails,
+          onCancelHosted: _cancelHostedWalk,
+          // Stats for quick profile sheet + full profile screen
+          walksJoined: _walksJoined,
+          eventsHosted: _eventsHosted,
+          totalKm: _totalKmJoined,
+          interestedCount: _interestedCount,
+          weeklyKm: _weeklyKm,
+          weeklyWalks: _weeklyWalkCount,
+          streakDays: _streakDays,
+          weeklyGoalKm: _weeklyGoalKm,
+          userName: _userName,
+        );
+        break;
 
       case 2:
-default:
-  body = ProfileScreen(
-    walksJoined: _walksJoined,
-    eventsHosted: _eventsHosted,
-    totalKm: _totalKmJoined,
-    weeklyWalks: _weeklyWalkCount,
-    weeklyKm: _weeklyKm,
-    weeklyGoalKm: _weeklyGoalKm,
-    streakDays: _streakDays,
-    interestedCount: _interestedCount,
-    onWeeklyGoalChanged: _updateWeeklyGoal, // 👈 NEW
-  );
-  break;
-
+      default:
+        body = ProfileScreen(
+          walksJoined: _walksJoined,
+          eventsHosted: _eventsHosted,
+          totalKm: _totalKmJoined,
+          weeklyWalks: _weeklyWalkCount,
+          weeklyKm: _weeklyKm,
+          weeklyGoalKm: _weeklyGoalKm,
+          streakDays: _streakDays,
+          interestedCount: _interestedCount,
+          onWeeklyGoalChanged: _updateWeeklyGoal, // 👈 NEW
+        );
+        break;
     }
 
     return Scaffold(
       // Deep green behind the top bar only – content sits on a card.
-       backgroundColor: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+      backgroundColor: isDark ? kDarkBg : const Color(0xFFF7F3EA),
 
       body: body,
       bottomNavigationBar: BottomNavigationBar(
-  currentIndex: _currentTab,
-  onTap: (index) {
-    setState(() {
-      _currentTab = index;
-    });
-    if (index == 0) {
-      _loadUserName();
-    }
-  },
-  type: BottomNavigationBarType.fixed,
-  backgroundColor: isDark ? kDarkSurface2 : Colors.white,
-  elevation: 0,
-  selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
-  unselectedItemColor: isDark ? kTextMuted : Colors.black54,
-  items: const [
-    BottomNavigationBarItem(
-      icon: Icon(Icons.home_outlined),
-      label: 'Home',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.map_outlined),
-      label: 'Nearby',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.person_outline),
-      label: 'Profile',
-    ),
-  ],
-),
-
+        currentIndex: _currentTab,
+        onTap: (index) {
+          setState(() {
+            _currentTab = index;
+          });
+          if (index == 0) {
+            _loadUserName();
+          }
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: isDark ? kDarkSurface2 : Colors.white,
+        elevation: 0,
+        selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
+        unselectedItemColor: isDark ? kTextMuted : Colors.black54,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map_outlined),
+            label: 'Nearby',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+        ],
+      ),
     );
   }
 
-Widget _buildHomeTab(BuildContext context) {
-  final theme = Theme.of(context);
-  final today = DateTime.now();
-  final isDark = theme.brightness == Brightness.dark;
+  Widget _buildHomeTab(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = DateTime.now();
+    final isDark = theme.brightness == Brightness.dark;
 
-  return SafeArea(
-    child: Column(
-      children: [
-// ===== HEADER =====
-if (isDark)
-  // --- Dark: floating header (no bar) ---
-  Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-              child: const Icon(
-                Icons.directions_walk,
-                size: 30,
-                color: kMintBright,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Yalla Nemshi',
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: kTextPrimary,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: _openNotificationsSheet,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_none,
-                      size: 18,
-                      color: kTextPrimary,
-                    ),
-                  ),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.red,
-                      ),
-                      child: const Text(
-                        '3',
-                        style: TextStyle(color: Colors.white, fontSize: 9),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: _openProfileQuickSheet,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-                child: const Icon(
-                  Icons.person,
-                  size: 18,
-                  color: kTextPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  )
-else
-  // --- Light: keep the gradient bar ---
-  Container(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Color(0xFF294630),
-          Color(0xFF4F925C),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white24,
-              ),
-              child: const Icon(
-                Icons.directions_walk,
-                size: 18,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Yalla Nemshi',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: _openNotificationsSheet,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white24,
-                    ),
-                    child: const Icon(
-                      Icons.notifications_none,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.red,
-                      ),
-                      child: const Text(
-                        '3',
-                        style: TextStyle(color: Colors.white, fontSize: 9),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: _openProfileQuickSheet,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  size: 18,
-                  color: Color(0xFF14532D),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  ),
-
-
-
-        // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
-        Expanded(
-          child: Container(
-            width: double.infinity,
-     decoration: BoxDecoration(
-  color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
-  borderRadius: const BorderRadius.only(
-    topLeft: Radius.circular(24),
-    topRight: Radius.circular(24),
-  ),
-),
-
-
-            // overlay so text stays readable on top of the photo
-            child: Container(
-decoration: BoxDecoration(
-  borderRadius: const BorderRadius.only(
-    topLeft: Radius.circular(24),
-    topRight: Radius.circular(24),
-  ),
-  gradient: isDark
-      ? const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF071B26), // top
-            Color(0xFF041016), // bottom
-          ],
-        )
-      : const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFF7F3EA),
-            Color(0xFFEEE6DA),
-          ],
-        ),
-),
-
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 20, 16, 24),
-                   child: Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    // Big inner card: greeting + calendar + "Your walks"
-    Card(
-      color: isDark ? kDarkSurface : const Color(0xFFFBFEF8),
-      elevation: 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Expanded(
+    return SafeArea(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${_greetingForTime()}, $_userName 👋',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isDark ? kTextPrimary : const Color(0xFF14532D),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _formatFullDate(today),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark ? kTextSecondary : Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    ),
-    const SizedBox(width: 12),
-    _StepsRing(
-  steps: 9000,
-  goal: 10000,     // you can change later
-  isDark: isDark,
-),
-
-  ],
-),
-const SizedBox(height: 16),
-
-
-                                  // Today + date row
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Today',
-                                        style: theme
-                                            .textTheme.bodyMedium
-                                            ?.copyWith(
-                                          fontWeight:
-                                              FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        _formatFullDate(today),
-                                        style: theme
-                                            .textTheme.bodySmall
-                                            ?.copyWith(
-                                          color: isDark
-                                              ? Colors.white70
-                                              : Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 8),
-
-                                  // Calendar
-                                  TableCalendar(
-                                    firstDay:
-                                        DateTime.utc(2020, 1, 1),
-                                    lastDay:
-                                        DateTime.utc(2030, 12, 31),
-                                    focusedDay: _selectedDay,
-                                    selectedDayPredicate: (day) =>
-                                        isSameDay(
-                                            day, _selectedDay),
-                                    calendarFormat:
-                                        CalendarFormat.week,
-                                    headerVisible: false,
-                                    daysOfWeekVisible: false,
-                                    rowHeight: 60,
-                                    eventLoader: (day) =>
-                                        _eventsForDay(day),
-                                    calendarStyle:
-                                        const CalendarStyle(
-                                      isTodayHighlighted: false,
-                                      outsideDaysVisible: false,
-                                    ),
-                                    calendarBuilders:
-                                        CalendarBuilders(
-                                      defaultBuilder: (context,
-                                          day, focusedDay) {
-                                        const labels = [
-                                          'Mon',
-                                          'Tue',
-                                          'Wed',
-                                          'Thu',
-                                          'Fri',
-                                          'Sat',
-                                          'Sun',
-                                        ];
-                                        final label = labels[
-                                            day.weekday - 1];
-
-                                        if (isDark) {
-                                          // Dark: text only
-                                          return Padding(
-                                            padding:
-                                                const EdgeInsets
-                                                    .symmetric(
-                                              horizontal: 4,
-                                            ),
-                                            child: _buildDayPill(
-                                              label,
-                                              day.day,
-                                              false,
-                                              isDark: isDark,
-                                            ),
-                                          );
-                                        }
-
-                                        // Light: white pill
-                                        return Container(
-                                          margin:
-                                              const EdgeInsets
-                                                  .symmetric(
-                                            horizontal: 4,
-                                            vertical: 0,
-                                          ),
-                                          padding:
-                                              const EdgeInsets
-                                                  .symmetric(
-                                            vertical: 4,
-                                            horizontal: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-  color: isDark ? kDarkSurface2 : const Color(0xFFE5F3D9),
-  borderRadius: BorderRadius.circular(999),
-),
-
-                                          child: _buildDayPill(
-                                            label,
-                                            day.day,
-                                            false,
-                                            isDark: isDark,
-                                          ),
-                                        );
-                                      },
-                                      selectedBuilder:
-                                          (context,
-                                              day, focusedDay) {
-                                        const labels = [
-                                          'Mon',
-                                          'Tue',
-                                          'Wed',
-                                          'Thu',
-                                          'Fri',
-                                          'Sat',
-                                          'Sun',
-                                        ];
-                                        final label = labels[
-                                            day.weekday - 1];
-
-                                        return Container(
-                                          margin:
-                                              const EdgeInsets
-                                                  .symmetric(
-                                            horizontal: 4,
-                                            vertical: 0,
-                                          ),
-                                          padding:
-                                              const EdgeInsets
-                                                  .symmetric(
-                                            vertical: 4,
-                                            horizontal: 10,
-                                          ),
-                                          decoration: BoxDecoration(
-  color: isDark ? kDarkSurface2 : const Color(0xFFE5F3D9),
-  borderRadius: BorderRadius.circular(999),
-),
-
-                                          child: _buildDayPill(
-                                            label,
-                                            day.day,
-                                            true,
-                                            isDark: isDark,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    onDaySelected: (selectedDay,
-                                        focusedDay) {
-                                      setState(() {
-                                        _selectedDay =
-                                            selectedDay;
-                                      });
-
-                                      final events =
-                                          _eventsForDay(
-                                              selectedDay);
-                                      if (events.isNotEmpty) {
-                                        _navigateToDetails(
-                                            events.first);
-                                      }
-                                    },
-                                  ),
-
-                                  const SizedBox(height: 20),
-
-                                  // Ready to walk + buttons
-                                  Text(
-                                    'Ready to walk? 👟',
-                                    style: theme
-                                        .textTheme.headlineSmall
-                                        ?.copyWith(
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Start a walk now or join others nearby. Your steps, your pace.',
-                                    style:
-                                        theme.textTheme.bodyMedium,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: FilledButton.icon(
-                                      onPressed:
-                                          _openCreateWalk,
-                                      style: FilledButton.styleFrom(
-  backgroundColor: kMintBright,   // mint button
-  foregroundColor: kOnMint,       // dark text/icon
-  padding: const EdgeInsets.symmetric(vertical: 16),
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-  textStyle: const TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.w700,
-  ),
-),
-                                      icon: const Icon(Icons
-                                          .directions_walk_outlined),
-                                      label: const Text(
-                                          'Start walk'),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: () {
-                                            setState(() =>
-                                                _currentTab =
-                                                    1);
-                                          },
-                                          child: const Text(
-                                              'Find nearby walks'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: () {
-                                            setState(() =>
-                                                _currentTab =
-                                                    2);
-                                          },
-                                          child: const Text(
-                                              'Profile & stats'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 20),
-
-                                  // Your walks inside main card
-                                  Text(
-                                    'Your walks',
-                                    style: theme
-                                        .textTheme.titleMedium
-                                        ?.copyWith(
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  if (_myHostedWalks.isEmpty)
-                                    Text(
-                                      'No walks yet.\nTap "Start walk" above to create your first one.',
-                                      style: theme
-                                          .textTheme.bodyMedium
-                                          ?.copyWith(
-                                        color: isDark
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                    )
-                                  else
-                                    Column(
-                                      children: _myHostedWalks
-                                          .map(
-                                            (e) => _WalkCard(
-                                              event: e,
-                                              onTap: () =>
-                                                  _navigateToDetails(
-                                                      e),
-                                            ),
-                                          )
-                                          .toList(),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ===== WEEKLY SUMMARY =====
-                          Text(
-                            'This week',
-                            style: theme.textTheme.titleLarge
-                                ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _WeeklySummaryCard(
-                            walks: _weeklyWalkCount,
-                            kmSoFar: _weeklyKm,
-                            kmGoal: _weeklyGoalKm,
-                            streakDays: _streakDays,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // ===== QUICK STATS =====
-                          Text(
-                            'Your quick stats',
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              _StatCard(
-                                label: 'Walks joined',
-                                value: '$_walksJoined',
-                              ),
-                              _StatCard(
-                                label: 'Events hosted',
-                                value: '$_eventsHosted',
-                              ),
-                              _StatCard(
-                                label: 'Total km',
-                                value: _totalKmJoined
-                                    .toStringAsFixed(1),
-                              ),
-                            ],
-                          ),
-                        ],
+          // ===== HEADER =====
+          if (isDark)
+            // --- Dark: floating header (no bar) ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                        child: const Icon(
+                          Icons.directions_walk,
+                          size: 30,
+                          color: kMintBright,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Yalla Nemshi',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          color: kTextPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _openNotificationsSheet,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.08),
+                              ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                size: 18,
+                                color: kTextPrimary,
+                              ),
+                            ),
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red,
+                                ),
+                                child: const Text(
+                                  '3',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: _openProfileQuickSheet,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: kTextPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          else
+            // --- Light: keep the gradient bar ---
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white24,
+                        ),
+                        child: const Icon(
+                          Icons.directions_walk,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Yalla Nemshi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _openNotificationsSheet,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white24,
+                              ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red,
+                                ),
+                                child: const Text(
+                                  '3',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: _openProfileQuickSheet,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: Color(0xFF14532D),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
 
+          // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+
+              // overlay so text stays readable on top of the photo
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                  gradient: isDark
+                      ? const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF071B26), // top
+                            Color(0xFF041016), // bottom
+                          ],
+                        )
+                      : const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFFF7F3EA), Color(0xFFEEE6DA)],
+                        ),
+                ),
+
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Big inner card: greeting + calendar + "Your walks"
+                            Card(
+                              color: isDark
+                                  ? kDarkSurface
+                                  : const Color(0xFFFBFEF8),
+                              elevation: 0.5,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  16,
+                                  16,
+                                  20,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '${_greetingForTime()}, $_userName 👋',
+                                                style: theme
+                                                    .textTheme
+                                                    .titleLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: isDark
+                                                          ? kTextPrimary
+                                                          : const Color(
+                                                              0xFF14532D,
+                                                            ),
+                                                    ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                _formatFullDate(today),
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: isDark
+                                                          ? kTextSecondary
+                                                          : Colors.black54,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        _StepsRing(
+                                          steps: 9000,
+                                          goal: 10000, // you can change later
+                                          isDark: isDark,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+
+                                    // Today + date row
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Today',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        Text(
+                                          _formatFullDate(today),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : Colors.black54,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 8),
+
+                                    // Calendar
+                                    TableCalendar(
+                                      firstDay: DateTime.utc(2020, 1, 1),
+                                      lastDay: DateTime.utc(2030, 12, 31),
+                                      focusedDay: _selectedDay,
+                                      selectedDayPredicate: (day) =>
+                                          isSameDay(day, _selectedDay),
+                                      calendarFormat: CalendarFormat.week,
+                                      headerVisible: false,
+                                      daysOfWeekVisible: false,
+                                      rowHeight: 60,
+                                      eventLoader: (day) => _eventsForDay(day),
+                                      calendarStyle: const CalendarStyle(
+                                        isTodayHighlighted: false,
+                                        outsideDaysVisible: false,
+                                      ),
+                                      calendarBuilders: CalendarBuilders(
+                                        defaultBuilder:
+                                            (context, day, focusedDay) {
+                                              const labels = [
+                                                'Mon',
+                                                'Tue',
+                                                'Wed',
+                                                'Thu',
+                                                'Fri',
+                                                'Sat',
+                                                'Sun',
+                                              ];
+                                              final label =
+                                                  labels[day.weekday - 1];
+
+                                              if (isDark) {
+                                                // Dark: text only
+                                                return Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                      ),
+                                                  child: _buildDayPill(
+                                                    label,
+                                                    day.day,
+                                                    false,
+                                                    isDark: isDark,
+                                                  ),
+                                                );
+                                              }
+
+                                              // Light: white pill
+                                              return Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 0,
+                                                    ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 4,
+                                                      horizontal: 10,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? kDarkSurface2
+                                                      : const Color(0xFFE5F3D9),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        999,
+                                                      ),
+                                                ),
+
+                                                child: _buildDayPill(
+                                                  label,
+                                                  day.day,
+                                                  false,
+                                                  isDark: isDark,
+                                                ),
+                                              );
+                                            },
+                                        selectedBuilder:
+                                            (context, day, focusedDay) {
+                                              const labels = [
+                                                'Mon',
+                                                'Tue',
+                                                'Wed',
+                                                'Thu',
+                                                'Fri',
+                                                'Sat',
+                                                'Sun',
+                                              ];
+                                              final label =
+                                                  labels[day.weekday - 1];
+
+                                              return Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 0,
+                                                    ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 4,
+                                                      horizontal: 10,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? kDarkSurface2
+                                                      : const Color(0xFFE5F3D9),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        999,
+                                                      ),
+                                                ),
+
+                                                child: _buildDayPill(
+                                                  label,
+                                                  day.day,
+                                                  true,
+                                                  isDark: isDark,
+                                                ),
+                                              );
+                                            },
+                                      ),
+                                      onDaySelected: (selectedDay, focusedDay) {
+                                        setState(() {
+                                          _selectedDay = selectedDay;
+                                        });
+
+                                        final events = _eventsForDay(
+                                          selectedDay,
+                                        );
+                                        if (events.isNotEmpty) {
+                                          _navigateToDetails(events.first);
+                                        }
+                                      },
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    // Ready to walk + buttons
+                                    Text(
+                                      'Ready to walk? 👟',
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Start a walk now or join others nearby. Your steps, your pace.',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: FilledButton.icon(
+                                        onPressed: _openCreateWalk,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              kMintBright, // mint button
+                                          foregroundColor:
+                                              kOnMint, // dark text/icon
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                          textStyle: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.directions_walk_outlined,
+                                        ),
+                                        label: const Text('Start walk'),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: () {
+                                              setState(() => _currentTab = 1);
+                                            },
+                                            child: const Text(
+                                              'Find nearby walks',
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: () {
+                                              setState(() => _currentTab = 2);
+                                            },
+                                            child: const Text(
+                                              'Profile & stats',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    // Your walks inside main card
+                                    Text(
+                                      'Your walks',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (_myHostedWalks.isEmpty)
+                                      Text(
+                                        'No walks yet.\nTap "Start walk" above to create your first one.',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : Colors.black54,
+                                            ),
+                                      )
+                                    else
+                                      Column(
+                                        children: _myHostedWalks
+                                            .map(
+                                              (e) => _WalkCard(
+                                                event: e,
+                                                onTap: () =>
+                                                    _navigateToDetails(e),
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ===== WEEKLY SUMMARY =====
+                            Text(
+                              'This week',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _WeeklySummaryCard(
+                              walks: _weeklyWalkCount,
+                              kmSoFar: _weeklyKm,
+                              kmGoal: _weeklyGoalKm,
+                              streakDays: _streakDays,
+                            ),
+                            const SizedBox(height: 16),
+
+                            // ===== QUICK STATS =====
+                            Text(
+                              'Your quick stats',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                _StatCard(
+                                  label: 'Walks joined',
+                                  value: '$_walksJoined',
+                                ),
+                                _StatCard(
+                                  label: 'Events hosted',
+                                  value: '$_eventsHosted',
+                                ),
+                                _StatCard(
+                                  label: 'Total km',
+                                  value: _totalKmJoined.toStringAsFixed(1),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ===== Smaller components =====
@@ -1374,11 +1359,16 @@ class _WeeklySummaryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final progress =
-        (kmGoal <= 0) ? 0.0 : (kmSoFar / kmGoal).clamp(0.0, 1.0).toDouble();
+    final progress = (kmGoal <= 0)
+        ? 0.0
+        : (kmSoFar / kmGoal).clamp(0.0, 1.0).toDouble();
 
-    final titleColor = isDark ? kTextPrimary : (theme.textTheme.titleMedium?.color);
-    final bodyColor = isDark ? kTextSecondary : (theme.textTheme.bodySmall?.color);
+    final titleColor = isDark
+        ? kTextPrimary
+        : (theme.textTheme.titleMedium?.color);
+    final bodyColor = isDark
+        ? kTextSecondary
+        : (theme.textTheme.bodySmall?.color);
 
     return Card(
       color: isDark ? kDarkSurface : null,
@@ -1421,9 +1411,7 @@ class _WeeklySummaryCard extends StatelessWidget {
               streakDays > 0
                   ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
                   : 'Start a walk today to begin your streak!',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: bodyColor,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
             ),
           ],
         ),
@@ -1431,7 +1419,6 @@ class _WeeklySummaryCard extends StatelessWidget {
     );
   }
 }
-
 
 class _StatCard extends StatelessWidget {
   final String label;
@@ -1484,7 +1471,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-
 class _WalkCard extends StatelessWidget {
   final WalkEvent event;
   final VoidCallback onTap;
@@ -1505,9 +1491,7 @@ class _WalkCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 0.5,
       child: ListTile(
         onTap: onTap,
@@ -1536,18 +1520,12 @@ class _MiniStat extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade700,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
         ),
       ],
     );
@@ -1569,8 +1547,9 @@ class _StepsRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final double progress =
-        (goal <= 0) ? 0.0 : (steps / goal).clamp(0.0, 1.0).toDouble();
+    final double progress = (goal <= 0)
+        ? 0.0
+        : (steps / goal).clamp(0.0, 1.0).toDouble();
 
     // Make it look like the reference (bigger + centered text)
     const double size = 120;
@@ -1592,8 +1571,9 @@ class _StepsRing extends StatelessWidget {
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.10),
               // These create the “fade in/out” feel
-              startColor: (isDark ? kMint : const Color(0xFF14532D))
-                  .withValues(alpha: 0.35),
+              startColor: (isDark ? kMint : const Color(0xFF14532D)).withValues(
+                alpha: 0.35,
+              ),
               endColor: (isDark ? kMintBright : const Color(0xFF14532D))
                   .withValues(alpha: 1.0),
             ),
@@ -1662,37 +1642,36 @@ class _GradientRingPainter extends CustomPainter {
     const startAngle = -math.pi / 2; // top
     final sweepAngle = 2 * math.pi * p;
 
-   // Track ring (full circle behind) — use drawCircle so no seam/join
-final trackPaint = Paint()
-  ..color = trackColor
-  ..style = PaintingStyle.stroke
-  ..strokeWidth = strokeWidth
-  ..strokeCap = StrokeCap.butt;
+    // Track ring (full circle behind) — use drawCircle so no seam/join
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
 
-canvas.drawCircle(center, radius, trackPaint);
+    canvas.drawCircle(center, radius, trackPaint);
 
-if (p <= 0) return;
+    if (p <= 0) return;
 
-// Gradient along ONLY the progress arc: very faded start -> solid end
-final gradient = SweepGradient(
-  startAngle: startAngle,
-  endAngle: startAngle + sweepAngle,
-  tileMode: TileMode.clamp,
-  colors: [
-    startColor.withValues(alpha: 0.12), // super light at the beginning
-    endColor,                           // darker at the end
-  ],
-  stops: const [0.0, 1.0],
-);
+    // Gradient along ONLY the progress arc: very faded start -> solid end
+    final gradient = SweepGradient(
+      startAngle: startAngle,
+      endAngle: startAngle + sweepAngle,
+      tileMode: TileMode.clamp,
+      colors: [
+        startColor.withValues(alpha: 0.12), // super light at the beginning
+        endColor, // darker at the end
+      ],
+      stops: const [0.0, 1.0],
+    );
 
-final progressPaint = Paint()
-  ..shader = gradient.createShader(ringRect)
-  ..style = PaintingStyle.stroke
-  ..strokeWidth = strokeWidth
-  ..strokeCap = StrokeCap.round; // smooth rounded end
+    final progressPaint = Paint()
+      ..shader = gradient.createShader(ringRect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round; // smooth rounded end
 
-canvas.drawArc(ringRect, startAngle, sweepAngle, false, progressPaint);
-
+    canvas.drawArc(ringRect, startAngle, sweepAngle, false, progressPaint);
 
     // Manual round caps (smooth)
     Offset pointOnCircle(double angle) {
