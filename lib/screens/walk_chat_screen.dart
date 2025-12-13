@@ -81,21 +81,100 @@ class WalkChatScreen extends StatelessWidget {
           ),
 
           // Input bar will come in the next step
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Theme.of(context).dividerColor.withOpacity(0.4),
+   _MessageComposer(walkId: walkId),
+
+        ],
+      ),
+    );
+  }
+}
+class _MessageComposer extends StatefulWidget {
+  final String walkId;
+  const _MessageComposer({required this.walkId});
+
+  @override
+  State<_MessageComposer> createState() => _MessageComposerState();
+}
+
+class _MessageComposerState extends State<_MessageComposer> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+
+  Future<void> _send() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final text = _controller.text.trim();
+
+    if (uid == null || text.isEmpty || _sending) return;
+
+    setState(() => _sending = true);
+    _controller.clear();
+
+    final chatRef =
+        FirebaseFirestore.instance.collection('walk_chats').doc(widget.walkId);
+    final msgRef = chatRef.collection('messages').doc();
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        tx.set(msgRef, {
+          'senderId': uid,
+          'text': text,
+          'sentAt': FieldValue.serverTimestamp(),
+        });
+
+        tx.set(chatRef, {
+          'walkId': widget.walkId,
+          'lastMessage': text,
+          'lastMessageAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
+                decoration: InputDecoration(
+                  hintText: 'Type a message…',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-              child: const Text('Next step: message input + send button'),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            IconButton(
+              onPressed: _sending ? null : _send,
+              icon: _sending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send),
+            ),
+          ],
+        ),
       ),
     );
   }
