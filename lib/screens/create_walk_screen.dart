@@ -301,7 +301,7 @@ TextFormField(
 
                               // Gender filter
                               DropdownButtonFormField<String>(
-                                value: _gender, // 👈 binds to state
+                                initialValue: _gender, // 👈 binds to state
                                 decoration: const InputDecoration(
                                   labelText: 'Who can join?',
                                 ),

@@ -65,7 +65,7 @@ class WalkChatScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: isMe
                               ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
-                              : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
+                              : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.6),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(

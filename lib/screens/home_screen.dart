@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import '../widgets/app_bottom_nav.dart';
+
 import 'package:table_calendar/table_calendar.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -20,7 +22,6 @@ import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
 import 'dart:math' as math;
 import 'walk_chat_screen.dart';
-
 
 // ===== Dark Theme (Neo/Night Forest) palette =====
 const kDarkBg = Color(0xFF071B26); // primary background
@@ -44,6 +45,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
+
+  int notificationsCount = 0;
+
+  Future<void> _refreshNotificationsCount() async {
+    final list = await NotificationStorage.getNotifications();
+    if (!mounted) return;
+    setState(() {
+      notificationsCount = list.length;
+    });
+  }
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
@@ -248,6 +259,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _initStepCounter();
     _loadUserName(); // ✅ load saved profile name
     _loadWeeklyGoal(); // ✅ load saved weekly goal
+
+    _refreshNotificationsCount(); // ✅ load notifications count
   }
 
   @override
@@ -662,37 +675,91 @@ class _HomeScreenState extends State<HomeScreen> {
       // Deep green behind the top bar only – content sits on a card.
       backgroundColor: isDark ? kDarkBg : const Color(0xFFF7F3EA),
 
-      body: body,
-      bottomNavigationBar: BottomNavigationBar(
+      // ✅ BODY: In dark mode, we overlay floating icons (no bar space reserved).
+      body: isDark
+          ? Stack(
+              children: [
+                body, // <-- keep using your existing `body` widget/variable
+
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 10,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Center(
+                              child: IconButton(
+                                onPressed: () {
+                                  setState(() => _currentTab = 0);
+                                  _loadUserName();
+                                },
+                                icon: Icon(
+                                  Icons.home_outlined,
+                                  color: _currentTab == 0
+                                      ? kMintBright
+                                      : kTextMuted,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: IconButton(
+                                onPressed: () {
+                                  setState(() => _currentTab = 1);
+                                },
+                                icon: Icon(
+                                  Icons.map_outlined,
+                                  color: _currentTab == 1
+                                      ? kMintBright
+                                      : kTextMuted,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: IconButton(
+                                onPressed: () {
+                                  setState(() => _currentTab = 2);
+                                },
+                                icon: Icon(
+                                  Icons.person_outline,
+                                  color: _currentTab == 2
+                                      ? kMintBright
+                                      : kTextMuted,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : body,
+
+      // ✅ Bottom bar ONLY in light mode
+bottomNavigationBar: isDark
+    ? null
+    : AppBottomNav(
+        isDark: false,
         currentIndex: _currentTab,
         onTap: (index) {
-          setState(() {
-            _currentTab = index;
-          });
-          if (index == 0) {
-            _loadUserName();
-          }
+          setState(() => _currentTab = index);
+          if (index == 0) _loadUserName();
         },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: isDark ? kDarkSurface2 : Colors.white,
-        elevation: 0,
-        selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
-        unselectedItemColor: isDark ? kTextMuted : Colors.black54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            label: 'Nearby',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
+        selectedColor: kMintBright,
+        unselectedColor: kTextMuted,
       ),
+
     );
   }
 
@@ -758,27 +825,35 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: kTextPrimary,
                               ),
                             ),
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.red,
-                                ),
-                                child: const Text(
-                                  '3',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
+
+                            // ✅ Badge only when there are notifications
+                            if (notificationsCount > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: kMintBright, // ✅ matches your theme
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    notificationsCount.toString(),
+                                    style: const TextStyle(
+                                      color: kOnMint,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
+
                       const SizedBox(width: 12),
                       GestureDetector(
                         onTap: _openProfileQuickSheet,
@@ -1006,7 +1081,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                         _StepsRing(
-                                          steps: 9000,
+                                          steps: _sessionSteps,
                                           goal: 10000, // you can change later
                                           isDark: isDark,
                                         ),
@@ -1246,20 +1321,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ],
                                     ),
                                     ElevatedButton(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const WalkChatScreen(
-          walkId: 'walk_test_1',
-          walkTitle: 'Test Walk Chat',
-        ),
-      ),
-    );
-  },
-  child: const Text('Open Chat (Test)'),
-),
-
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const WalkChatScreen(
+                                                  walkId: 'walk_test_1',
+                                                  walkTitle: 'Test Walk Chat',
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text('Open Chat (Test)'),
+                                    ),
 
                                     const SizedBox(height: 20),
 
