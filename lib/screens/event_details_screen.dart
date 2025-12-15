@@ -1,6 +1,6 @@
 // lib/screens/event_details_screen.dart
 import 'package:flutter/material.dart';
-
+import 'walk_chat_screen.dart';
 import '../models/walk_event.dart';
 
 class EventDetailsScreen extends StatelessWidget {
@@ -127,7 +127,6 @@ class EventDetailsScreen extends StatelessWidget {
     );
 
     if (ok == true) {
-      // In future, send selectedReason + noteController.text to backend
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Thank you. Your report was submitted: $selectedReason'),
@@ -144,9 +143,8 @@ class EventDetailsScreen extends StatelessWidget {
     final joinText = event.joined ? 'Leave walk' : 'Join walk';
 
     final canInterested = !event.isOwner && !event.cancelled;
-    final interestedText = event.interested
-        ? 'Remove from interested'
-        : 'Mark as interested';
+    final interestedText =
+        event.interested ? 'Remove from interested' : 'Mark as interested';
 
     return Scaffold(
       appBar: AppBar(
@@ -239,8 +237,9 @@ class EventDetailsScreen extends StatelessWidget {
             // Meeting point
             Text(
               'Meeting point',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             if (event.meetingPlaceName != null &&
@@ -260,8 +259,9 @@ class EventDetailsScreen extends StatelessWidget {
                 event.description!.trim().isNotEmpty) ...[
               Text(
                 'Description',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(event.description!),
@@ -309,6 +309,32 @@ class EventDetailsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
+            // ✅ Group chat button (ONLY here)
+            if ((event.joined || event.isOwner) && event.firestoreId.isNotEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    debugPrint('OPEN WALK CHAT: walk_${event.id}');
+
+                    Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (_) => WalkChatScreen(
+      walkId: event.firestoreId, // ✅ raw Firestore doc id
+      walkTitle: event.title,
+    ),
+  ),
+);
+
+                  },
+                  icon: const Icon(Icons.forum_outlined),
+                  label: const Text('Group Chat'),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Interested button
             SizedBox(
               width: double.infinity,
@@ -320,9 +346,7 @@ class EventDetailsScreen extends StatelessWidget {
                       }
                     : null,
                 icon: Icon(
-                  event.interested
-                      ? Icons.star
-                      : Icons.star_border_outlined,
+                  event.interested ? Icons.star : Icons.star_border_outlined,
                   color: event.interested ? Colors.amber : null,
                 ),
                 label: Text(interestedText),
