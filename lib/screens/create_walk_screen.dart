@@ -1,6 +1,8 @@
 // lib/screens/create_walk_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/walk_event.dart';
 import 'map_pick_screen.dart';
@@ -115,32 +117,65 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
+Future<void> _submit() async {
+  if (!_formKey.currentState!.validate()) return;
+  _formKey.currentState!.save();
 
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('You must be logged in to create a walk.')),
+    );
+    return;
+  }
+
+  // 1) Build the Firestore payload
+  final payload = <String, dynamic>{
+    'title': _title,
+    'dateTime': _dateTime.toIso8601String(),
+    'distanceKm': _distanceKm,
+    'gender': _gender,
+    'hostUid': uid,
+    'cancelled': false,
+    'meetingPlaceName': _meetingPlace.isEmpty ? null : _meetingPlace,
+    'meetingLat': _meetingLatLng?.latitude,
+    'meetingLng': _meetingLatLng?.longitude,
+    'description': _description.isEmpty ? null : _description,
+    'createdAt': FieldValue.serverTimestamp(),
+  };
+
+  try {
+    // 2) Create walk doc in Firestore
+    final docRef = await FirebaseFirestore.instance
+        .collection('walks')
+        .add(payload);
+
+    // 3) Build your local WalkEvent with the REAL firestoreId
     final newEvent = WalkEvent(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: docRef.id,              // keep your app stable
+      firestoreId: docRef.id,     // ✅ this is what chat uses
       title: _title,
       dateTime: _dateTime,
       distanceKm: _distanceKm,
       gender: _gender,
       isOwner: true,
-      joined: false, // host but not "joined" by default
-
-      // Optional text name
+      joined: false,
       meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
-
-      // Coordinates from map (if any)
       meetingLat: _meetingLatLng?.latitude,
       meetingLng: _meetingLatLng?.longitude,
-
       description: _description.isEmpty ? null : _description,
     );
 
+    // 4) Notify HomeScreen + go back
     widget.onEventCreated(newEvent);
     widget.onCreatedNavigateHome();
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to create walk: $e')),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +510,7 @@ const SizedBox(height: 16),
                               SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-                                  onPressed: _submit,
+                                  onPressed: () => _submit(),
                                   style: FilledButton.styleFrom(
                                     backgroundColor:
                                         const Color(0xFF14532D),

@@ -1,7 +1,12 @@
 // lib/models/walk_event.dart
 
 class WalkEvent {
+  // Local / app-level id (can be timestamp-based in your current code)
   final String id;
+
+  // ✅ Firestore document ID in /walks (THIS is what we use for chat ids)
+  final String firestoreId;
+
   final String title;
   final DateTime dateTime;
   final double distanceKm;
@@ -35,6 +40,7 @@ class WalkEvent {
 
   WalkEvent({
     required this.id,
+    required this.firestoreId,
     required this.title,
     required this.dateTime,
     required this.distanceKm,
@@ -55,6 +61,7 @@ class WalkEvent {
 
   WalkEvent copyWith({
     String? id,
+    String? firestoreId,
     String? title,
     DateTime? dateTime,
     double? distanceKm,
@@ -74,6 +81,7 @@ class WalkEvent {
   }) {
     return WalkEvent(
       id: id ?? this.id,
+      firestoreId: firestoreId ?? this.firestoreId,
       title: title ?? this.title,
       dateTime: dateTime ?? this.dateTime,
       distanceKm: distanceKm ?? this.distanceKm,
@@ -98,6 +106,7 @@ class WalkEvent {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'firestoreId': firestoreId, // ✅ keep it so we can restore later
       'title': title,
       'dateTime': dateTime.toIso8601String(),
       'distanceKm': distanceKm,
@@ -128,6 +137,7 @@ class WalkEvent {
 
     return WalkEvent(
       id: map['id'] ?? '',
+      firestoreId: map['firestoreId'] ?? map['id'] ?? '',
       title: map['title'] ?? '',
       dateTime: DateTime.tryParse(map['dateTime'] ?? '') ?? DateTime.now(),
       distanceKm: (map['distanceKm'] is int)

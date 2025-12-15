@@ -52,4 +52,21 @@ class NotificationStorage {
     list[index] = updated;
     await _save(list);
   }
+
+    /// Mark all notifications as read (so badge becomes 0)
+  static Future<void> markAllRead() async {
+    final list = await getNotifications();
+    final updated = list
+        .map((n) => n.isRead ? n : n.copyWith(isRead: true))
+        .toList();
+    await _save(updated);
+  }
+
+    // ✅ Count only unread notifications
+  static Future<int> getUnreadCount() async {
+    final list = await getNotifications();
+    return list.where((n) => !n.isRead).length;
+  }
+
+
 }

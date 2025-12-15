@@ -1,10 +1,7 @@
 // lib/screens/home_screen.dart
 import 'dart:async';
 import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
-import '../widgets/app_bottom_nav.dart';
-
 import 'package:table_calendar/table_calendar.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -22,6 +19,9 @@ import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
 import 'dart:math' as math;
 import 'walk_chat_screen.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ===== Dark Theme (Neo/Night Forest) palette =====
 const kDarkBg = Color(0xFF071B26); // primary background
@@ -45,15 +45,49 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
+  void _listenToWalks() {
+    _walksSub?.cancel();
 
-  int notificationsCount = 0;
+    _walksSub = FirebaseFirestore.instance
+        .collection('walks')
+        .snapshots()
+        .listen((snap) {
+          final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
-  Future<void> _refreshNotificationsCount() async {
-    final list = await NotificationStorage.getNotifications();
-    if (!mounted) return;
-    setState(() {
-      notificationsCount = list.length;
-    });
+          final loaded = snap.docs.map((doc) {
+            final data = Map<String, dynamic>.from(
+              doc.data() as Map<String, dynamic>,
+            );
+
+            // ✅ always inject real Firestore ids
+            data['firestoreId'] = doc.id;
+            data['id'] ??= doc.id;
+
+            // ✅ compute ownership from hostUid (don’t trust stored isOwner)
+            final hostUid = data['hostUid'] as String?;
+            data['isOwner'] =
+                (currentUid != null &&
+                hostUid != null &&
+                hostUid == currentUid);
+
+            // ✅ compute JOINED from joinedUids array
+            final joinedUids =
+                (data['joinedUids'] as List?)?.whereType<String>().toList() ??
+                [];
+
+            data['joined'] =
+                (currentUid != null && joinedUids.contains(currentUid));
+
+            return WalkEvent.fromMap(data);
+          }).toList();
+
+          if (!mounted) return;
+          setState(() {
+            _events
+              ..clear()
+              ..addAll(loaded);
+          });
+        });
   }
 
   /// All events (hosted by user + nearby).
@@ -65,6 +99,8 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _selectedDay = DateTime.now();
 
   // --- Step counter (Android, session-based for now) ---
+  StreamSubscription<QuerySnapshot>? _walksSub;
+
   StreamSubscription<StepCount>? _stepSubscription;
   int _sessionSteps = 0;
   int? _baselineSteps;
@@ -259,12 +295,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _initStepCounter();
     _loadUserName(); // ✅ load saved profile name
     _loadWeeklyGoal(); // ✅ load saved weekly goal
-
-    _refreshNotificationsCount(); // ✅ load notifications count
+    _listenToWalks();
   }
 
   @override
   void dispose() {
+    _walksSub?.cancel();
     _stepSubscription?.cancel();
     super.dispose();
   }
@@ -355,27 +391,58 @@ class _HomeScreenState extends State<HomeScreen> {
     NotificationService.instance.showNearbyWalkAlert(event);
   }
 
-  void _toggleJoin(WalkEvent event) {
+  Future<void> _toggleJoin(WalkEvent event) async {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please log in to join walks.')),
+    );
+    return;
+  }
+
+  // ✅ Always use Firestore doc id
+  final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
+  final docRef = FirebaseFirestore.instance.collection('walks').doc(walkId);
+
+  final bool wasJoined = event.joined;
+  final bool willJoin = !wasJoined;
+
+  // ✅ Optimistic UI update
+  setState(() {
+    final index = _events.indexWhere((e) => e.id == event.id);
+    if (index == -1) return;
+    _events[index] = _events[index].copyWith(joined: willJoin);
+  });
+
+  try {
+    // ✅ Persist to Firestore
+    await docRef.update({
+      'joinedUids': willJoin
+          ? FieldValue.arrayUnion([uid])
+          : FieldValue.arrayRemove([uid]),
+    });
+
+    // 🔔 Notifications
+    final updated = event.copyWith(joined: willJoin);
+    if (willJoin) {
+      NotificationService.instance.scheduleWalkReminder(updated);
+    } else {
+      NotificationService.instance.cancelWalkReminder(updated);
+    }
+  } catch (e) {
+    // ❌ Roll back if Firestore failed
     setState(() {
       final index = _events.indexWhere((e) => e.id == event.id);
       if (index == -1) return;
-
-      final current = _events[index];
-      final bool wasJoined = current.joined;
-      final updated = current.copyWith(joined: !current.joined);
-
-      _events[index] = updated;
-
-      // 🔔 If user just JOINED → schedule reminder
-      if (!wasJoined && updated.joined) {
-        NotificationService.instance.scheduleWalkReminder(updated);
-      }
-      // 🔕 If user just LEFT → cancel reminder
-      else if (wasJoined && !updated.joined) {
-        NotificationService.instance.cancelWalkReminder(updated);
-      }
+      _events[index] = _events[index].copyWith(joined: wasJoined);
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to update join status: $e')),
+    );
   }
+}
+
 
   void _toggleInterested(WalkEvent event) {
     setState(() {
@@ -404,7 +471,8 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => EventDetailsScreen(
           event: event,
-          onToggleJoin: _toggleJoin,
+          onToggleJoin: (e) => _toggleJoin(e),
+
           onToggleInterested: _toggleInterested,
           onCancelHosted: _cancelHostedWalk,
         ),
@@ -638,7 +706,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         body = NearbyWalksScreen(
           events: _nearbyWalks,
-          onToggleJoin: _toggleJoin,
+          onToggleJoin: (e) => _toggleJoin(e),
+
           onToggleInterested: _toggleInterested,
           onTapEvent: _navigateToDetails,
           onCancelHosted: _cancelHostedWalk,
@@ -675,91 +744,37 @@ class _HomeScreenState extends State<HomeScreen> {
       // Deep green behind the top bar only – content sits on a card.
       backgroundColor: isDark ? kDarkBg : const Color(0xFFF7F3EA),
 
-      // ✅ BODY: In dark mode, we overlay floating icons (no bar space reserved).
-      body: isDark
-          ? Stack(
-              children: [
-                body, // <-- keep using your existing `body` widget/variable
-
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 10,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Center(
-                              child: IconButton(
-                                onPressed: () {
-                                  setState(() => _currentTab = 0);
-                                  _loadUserName();
-                                },
-                                icon: Icon(
-                                  Icons.home_outlined,
-                                  color: _currentTab == 0
-                                      ? kMintBright
-                                      : kTextMuted,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Center(
-                              child: IconButton(
-                                onPressed: () {
-                                  setState(() => _currentTab = 1);
-                                },
-                                icon: Icon(
-                                  Icons.map_outlined,
-                                  color: _currentTab == 1
-                                      ? kMintBright
-                                      : kTextMuted,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Center(
-                              child: IconButton(
-                                onPressed: () {
-                                  setState(() => _currentTab = 2);
-                                },
-                                icon: Icon(
-                                  Icons.person_outline,
-                                  color: _currentTab == 2
-                                      ? kMintBright
-                                      : kTextMuted,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : body,
-
-      // ✅ Bottom bar ONLY in light mode
-bottomNavigationBar: isDark
-    ? null
-    : AppBottomNav(
-        isDark: false,
+      body: body,
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
         onTap: (index) {
-          setState(() => _currentTab = index);
-          if (index == 0) _loadUserName();
+          setState(() {
+            _currentTab = index;
+          });
+          if (index == 0) {
+            _loadUserName();
+          }
         },
-        selectedColor: kMintBright,
-        unselectedColor: kTextMuted,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: isDark ? kDarkSurface2 : Colors.white,
+        elevation: 0,
+        selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
+        unselectedItemColor: isDark ? kTextMuted : Colors.black54,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map_outlined),
+            label: 'Nearby',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
+        ],
       ),
-
     );
   }
 
@@ -825,35 +840,27 @@ bottomNavigationBar: isDark
                                 color: kTextPrimary,
                               ),
                             ),
-
-                            // ✅ Badge only when there are notifications
-                            if (notificationsCount > 0)
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: kMintBright, // ✅ matches your theme
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    notificationsCount.toString(),
-                                    style: const TextStyle(
-                                      color: kOnMint,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red,
+                                ),
+                                child: const Text(
+                                  '3',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
                                   ),
                                 ),
                               ),
+                            ),
                           ],
                         ),
                       ),
-
                       const SizedBox(width: 12),
                       GestureDetector(
                         onTap: _openProfileQuickSheet,
@@ -1081,7 +1088,7 @@ bottomNavigationBar: isDark
                                         ),
                                         const SizedBox(width: 12),
                                         _StepsRing(
-                                          steps: _sessionSteps,
+                                          steps: 9000,
                                           goal: 10000, // you can change later
                                           isDark: isDark,
                                         ),
@@ -1801,3 +1808,4 @@ class _GradientRingPainter extends CustomPainter {
         oldDelegate.endColor != endColor;
   }
 }
+
