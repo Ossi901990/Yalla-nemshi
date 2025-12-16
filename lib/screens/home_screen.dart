@@ -51,44 +51,44 @@ class _HomeScreenState extends State<HomeScreen> {
     _walksSub = FirebaseFirestore.instance
         .collection('walks')
         .snapshots()
-        .listen((snap) {
-          final currentUid = FirebaseAuth.instance.currentUser?.uid;
+        .listen(
+          (snap) {
+            final currentUid = FirebaseAuth.instance.currentUser?.uid;
+            debugPrint('WALKS SNAP: docs=${snap.docs.length} uid=$currentUid');
 
-          final loaded = snap.docs.map((doc) {
-            final data = Map<String, dynamic>.from(
-  doc.data(),
-);
+            final loaded = snap.docs.map((doc) {
+              final data = Map<String, dynamic>.from(
+                doc.data() as Map<String, dynamic>,
+              );
+              data['firestoreId'] = doc.id;
+              data['id'] ??= doc.id;
 
+              final hostUid = data['hostUid'] as String?;
+              data['isOwner'] =
+                  (currentUid != null &&
+                  hostUid != null &&
+                  hostUid == currentUid);
 
-            // ✅ always inject real Firestore ids
-            data['firestoreId'] = doc.id;
-            data['id'] ??= doc.id;
+              final joinedUids =
+                  (data['joinedUids'] as List?)?.whereType<String>().toList() ??
+                  [];
+              data['joined'] =
+                  (currentUid != null && joinedUids.contains(currentUid));
 
-            // ✅ compute ownership from hostUid (don’t trust stored isOwner)
-            final hostUid = data['hostUid'] as String?;
-            data['isOwner'] =
-                (currentUid != null &&
-                hostUid != null &&
-                hostUid == currentUid);
+              return WalkEvent.fromMap(data);
+            }).toList();
 
-            // ✅ compute JOINED from joinedUids array
-            final joinedUids =
-                (data['joinedUids'] as List?)?.whereType<String>().toList() ??
-                [];
-
-            data['joined'] =
-                (currentUid != null && joinedUids.contains(currentUid));
-
-            return WalkEvent.fromMap(data);
-          }).toList();
-
-          if (!mounted) return;
-          setState(() {
-            _events
-              ..clear()
-              ..addAll(loaded);
-          });
-        });
+            if (!mounted) return;
+            setState(() {
+              _events
+                ..clear()
+                ..addAll(loaded);
+            });
+          },
+          onError: (e) {
+            debugPrint('WALKS STREAM ERROR: $e');
+          },
+        );
   }
 
   /// All events (hosted by user + nearby).
@@ -101,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- Step counter (Android, session-based for now) ---
   StreamSubscription<QuerySnapshot>? _walksSub;
+  StreamSubscription<User?>? _authSub;
 
   StreamSubscription<StepCount>? _stepSubscription;
   int _sessionSteps = 0;
@@ -294,13 +295,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initStepCounter();
-    _loadUserName(); // ✅ load saved profile name
-    _loadWeeklyGoal(); // ✅ load saved weekly goal
-    _listenToWalks();
+    _loadUserName();
+    _loadWeeklyGoal();
+    _listenToWalks(); // ✅ start listening immediately on app start
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      // When user switches accounts, re-subscribe so Firestore reads work
+      _listenToWalks();
+    });
   }
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _walksSub?.cancel();
     _stepSubscription?.cancel();
     super.dispose();
@@ -393,57 +399,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _toggleJoin(WalkEvent event) async {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
-  if (uid == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please log in to join walks.')),
-    );
-    return;
-  }
-
-  // ✅ Always use Firestore doc id
-  final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
-  final docRef = FirebaseFirestore.instance.collection('walks').doc(walkId);
-
-  final bool wasJoined = event.joined;
-  final bool willJoin = !wasJoined;
-
-  // ✅ Optimistic UI update
-  setState(() {
-    final index = _events.indexWhere((e) => e.id == event.id);
-    if (index == -1) return;
-    _events[index] = _events[index].copyWith(joined: willJoin);
-  });
-
-  try {
-    // ✅ Persist to Firestore
-    await docRef.update({
-      'joinedUids': willJoin
-          ? FieldValue.arrayUnion([uid])
-          : FieldValue.arrayRemove([uid]),
-    });
-
-    // 🔔 Notifications
-    final updated = event.copyWith(joined: willJoin);
-    if (willJoin) {
-      NotificationService.instance.scheduleWalkReminder(updated);
-    } else {
-      NotificationService.instance.cancelWalkReminder(updated);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to join walks.')),
+      );
+      return;
     }
-  } catch (e) {
-    // ❌ Roll back if Firestore failed
+
+    // ✅ Always use Firestore doc id
+    final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
+    final docRef = FirebaseFirestore.instance.collection('walks').doc(walkId);
+
+    final bool wasJoined = event.joined;
+    final bool willJoin = !wasJoined;
+
+    // ✅ Optimistic UI update (UI only — NO Firestore here)
     setState(() {
-      final index = _events.indexWhere((e) => e.id == event.id);
+      final index = _events.indexWhere((e) {
+        final idA = e.firestoreId.isNotEmpty ? e.firestoreId : e.id;
+        final idB = walkId;
+        return idA == idB;
+      });
       if (index == -1) return;
-      _events[index] = _events[index].copyWith(joined: wasJoined);
+      _events[index] = _events[index].copyWith(joined: willJoin);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to update join status: $e')),
-    );
-  }
-}
+    try {
+      // ✅ Persist to Firestore
+      await docRef.update({
+        'joinedUids': willJoin
+            ? FieldValue.arrayUnion([uid])
+            : FieldValue.arrayRemove([uid]),
+      });
 
+      // 🔔 Notifications
+      final updated = event.copyWith(joined: willJoin);
+      if (willJoin) {
+        NotificationService.instance.scheduleWalkReminder(updated);
+      } else {
+        NotificationService.instance.cancelWalkReminder(updated);
+      }
+    } catch (e) {
+      // ❌ Roll back if Firestore failed
+      setState(() {
+        final index = _events.indexWhere((e2) {
+          final idA = e2.firestoreId.isNotEmpty ? e2.firestoreId : e2.id;
+          return idA == walkId;
+        });
+        if (index == -1) return;
+        _events[index] = _events[index].copyWith(joined: wasJoined);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update join status: $e')),
+      );
+    }
+  }
 
   void _toggleInterested(WalkEvent event) {
     setState(() {
@@ -1328,21 +1340,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ],
                                     ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const WalkChatScreen(
-                                                  walkId: 'walk_test_1',
-                                                  walkTitle: 'Test Walk Chat',
-                                                ),
-                                          ),
-                                        );
-                                      },
-                                      child: const Text('Open Chat (Test)'),
-                                    ),
 
                                     const SizedBox(height: 20),
 
@@ -1438,7 +1435,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
+//end of homescreeninstant
 // ===== Smaller components =====
 
 class _WeeklySummaryCard extends StatelessWidget {
@@ -1809,4 +1806,3 @@ class _GradientRingPainter extends CustomPainter {
         oldDelegate.endColor != endColor;
   }
 }
-

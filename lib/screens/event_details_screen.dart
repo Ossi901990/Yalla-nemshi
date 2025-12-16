@@ -329,7 +329,7 @@ class EventDetailsScreen extends StatelessWidget {
 
                   },
                   icon: const Icon(Icons.forum_outlined),
-                  label: const Text('Group Chat'),
+                  label: const Text('Chat with participants'),
                 ),
               ),
               const SizedBox(height: 16),
