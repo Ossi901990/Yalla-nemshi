@@ -60,15 +60,20 @@ Future<void> _signInWithGoogle() async {
     final googleProvider = GoogleAuthProvider();
     googleProvider.addScope('email');
 
-    await _auth.signInWithPopup(googleProvider);
+await _auth.signInWithPopup(googleProvider);
 
-    // ✅ Success → go to home
-    Navigator.of(context).pushReplacementNamed('/home');
-  } on FirebaseAuthException catch (e) {
+if (!mounted) return;
+
+// ✅ Success → go to home
+Navigator.of(context).pushReplacementNamed('/home');
+
+    } on FirebaseAuthException catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Google sign-in failed: ${e.message ?? ''}')),
     );
-  } catch (e) {
+  }
+ catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Google sign-in failed. Please try again.'),
@@ -99,13 +104,17 @@ Future<void> _login() async {
   }
 
   try {
-    await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+await _auth.signInWithEmailAndPassword(
+  email: email,
+  password: password,
+);
 
-    // ✅ Success → go to home
-    Navigator.of(context).pushReplacementNamed('/home');
+if (!mounted) return;
+
+// ✅ Success → go to home
+Navigator.of(context).pushReplacementNamed('/home');
+
+
   } on FirebaseAuthException catch (e) {
     String message = 'Login failed. Please try again.';
 
@@ -135,7 +144,7 @@ Future<void> _login() async {
   }
 
   void _onSocialTap(String provider) {
-    // TODO: hook to Google / Microsoft / Facebook / Apple
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$provider sign-in coming soon ✨')),
     );
@@ -160,9 +169,10 @@ Future<void> _login() async {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    kBgTop.withOpacity(0.7),
-                    kBgMid.withOpacity(0.85),
-                    kBgBottom.withOpacity(0.9),
+                   kBgTop.withValues(alpha: 0.7),
+kBgMid.withValues(alpha: 0.85),
+kBgBottom.withValues(alpha: 0.9),
+
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -184,9 +194,9 @@ Future<void> _login() async {
                   width: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: kCardOverlay.withOpacity(0.35),
+                    color: kCardOverlay.withValues(alpha: 0.35),
                     border: Border.all(
-                      color: kCardBorder.withOpacity(0.2),
+                      color: kCardBorder.withValues(alpha: 0.2),
                     ),
                   ),
                   child: const Icon(
@@ -211,13 +221,13 @@ Future<void> _login() async {
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                       decoration: BoxDecoration(
-                        color: kCardOverlay.withOpacity(0.45),
+                        color: kCardOverlay.withValues(alpha: 0.45),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(32),
                           topRight: Radius.circular(32),
                         ),
                         border: Border.all(
-                          color: kCardBorder.withOpacity(0.15),
+                          color: kCardBorder.withValues(alpha: 0.15),
                         ),
                       ),
                       child: SingleChildScrollView(
@@ -238,7 +248,7 @@ Future<void> _login() async {
                               'Log in to continue walking with Yalla Nemshi',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: kSecondaryText.withOpacity(0.7),
+                                color: kSecondaryText.withValues(alpha: 0.7),
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -265,12 +275,12 @@ Future<void> _login() async {
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: () {
-                                  // TODO: password reset
+                                  
                                 },
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   foregroundColor:
-                                      kSecondaryText.withOpacity(0.8),
+                                      kSecondaryText.withValues(alpha: 0.8),
                                   textStyle: const TextStyle(fontSize: 12),
                                 ),
                                 child: const Text('Forgot Password?'),
@@ -291,7 +301,7 @@ Future<void> _login() async {
                                 Expanded(
                                   child: Divider(
                                     color:
-                                        kSecondaryText.withOpacity(0.2),
+                                        kSecondaryText.withValues(alpha: 0.2),
                                   ),
                                 ),
                                 Padding(
@@ -301,7 +311,7 @@ Future<void> _login() async {
                                     'or continue with',
                                     style: TextStyle(
                                       color: kSecondaryText
-                                          .withOpacity(0.7),
+                                          .withValues(alpha: 0.7),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -309,7 +319,7 @@ Future<void> _login() async {
                                 Expanded(
                                   child: Divider(
                                     color:
-                                        kSecondaryText.withOpacity(0.2),
+                                        kSecondaryText.withValues(alpha: 0.2),
                                   ),
                                 ),
                               ],
@@ -353,7 +363,7 @@ Future<void> _login() async {
                                   "Don’t have an account? ",
                                   style: TextStyle(
                                     color: kSecondaryText
-                                        .withOpacity(0.7),
+                                        .withValues(alpha: 0.7),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -397,7 +407,7 @@ Future<void> _login() async {
         Text(
           label,
           style: TextStyle(
-            color: kSecondaryText.withOpacity(0.8),
+            color: kSecondaryText.withValues(alpha: 0.8),
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -411,25 +421,25 @@ Future<void> _login() async {
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(
-              color: kHintText.withOpacity(0.5),
+              color: kHintText.withValues(alpha: 0.5),
             ),
             prefixIcon: Icon(
               icon,
-              color: kIconColor.withOpacity(0.9),
+              color: kIconColor.withValues(alpha: 0.9),
             ),
             filled: true,
-            fillColor: kFieldFill.withOpacity(0.06),
+            fillColor: kFieldFill.withValues(alpha: 0.06),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: kFieldBorder.withOpacity(0.15),
+                color: kFieldBorder.withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: kFieldBorder.withOpacity(0.8),
+                color: kFieldBorder.withValues(alpha: 0.8),
                 width: 1.3,
               ),
             ),
@@ -509,13 +519,13 @@ class _SocialIconButton extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: kSocialGlassFill.withOpacity(0.08),
+            color: kSocialGlassFill.withValues(alpha: 0.08),
             border: Border.all(
-              color: kSocialGlassBorder.withOpacity(0.2),
+              color: kSocialGlassBorder.withValues(alpha: 0.2),
             ),
             boxShadow: [
               BoxShadow(
-                color: kSocialShadow.withOpacity(0.4),
+                color: kSocialShadow.withValues(alpha: 0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),

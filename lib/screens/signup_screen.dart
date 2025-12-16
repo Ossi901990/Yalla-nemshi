@@ -108,7 +108,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _onSocialTap(String provider) {
-    // TODO: hook to Google / Microsoft / Facebook / Apple
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$provider sign-up coming soon ✨')),
     );

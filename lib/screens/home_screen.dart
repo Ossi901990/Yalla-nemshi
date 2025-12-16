@@ -56,8 +56,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
           final loaded = snap.docs.map((doc) {
             final data = Map<String, dynamic>.from(
-              doc.data() as Map<String, dynamic>,
-            );
+  doc.data(),
+);
+
 
             // ✅ always inject real Firestore ids
             data['firestoreId'] = doc.id;
