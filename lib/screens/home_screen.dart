@@ -291,18 +291,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- Step counter setup (Android only for now) ---
 
-  @override
-  void initState() {
-    super.initState();
-    _initStepCounter();
-    _loadUserName();
-    _loadWeeklyGoal();
-    _listenToWalks(); // ✅ start listening immediately on app start
-    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-      // When user switches accounts, re-subscribe so Firestore reads work
-      _listenToWalks();
-    });
+@override
+void initState() {
+  super.initState();
+  _initStepCounter();
+  _loadUserName();
+  _loadWeeklyGoal();
+  _listenToWalks();
+  Future.microtask(() async {
+  try {
+    final snap = await FirebaseFirestore.instance.collection('walks').get();
+    debugPrint('WALKS GET: docs=${snap.docs.length} uid=${FirebaseAuth.instance.currentUser?.uid}');
+  } catch (e) {
+    debugPrint('WALKS GET ERROR: $e');
   }
+});
+
+
+  _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+    // ✅ re-subscribe when user switches accounts
+    _listenToWalks();
+  });
+}
+
 
   @override
   void dispose() {
@@ -716,26 +727,41 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         body = _buildHomeTab(context);
         break;
-      case 1:
-        body = NearbyWalksScreen(
-          events: _nearbyWalks,
-          onToggleJoin: (e) => _toggleJoin(e),
+case 1:
+  {
+    debugPrint(
+      'NEARBY TAB: events=${_events.length} nearby=${_nearbyWalks.length} '
+      'uid=${FirebaseAuth.instance.currentUser?.uid}',
+    );
 
-          onToggleInterested: _toggleInterested,
-          onTapEvent: _navigateToDetails,
-          onCancelHosted: _cancelHostedWalk,
-          // Stats for quick profile sheet + full profile screen
-          walksJoined: _walksJoined,
-          eventsHosted: _eventsHosted,
-          totalKm: _totalKmJoined,
-          interestedCount: _interestedCount,
-          weeklyKm: _weeklyKm,
-          weeklyWalks: _weeklyWalkCount,
-          streakDays: _streakDays,
-          weeklyGoalKm: _weeklyGoalKm,
-          userName: _userName,
-        );
-        break;
+    if (_events.isNotEmpty) {
+      final e0 = _events.first;
+      debugPrint(
+        'SAMPLE WALK: title=${e0.title} isOwner=${e0.isOwner} cancelled=${e0.cancelled} '
+        'joined=${e0.joined} firestoreId=${e0.firestoreId}',
+      );
+    }
+
+    body = NearbyWalksScreen(
+      events: _nearbyWalks,
+      onToggleJoin: (e) => _toggleJoin(e),
+      onToggleInterested: _toggleInterested,
+      onTapEvent: _navigateToDetails,
+      onCancelHosted: _cancelHostedWalk,
+      walksJoined: _walksJoined,
+      eventsHosted: _eventsHosted,
+      totalKm: _totalKmJoined,
+      interestedCount: _interestedCount,
+      weeklyKm: _weeklyKm,
+      weeklyWalks: _weeklyWalkCount,
+      streakDays: _streakDays,
+      weeklyGoalKm: _weeklyGoalKm,
+      userName: _userName,
+    ); // ✅ THIS LINE MUST EXIST
+
+    break;
+  }
+
 
       case 2:
       default:

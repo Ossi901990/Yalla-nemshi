@@ -106,7 +106,7 @@ class WalkEvent {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'firestoreId': firestoreId, // ✅ keep it so we can restore later
+      'firestoreId': firestoreId,
       'title': title,
       'dateTime': dateTime.toIso8601String(),
       'distanceKm': distanceKm,
@@ -126,42 +126,72 @@ class WalkEvent {
     };
   }
 
-  factory WalkEvent.fromMap(Map<String, dynamic> map) {
-    List<String> parsedTags = [];
-    if (map['tags'] is List) {
-      parsedTags = (map['tags'] as List)
-          .whereType<String>()
-          .map((e) => e)
-          .toList();
+  // ✅ Helpers: safe parsing (prevents "Null is not a subtype of num")
+  static double _toDouble(dynamic v, {double fallback = 0.0}) {
+    if (v == null) return fallback;
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
+  static bool _toBool(dynamic v, {bool fallback = false}) {
+    if (v == null) return fallback;
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    if (v is String) {
+      final s = v.toLowerCase().trim();
+      if (s == 'true' || s == '1' || s == 'yes') return true;
+      if (s == 'false' || s == '0' || s == 'no') return false;
     }
+    return fallback;
+  }
+
+  static String _toStringSafe(dynamic v, {String fallback = ''}) {
+    if (v == null) return fallback;
+    if (v is String) return v;
+    return v.toString();
+  }
+
+  factory WalkEvent.fromMap(Map<String, dynamic> map) {
+    final parsedTags = (map['tags'] is List)
+        ? (map['tags'] as List).whereType<String>().toList()
+        : <String>[];
+
+    final String id = _toStringSafe(map['id']);
+    final String firestoreId = _toStringSafe(map['firestoreId'], fallback: id);
+
+    // dateTime can arrive as ISO string. If invalid/missing -> now.
+    final String dtStr = _toStringSafe(map['dateTime']);
+    final DateTime dateTime = DateTime.tryParse(dtStr) ?? DateTime.now();
+
+    // ✅ distanceKm might be null in old docs -> 0.0 (prevents crash)
+    final double distanceKm = _toDouble(map['distanceKm'], fallback: 0.0);
+
+    // ✅ meetingLat/Lng might be null -> keep null
+    final double? meetingLat =
+        map['meetingLat'] == null ? null : _toDouble(map['meetingLat']);
+    final double? meetingLng =
+        map['meetingLng'] == null ? null : _toDouble(map['meetingLng']);
 
     return WalkEvent(
-      id: map['id'] ?? '',
-      firestoreId: map['firestoreId'] ?? map['id'] ?? '',
-      title: map['title'] ?? '',
-      dateTime: DateTime.tryParse(map['dateTime'] ?? '') ?? DateTime.now(),
-      distanceKm: (map['distanceKm'] is int)
-          ? (map['distanceKm'] as int).toDouble()
-          : (map['distanceKm'] ?? 0.0) is num
-              ? (map['distanceKm'] as num).toDouble()
-              : 0.0,
-      gender: map['gender'] ?? 'Mixed',
-      isOwner: map['isOwner'] ?? false,
-      joined: map['joined'] ?? false,
-      interested: map['interested'] ?? false,
-      meetingPlaceName: map['meetingPlaceName'],
-      meetingLat: map['meetingLat'] != null
-          ? (map['meetingLat'] as num).toDouble()
-          : null,
-      meetingLng: map['meetingLng'] != null
-          ? (map['meetingLng'] as num).toDouble()
-          : null,
-      description: map['description'],
-      cancelled: map['cancelled'] ?? false,
+      id: id,
+      firestoreId: firestoreId,
+      title: _toStringSafe(map['title']),
+      dateTime: dateTime,
+      distanceKm: distanceKm,
+      gender: _toStringSafe(map['gender'], fallback: 'Mixed'),
+      isOwner: _toBool(map['isOwner']),
+      joined: _toBool(map['joined']),
+      interested: _toBool(map['interested']),
+      meetingPlaceName: map['meetingPlaceName'] as String?,
+      meetingLat: meetingLat,
+      meetingLng: meetingLng,
+      description: map['description'] as String?,
+      cancelled: _toBool(map['cancelled']),
       tags: parsedTags,
-      comfortLevel: map['comfortLevel'],
-      recurringRule: map['recurringRule'],
-      userNotes: map['userNotes'],
+      comfortLevel: map['comfortLevel'] as String?,
+      recurringRule: map['recurringRule'] as String?,
+      userNotes: map['userNotes'] as String?,
     );
   }
 }
