@@ -98,6 +98,18 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = 'Walker';
 
   DateTime _selectedDay = DateTime.now();
+DateTime _focusedDay = DateTime.now();
+
+bool _hasUpcomingWalkOnDay(DateTime day) {
+  final now = DateTime.now();
+
+  return _events.any((e) {
+    if (e.cancelled) return false;
+    if (!e.dateTime.isAfter(now)) return false; // exclude past walks
+    return isSameDay(e.dateTime, day);
+  });
+}
+
 
   // --- Step counter (Android, session-based for now) ---
   StreamSubscription<QuerySnapshot>? _walksSub;
@@ -288,6 +300,53 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+
+  Widget _buildCalendarDayCell(
+  DateTime day,
+  bool isDark, {
+  bool forceSelected = false,
+}) {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final label = labels[day.weekday - 1];
+
+  final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
+  final bool isToday = isSameDay(day, DateTime.now());
+  final bool hasWalk = _hasUpcomingWalkOnDay(day);
+
+  // Priority:
+  // 1) Selected
+  // 2) Has upcoming walk
+  // 3) Today (only if no walk and not selected)
+  // 4) Normal day
+  Color bg;
+  Color border;
+
+  if (isSelected) {
+    bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
+    border = Colors.transparent;
+  } else if (hasWalk) {
+    bg = const Color(0xFF9BD77A);
+    border = Colors.transparent;
+  } else if (isToday) {
+    bg = isDark ? Colors.white12 : const Color(0xFFEDE7D6);
+    border = isDark ? Colors.white24 : Colors.black12;
+  } else {
+    bg = isDark ? Colors.white10 : const Color(0xFFEF5F3D9);
+    border = Colors.transparent;
+  }
+
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 6),
+    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: border),
+    ),
+    child: _buildDayPill(label, day.day, isSelected, isDark: isDark),
+  );
+}
+
 
   // --- Step counter setup (Android only for now) ---
 
@@ -1163,139 +1222,57 @@ case 1:
                                     const SizedBox(height: 8),
 
                                     // Calendar
-                                    TableCalendar(
-                                      firstDay: DateTime.utc(2020, 1, 1),
-                                      lastDay: DateTime.utc(2030, 12, 31),
-                                      focusedDay: _selectedDay,
-                                      selectedDayPredicate: (day) =>
-                                          isSameDay(day, _selectedDay),
-                                      calendarFormat: CalendarFormat.week,
-                                      headerVisible: false,
-                                      daysOfWeekVisible: false,
-                                      rowHeight: 60,
-                                      eventLoader: (day) => _eventsForDay(day),
-                                      calendarStyle: const CalendarStyle(
-                                        isTodayHighlighted: false,
-                                        outsideDaysVisible: false,
-                                      ),
-                                      calendarBuilders: CalendarBuilders(
-                                        defaultBuilder:
-                                            (context, day, focusedDay) {
-                                              const labels = [
-                                                'Mon',
-                                                'Tue',
-                                                'Wed',
-                                                'Thu',
-                                                'Fri',
-                                                'Sat',
-                                                'Sun',
-                                              ];
-                                              final label =
-                                                  labels[day.weekday - 1];
+                                    // ===== Calendar (week swipe + no dots + different highlight for Today vs Walk days) =====
+TableCalendar(
+  firstDay: DateTime(2020, 1, 1),
+  lastDay: DateTime(2035, 12, 31),
+  focusedDay: _focusedDay,
+  calendarFormat: CalendarFormat.week,
+  headerVisible: false,
+  daysOfWeekVisible: false,
+  rowHeight: 60,
 
-                                              if (isDark) {
-                                                // Dark: text only
-                                                return Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 4,
-                                                      ),
-                                                  child: _buildDayPill(
-                                                    label,
-                                                    day.day,
-                                                    false,
-                                                    isDark: isDark,
-                                                  ),
-                                                );
-                                              }
+  // ✅ No dots (we are NOT using eventLoader)
+  calendarStyle: const CalendarStyle(
+    isTodayHighlighted: false, // we custom-draw today ourselves
+    outsideDaysVisible: false,
+  ),
 
-                                              // Light: white pill
-                                              return Container(
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                      vertical: 0,
-                                                    ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 4,
-                                                      horizontal: 10,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: isDark
-                                                      ? kDarkSurface2
-                                                      : const Color(0xFFE5F3D9),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        999,
-                                                      ),
-                                                ),
+  // ✅ swipe weeks
+  onPageChanged: (focusedDay) {
+    setState(() => _focusedDay = focusedDay);
+  },
 
-                                                child: _buildDayPill(
-                                                  label,
-                                                  day.day,
-                                                  false,
-                                                  isDark: isDark,
-                                                ),
-                                              );
-                                            },
-                                        selectedBuilder:
-                                            (context, day, focusedDay) {
-                                              const labels = [
-                                                'Mon',
-                                                'Tue',
-                                                'Wed',
-                                                'Thu',
-                                                'Fri',
-                                                'Sat',
-                                                'Sun',
-                                              ];
-                                              final label =
-                                                  labels[day.weekday - 1];
+  // ✅ selection
+  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
 
-                                              return Container(
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 4,
-                                                      vertical: 0,
-                                                    ),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 4,
-                                                      horizontal: 10,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: isDark
-                                                      ? kDarkSurface2
-                                                      : const Color(0xFFE5F3D9),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        999,
-                                                      ),
-                                                ),
+  calendarBuilders: CalendarBuilders(
+    defaultBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: false);
+    },
+    selectedBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: true);
+    },
+    todayBuilder: (context, day, focusedDay) {
+      // today is NOT special unless it has walks or selected → we handle it in the same cell builder
+      return _buildCalendarDayCell(day, isDark, forceSelected: false);
+    },
+  ),
 
-                                                child: _buildDayPill(
-                                                  label,
-                                                  day.day,
-                                                  true,
-                                                  isDark: isDark,
-                                                ),
-                                              );
-                                            },
-                                      ),
-                                      onDaySelected: (selectedDay, focusedDay) {
-                                        setState(() {
-                                          _selectedDay = selectedDay;
-                                        });
+  onDaySelected: (selectedDay, focusedDay) {
+    setState(() {
+      _selectedDay = selectedDay;
+      _focusedDay = focusedDay;
+    });
 
-                                        final events = _eventsForDay(
-                                          selectedDay,
-                                        );
-                                        if (events.isNotEmpty) {
-                                          _navigateToDetails(events.first);
-                                        }
-                                      },
-                                    ),
+    final events = _eventsForDay(selectedDay);
+    if (events.isNotEmpty) {
+      _navigateToDetails(events.first);
+    }
+  },
+),
+
+
 
                                     const SizedBox(height: 20),
 
