@@ -358,19 +358,20 @@ void initState() {
     }
   }
 
-  Future<void> _loadUserName() async {
-    final profile = await ProfileStorage.loadProfile();
+Future<void> _loadUserName() async {
+  final user = FirebaseAuth.instance.currentUser;
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    setState(() {
-      if (profile != null && profile.name.trim().isNotEmpty) {
-        _userName = profile.name.trim();
-      } else {
-        _userName = 'Walker';
-      }
-    });
-  }
+  setState(() {
+    if (user != null && user.displayName != null && user.displayName!.trim().isNotEmpty) {
+      _userName = user.displayName!.trim();
+    } else {
+      _userName = 'Walker';
+    }
+  });
+}
+
 
   void _onStepCount(StepCount event) {
     // Android pedometer gives "steps since reboot".
