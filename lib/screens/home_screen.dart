@@ -98,18 +98,17 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = 'Walker';
 
   DateTime _selectedDay = DateTime.now();
-DateTime _focusedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
 
-bool _hasUpcomingWalkOnDay(DateTime day) {
-  final now = DateTime.now();
+  bool _hasUpcomingWalkOnDay(DateTime day) {
+    final now = DateTime.now();
 
-  return _events.any((e) {
-    if (e.cancelled) return false;
-    if (!e.dateTime.isAfter(now)) return false; // exclude past walks
-    return isSameDay(e.dateTime, day);
-  });
-}
-
+    return _events.any((e) {
+      if (e.cancelled) return false;
+      if (!e.dateTime.isAfter(now)) return false; // exclude past walks
+      return isSameDay(e.dateTime, day);
+    });
+  }
 
   // --- Step counter (Android, session-based for now) ---
   StreamSubscription<QuerySnapshot>? _walksSub;
@@ -118,6 +117,8 @@ bool _hasUpcomingWalkOnDay(DateTime day) {
   StreamSubscription<StepCount>? _stepSubscription;
   int _sessionSteps = 0;
   int? _baselineSteps;
+  // ✅ Notifications badge
+  int _unreadNotifCount = 0;
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -302,77 +303,77 @@ bool _hasUpcomingWalkOnDay(DateTime day) {
   }
 
   Widget _buildCalendarDayCell(
-  DateTime day,
-  bool isDark, {
-  bool forceSelected = false,
-}) {
-  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  final label = labels[day.weekday - 1];
+    DateTime day,
+    bool isDark, {
+    bool forceSelected = false,
+  }) {
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final label = labels[day.weekday - 1];
 
-  final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
-  final bool isToday = isSameDay(day, DateTime.now());
-  final bool hasWalk = _hasUpcomingWalkOnDay(day);
+    final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
+    final bool isToday = isSameDay(day, DateTime.now());
+    final bool hasWalk = _hasUpcomingWalkOnDay(day);
 
-  // Priority:
-  // 1) Selected
-  // 2) Has upcoming walk
-  // 3) Today (only if no walk and not selected)
-  // 4) Normal day
-  Color bg;
-  Color border;
+    // Priority:
+    // 1) Selected
+    // 2) Has upcoming walk
+    // 3) Today (only if no walk and not selected)
+    // 4) Normal day
+    Color bg;
+    Color border;
 
-  if (isSelected) {
-    bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
-    border = Colors.transparent;
-  } else if (hasWalk) {
-    bg = const Color(0xFF9BD77A);
-    border = Colors.transparent;
-  } else if (isToday) {
-    bg = isDark ? Colors.white12 : const Color(0xFFEDE7D6);
-    border = isDark ? Colors.white24 : Colors.black12;
-  } else {
-    bg = isDark ? Colors.white10 : const Color(0xFFEF5F3D9);
-    border = Colors.transparent;
+    if (isSelected) {
+      bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
+      border = Colors.transparent;
+    } else if (hasWalk) {
+      bg = const Color(0xFF9BD77A);
+      border = Colors.transparent;
+    } else if (isToday) {
+      bg = isDark ? Colors.white12 : const Color(0xFFEDE7D6);
+      border = isDark ? Colors.white24 : Colors.black12;
+    } else {
+      bg = isDark ? Colors.white10 : const Color(0xFFEF5F3D9);
+      border = Colors.transparent;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border),
+      ),
+      child: _buildDayPill(label, day.day, isSelected, isDark: isDark),
+    );
   }
-
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 6),
-    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-    decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(999),
-      border: Border.all(color: border),
-    ),
-    child: _buildDayPill(label, day.day, isSelected, isDark: isDark),
-  );
-}
-
 
   // --- Step counter setup (Android only for now) ---
 
-@override
-void initState() {
-  super.initState();
-  _initStepCounter();
-  _loadUserName();
-  _loadWeeklyGoal();
-  _listenToWalks();
-  Future.microtask(() async {
-  try {
-    final snap = await FirebaseFirestore.instance.collection('walks').get();
-    debugPrint('WALKS GET: docs=${snap.docs.length} uid=${FirebaseAuth.instance.currentUser?.uid}');
-  } catch (e) {
-    debugPrint('WALKS GET ERROR: $e');
-  }
-});
-
-
-  _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-    // ✅ re-subscribe when user switches accounts
+  @override
+  void initState() {
+    super.initState();
+    _initStepCounter();
+    _loadUserName();
+    _loadWeeklyGoal();
     _listenToWalks();
-  });
-}
+    _refreshNotificationsCount();
+    Future.microtask(() async {
+      try {
+        final snap = await FirebaseFirestore.instance.collection('walks').get();
+        debugPrint(
+          'WALKS GET: docs=${snap.docs.length} uid=${FirebaseAuth.instance.currentUser?.uid}',
+        );
+      } catch (e) {
+        debugPrint('WALKS GET ERROR: $e');
+      }
+    });
 
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      // ✅ re-subscribe when user switches accounts
+      _listenToWalks();
+    });
+  }
 
   @override
   void dispose() {
@@ -387,6 +388,14 @@ void initState() {
     setState(() {
       _weeklyGoalKm = value;
     });
+  }
+
+  Future<void> _refreshNotificationsCount() async {
+    final notifications = await NotificationStorage.getNotifications();
+    final unread = notifications.where((n) => n.isRead == false).length;
+
+    if (!mounted) return;
+    setState(() => _unreadNotifCount = unread);
   }
 
   /// Called when user changes their weekly goal from the Profile settings panel.
@@ -417,20 +426,21 @@ void initState() {
     }
   }
 
-Future<void> _loadUserName() async {
-  final user = FirebaseAuth.instance.currentUser;
+  Future<void> _loadUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    if (user != null && user.displayName != null && user.displayName!.trim().isNotEmpty) {
-      _userName = user.displayName!.trim();
-    } else {
-      _userName = 'Walker';
-    }
-  });
-}
-
+    setState(() {
+      if (user != null &&
+          user.displayName != null &&
+          user.displayName!.trim().isNotEmpty) {
+        _userName = user.displayName!.trim();
+      } else {
+        _userName = 'Walker';
+      }
+    });
+  }
 
   void _onStepCount(StepCount event) {
     // Android pedometer gives "steps since reboot".
@@ -582,6 +592,7 @@ Future<void> _loadUserName() async {
 
   // === NEW: notification bottom sheet (uses stored notifications) ===
   Future<void> _openNotificationsSheet() async {
+    await _refreshNotificationsCount();
     // Load history from SharedPreferences
     final List<AppNotification> notifications =
         await NotificationStorage.getNotifications();
@@ -787,41 +798,40 @@ Future<void> _loadUserName() async {
       case 0:
         body = _buildHomeTab(context);
         break;
-case 1:
-  {
-    debugPrint(
-      'NEARBY TAB: events=${_events.length} nearby=${_nearbyWalks.length} '
-      'uid=${FirebaseAuth.instance.currentUser?.uid}',
-    );
+      case 1:
+        {
+          debugPrint(
+            'NEARBY TAB: events=${_events.length} nearby=${_nearbyWalks.length} '
+            'uid=${FirebaseAuth.instance.currentUser?.uid}',
+          );
 
-    if (_events.isNotEmpty) {
-      final e0 = _events.first;
-      debugPrint(
-        'SAMPLE WALK: title=${e0.title} isOwner=${e0.isOwner} cancelled=${e0.cancelled} '
-        'joined=${e0.joined} firestoreId=${e0.firestoreId}',
-      );
-    }
+          if (_events.isNotEmpty) {
+            final e0 = _events.first;
+            debugPrint(
+              'SAMPLE WALK: title=${e0.title} isOwner=${e0.isOwner} cancelled=${e0.cancelled} '
+              'joined=${e0.joined} firestoreId=${e0.firestoreId}',
+            );
+          }
 
-    body = NearbyWalksScreen(
-      events: _nearbyWalks,
-      onToggleJoin: (e) => _toggleJoin(e),
-      onToggleInterested: _toggleInterested,
-      onTapEvent: _navigateToDetails,
-      onCancelHosted: _cancelHostedWalk,
-      walksJoined: _walksJoined,
-      eventsHosted: _eventsHosted,
-      totalKm: _totalKmJoined,
-      interestedCount: _interestedCount,
-      weeklyKm: _weeklyKm,
-      weeklyWalks: _weeklyWalkCount,
-      streakDays: _streakDays,
-      weeklyGoalKm: _weeklyGoalKm,
-      userName: _userName,
-    ); // ✅ THIS LINE MUST EXIST
+          body = NearbyWalksScreen(
+            events: _nearbyWalks,
+            onToggleJoin: (e) => _toggleJoin(e),
+            onToggleInterested: _toggleInterested,
+            onTapEvent: _navigateToDetails,
+            onCancelHosted: _cancelHostedWalk,
+            walksJoined: _walksJoined,
+            eventsHosted: _eventsHosted,
+            totalKm: _totalKmJoined,
+            interestedCount: _interestedCount,
+            weeklyKm: _weeklyKm,
+            weeklyWalks: _weeklyWalkCount,
+            streakDays: _streakDays,
+            weeklyGoalKm: _weeklyGoalKm,
+            userName: _userName,
+          ); // ✅ THIS LINE MUST EXIST
 
-    break;
-  }
-
+          break;
+        }
 
       case 2:
       default:
@@ -939,24 +949,33 @@ case 1:
                                 color: kTextPrimary,
                               ),
                             ),
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.red,
-                                ),
-                                child: const Text(
-                                  '3',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
+                            if (_unreadNotifCount > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(999),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _unreadNotifCount > 99
+                                        ? '99+'
+                                        : '$_unreadNotifCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -1042,24 +1061,33 @@ case 1:
                                 color: Colors.white,
                               ),
                             ),
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.red,
-                                ),
-                                child: const Text(
-                                  '3',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
+                            if (_unreadNotifCount > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 2,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(999),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _unreadNotifCount > 99
+                                        ? '99+'
+                                        : '$_unreadNotifCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -1223,56 +1251,74 @@ case 1:
 
                                     // Calendar
                                     // ===== Calendar (week swipe + no dots + different highlight for Today vs Walk days) =====
-TableCalendar(
-  firstDay: DateTime(2020, 1, 1),
-  lastDay: DateTime(2035, 12, 31),
-  focusedDay: _focusedDay,
-  calendarFormat: CalendarFormat.week,
-  headerVisible: false,
-  daysOfWeekVisible: false,
-  rowHeight: 60,
+                                    TableCalendar(
+                                      firstDay: DateTime(2020, 1, 1),
+                                      lastDay: DateTime(2035, 12, 31),
+                                      focusedDay: _focusedDay,
+                                      calendarFormat: CalendarFormat.week,
+                                      headerVisible: false,
+                                      daysOfWeekVisible: false,
+                                      rowHeight: 60,
 
-  // ✅ No dots (we are NOT using eventLoader)
-  calendarStyle: const CalendarStyle(
-    isTodayHighlighted: false, // we custom-draw today ourselves
-    outsideDaysVisible: false,
-  ),
+                                      // ✅ No dots (we are NOT using eventLoader)
+                                      calendarStyle: const CalendarStyle(
+                                        isTodayHighlighted:
+                                            false, // we custom-draw today ourselves
+                                        outsideDaysVisible: false,
+                                      ),
 
-  // ✅ swipe weeks
-  onPageChanged: (focusedDay) {
-    setState(() => _focusedDay = focusedDay);
-  },
+                                      // ✅ swipe weeks
+                                      onPageChanged: (focusedDay) {
+                                        setState(
+                                          () => _focusedDay = focusedDay,
+                                        );
+                                      },
 
-  // ✅ selection
-  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                                      // ✅ selection
+                                      selectedDayPredicate: (day) =>
+                                          isSameDay(_selectedDay, day),
 
-  calendarBuilders: CalendarBuilders(
-    defaultBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: false);
-    },
-    selectedBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: true);
-    },
-    todayBuilder: (context, day, focusedDay) {
-      // today is NOT special unless it has walks or selected → we handle it in the same cell builder
-      return _buildCalendarDayCell(day, isDark, forceSelected: false);
-    },
-  ),
+                                      calendarBuilders: CalendarBuilders(
+                                        defaultBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: false,
+                                              );
+                                            },
+                                        selectedBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: true,
+                                              );
+                                            },
+                                        todayBuilder: (context, day, focusedDay) {
+                                          // today is NOT special unless it has walks or selected → we handle it in the same cell builder
+                                          return _buildCalendarDayCell(
+                                            day,
+                                            isDark,
+                                            forceSelected: false,
+                                          );
+                                        },
+                                      ),
 
-  onDaySelected: (selectedDay, focusedDay) {
-    setState(() {
-      _selectedDay = selectedDay;
-      _focusedDay = focusedDay;
-    });
+                                      onDaySelected: (selectedDay, focusedDay) {
+                                        setState(() {
+                                          _selectedDay = selectedDay;
+                                          _focusedDay = focusedDay;
+                                        });
 
-    final events = _eventsForDay(selectedDay);
-    if (events.isNotEmpty) {
-      _navigateToDetails(events.first);
-    }
-  },
-),
-
-
+                                        final events = _eventsForDay(
+                                          selectedDay,
+                                        );
+                                        if (events.isNotEmpty) {
+                                          _navigateToDetails(events.first);
+                                        }
+                                      },
+                                    ),
 
                                     const SizedBox(height: 20),
 
