@@ -114,11 +114,14 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<QuerySnapshot>? _walksSub;
   StreamSubscription<User?>? _authSub;
 
+
+  int _unreadNotifCount = 0;
+
+
   StreamSubscription<StepCount>? _stepSubscription;
   int _sessionSteps = 0;
   int? _baselineSteps;
-  // ✅ Notifications badge
-  int _unreadNotifCount = 0;
+ 
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -357,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserName();
     _loadWeeklyGoal();
     _listenToWalks();
-    _refreshNotificationsCount();
+    
     Future.microtask(() async {
       try {
         final snap = await FirebaseFirestore.instance.collection('walks').get();
@@ -370,8 +373,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-      // ✅ re-subscribe when user switches accounts
       _listenToWalks();
+      _refreshNotificationsCount();
     });
   }
 
@@ -380,6 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _authSub?.cancel();
     _walksSub?.cancel();
     _stepSubscription?.cancel();
+    
     super.dispose();
   }
 
@@ -592,10 +596,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // === NEW: notification bottom sheet (uses stored notifications) ===
   Future<void> _openNotificationsSheet() async {
-    await _refreshNotificationsCount();
-    // Load history from SharedPreferences
     final List<AppNotification> notifications =
         await NotificationStorage.getNotifications();
+
+    // ✅ mark all read when opening
+    await NotificationStorage.markAllRead();
+    await _refreshNotificationsCount();
 
     // Newest first
     notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));

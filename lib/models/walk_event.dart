@@ -1,13 +1,15 @@
 // lib/models/walk_event.dart
 
 class WalkEvent {
-  // Local / app-level id (can be timestamp-based in your current code)
-  final String id;
+   final String id;
+// ✅ Firestore document ID in /walks (THIS is what we use for chat ids)
+final String firestoreId;
 
-  // ✅ Firestore document ID in /walks (THIS is what we use for chat ids)
-  final String firestoreId;
+// ✅ Needed so we can notify the host when someone joins
+final String hostUid;
 
-  final String title;
+final String title;
+
   final DateTime dateTime;
   final double distanceKm;
   final String gender; // e.g. "Mixed", "Women only", "Men only"
@@ -39,9 +41,10 @@ class WalkEvent {
   final String? userNotes;
 
   WalkEvent({
-    required this.id,
-    required this.firestoreId,
-    required this.title,
+  required this.id,
+  required this.firestoreId,
+  required this.hostUid,
+  required this.title,
     required this.dateTime,
     required this.distanceKm,
     required this.gender,
@@ -62,6 +65,7 @@ class WalkEvent {
   WalkEvent copyWith({
     String? id,
     String? firestoreId,
+     String? hostUid,
     String? title,
     DateTime? dateTime,
     double? distanceKm,
@@ -82,6 +86,8 @@ class WalkEvent {
     return WalkEvent(
       id: id ?? this.id,
       firestoreId: firestoreId ?? this.firestoreId,
+      hostUid: hostUid ?? this.hostUid,
+
       title: title ?? this.title,
       dateTime: dateTime ?? this.dateTime,
       distanceKm: distanceKm ?? this.distanceKm,
@@ -175,6 +181,8 @@ class WalkEvent {
 
   return WalkEvent(
     id: id,
+    hostUid: (map['hostUid'] ?? '').toString(),
+
     firestoreId: firestoreId,
     title: _toStringSafe(map['title']),
     dateTime: dateTime,

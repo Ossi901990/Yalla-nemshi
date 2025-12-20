@@ -152,7 +152,8 @@ Future<void> _submit() async {
 
     // 3) Build your local WalkEvent with the REAL firestoreId
     final newEvent = WalkEvent(
-      id: docRef.id,              // keep your app stable
+      id: docRef.id,       
+      hostUid: uid,       // keep your app stable
       firestoreId: docRef.id,     // ✅ this is what chat uses
       title: _title,
       dateTime: _dateTime,
