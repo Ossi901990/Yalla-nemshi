@@ -718,79 +718,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // === NEW: profile quick-view bottom sheet (no design change to main page) ===
+    // Profile icon should go directly to Profile
   void _openProfileQuickSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFFFCFEF9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const CircleAvatar(
-                radius: 28,
-                child: Icon(Icons.person, size: 30),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _userName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Quick look at your progress',
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _MiniStat(label: 'Walks', value: '$_walksJoined'),
-                  _MiniStat(
-                    label: 'Total km',
-                    value: _totalKmJoined.toStringAsFixed(1),
-                  ),
-                  _MiniStat(label: 'Streak', value: '${_streakDays}d'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.of(ctx).pop(); // close sheet
-                    setState(() => _currentTab = 2); // go to Profile tab
-                  },
-                  child: const Text('View full profile'),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    setState(() => _currentTab = 2);
-                    // Later, you could auto-open Edit on profile screen
-                  },
-                  child: const Text('Edit profile info'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    setState(() => _currentTab = 2);
   }
+
 
   // --- UI ---
 

@@ -406,44 +406,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Avatar, name, level, bio
-                      Center(
-                        child: GestureDetector(
-                          onTap: _onAvatarTap,
-                          child: Column(
-                            children: [
-                              _buildAvatar(profile),
-                              const SizedBox(height: 8),
-                              Text(
-                                profile?.name.isNotEmpty == true
-                                    ? profile!.name
-                                    : 'Your name',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _walkerLevel,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF4F925C),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                profile?.bio.isNotEmpty == true
-                                    ? profile!.bio
-                                    : 'Add a short bio about you',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.textTheme.bodySmall?.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                     // Avatar, name, level, bio
+Center(
+  child: Column(
+    children: [
+      // Avatar with ✏️ edit icon overlay
+      Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          GestureDetector(
+            onTap: _onAvatarTap,
+            child: _buildAvatar(profile),
+          ),
+          Positioned(
+            bottom: 2,
+            right: 2,
+            child: InkWell(
+              onTap: _openEditProfile,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF14532D),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 8),
+
+      // Name + ✏️ icon next to it
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            profile?.name.isNotEmpty == true ? profile!.name : 'Your name',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          IconButton(
+            onPressed: _openEditProfile,
+            icon: const Icon(Icons.edit, size: 18),
+            tooltip: 'Edit profile',
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 4),
+      Text(
+        _walkerLevel,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: const Color(0xFF4F925C),
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        profile?.bio.isNotEmpty == true ? profile!.bio : 'Add a short bio about you',
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.textTheme.bodySmall?.color,
+        ),
+      ),
+    ],
+  ),
+),
+
                       const SizedBox(height: 16),
 
                       if (profile != null)
@@ -614,14 +651,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 24),
 
                       // Actions
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _openEditProfile,
-                          icon: const Icon(Icons.edit),
-                          label: const Text('Edit profile info'),
-                        ),
-                      ),
                       const SizedBox(height: 8),
                       SizedBox(
                         width: double.infinity,

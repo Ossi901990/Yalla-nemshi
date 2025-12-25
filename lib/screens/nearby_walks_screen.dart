@@ -148,146 +148,22 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
 
   void _showProfileQuickSheet() {
-    final theme = Theme.of(context);
-
-    final totalWalks = widget.walksJoined + widget.eventsHosted;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: false,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFBFEF8),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Avatar
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: const Color(0xFFCDE9B7),
-                  child: const Icon(
-                    Icons.person,
-                    size: 32,
-                    color: Color(0xFF14532D),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.userName.isNotEmpty ? widget.userName : 'Walker',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Quick look at your progress',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Stats row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _quickStat(
-                      label: 'Walks',
-                      value: totalWalks.toString(),
-                    ),
-                    _quickStat(
-                      label: 'Total km',
-                      value: widget.totalKm.toStringAsFixed(1),
-                    ),
-                    _quickStat(
-                      label: 'Streak',
-                      value: '${widget.streakDays}d',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Buttons
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF14532D),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop(); // close sheet
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProfileScreen(
-                            walksJoined: widget.walksJoined,
-                            eventsHosted: widget.eventsHosted,
-                            totalKm: widget.totalKm,
-                            weeklyWalks: widget.weeklyWalks,
-                            weeklyKm: widget.weeklyKm,
-                            weeklyGoalKm: widget.weeklyGoalKm,
-                            streakDays: widget.streakDays,
-                            interestedCount: widget.interestedCount,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('View full profile'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProfileScreen(
-                            walksJoined: widget.walksJoined,
-                            eventsHosted: widget.eventsHosted,
-                            totalKm: widget.totalKm,
-                            weeklyWalks: widget.weeklyWalks,
-                            weeklyKm: widget.weeklyKm,
-                            weeklyGoalKm: widget.weeklyGoalKm,
-                            streakDays: widget.streakDays,
-                            interestedCount: widget.interestedCount,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('Edit profile info'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(
+          walksJoined: widget.walksJoined,
+          eventsHosted: widget.eventsHosted,
+          totalKm: widget.totalKm,
+          weeklyWalks: widget.weeklyWalks,
+          weeklyKm: widget.weeklyKm,
+          weeklyGoalKm: widget.weeklyGoalKm,
+          streakDays: widget.streakDays,
+          interestedCount: widget.interestedCount,
+        ),
+      ),
     );
   }
+
 
   Widget _quickStat({required String label, required String value}) {
     final theme = Theme.of(context);
