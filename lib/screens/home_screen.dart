@@ -114,14 +114,11 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<QuerySnapshot>? _walksSub;
   StreamSubscription<User?>? _authSub;
 
-
   int _unreadNotifCount = 0;
-
 
   StreamSubscription<StepCount>? _stepSubscription;
   int _sessionSteps = 0;
   int? _baselineSteps;
- 
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -360,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserName();
     _loadWeeklyGoal();
     _listenToWalks();
-    
+
     Future.microtask(() async {
       try {
         final snap = await FirebaseFirestore.instance.collection('walks').get();
@@ -383,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _authSub?.cancel();
     _walksSub?.cancel();
     _stepSubscription?.cancel();
-    
+
     super.dispose();
   }
 
@@ -718,11 +715,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-    // Profile icon should go directly to Profile
+  // Profile icon should go directly to Profile
   void _openProfileQuickSheet() {
     setState(() => _currentTab = 2);
   }
-
 
   // --- UI ---
 
@@ -1153,8 +1149,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         const SizedBox(width: 12),
                                         _StepsRing(
-                                          steps: 9000,
-                                          goal: 10000, // you can change later
+                                          steps:
+                                              _sessionSteps,
+                                          goal: 10000,
                                           isDark: isDark,
                                         ),
                                       ],
@@ -1262,7 +1259,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                     // Ready to walk + buttons
                                     Text(
-                                      'Ready to walk? 👟',
+                                      'Ready to walk?',
                                       style: theme.textTheme.headlineSmall
                                           ?.copyWith(
                                             fontWeight: FontWeight.bold,
@@ -1455,11 +1452,24 @@ class _WeeklySummaryCard extends StatelessWidget {
         ? kTextSecondary
         : (theme.textTheme.bodySmall?.color);
 
+    String motivationText(double p) {
+      if (kmGoal <= 0)
+        return 'Set a weekly goal in Settings to start tracking.';
+      if (p <= 0.01) return 'Let’s get the first steps in 💪';
+      if (p < 0.25) return 'Nice start — keep the momentum going!';
+      if (p < 0.50) return 'You’re building a habit — great progress!';
+      if (p < 0.75) return 'More than halfway — you’ve got this!';
+      if (p < 1.00) return 'Almost there — one more push!';
+      return 'Goal reached 🎉 Amazing work this week!';
+    }
+
+    final percent = (progress * 100).round();
+
     return Card(
       color: isDark ? kDarkSurface : null,
-      elevation: isDark ? 0 : 0.5,
+      elevation: isDark ? 0 : 0.6,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(
           color: isDark
               ? Colors.white.withValues(alpha: 0.06)
@@ -1467,31 +1477,108 @@ class _WeeklySummaryCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '$walks walk${walks == 1 ? '' : 's'} • '
-              '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: titleColor,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: isDark ? kDarkSurface2 : Colors.black12,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isDark ? kMintBright : const Color(0xFF14532D),
+            // Top line: stats + %
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '$walks walk${walks == 1 ? '' : 's'} • '
+                    '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: titleColor,
+                    ),
+                  ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? kDarkSurface2
+                        : Colors.black.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    kmGoal <= 0 ? '--' : '$percent%',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? kTextPrimary : const Color(0xFF14532D),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Fancy progress bar (step-counter style but horizontal)
+            LayoutBuilder(
+              builder: (context, c) {
+                final trackColor = isDark ? kDarkSurface2 : Colors.black12;
+                final fillColor = isDark
+                    ? kMintBright
+                    : const Color(0xFF14532D);
+
+                return Container(
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: trackColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Stack(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOut,
+                        width: c.maxWidth * (kmGoal <= 0 ? 0.0 : progress),
+                        decoration: BoxDecoration(
+                          color: fillColor,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+
+                      // subtle “shine” overlay to feel more premium
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: isDark ? 0.10 : 0.08,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(999),
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.white, Colors.transparent],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 10),
+
+            // Motivational microcopy + streak
+            Text(
+              motivationText(progress),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isDark ? kTextPrimary : const Color(0xFF14532D),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Text(
               streakDays > 0
                   ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
@@ -1636,58 +1723,75 @@ class _StepsRing extends StatelessWidget {
         ? 0.0
         : (steps / goal).clamp(0.0, 1.0).toDouble();
 
-    // Make it look like the reference (bigger + centered text)
     const double size = 120;
     const double stroke = 14;
 
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(size, size),
-            painter: _GradientRingPainter(
-              progress: progress,
-              strokeWidth: stroke,
-              // Track behind the ring
-              trackColor: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.10),
-              // These create the “fade in/out” feel
-              startColor: (isDark ? kMint : const Color(0xFF14532D)).withValues(
-                alpha: 0.35,
-              ),
-              endColor: (isDark ? kMintBright : const Color(0xFF14532D))
-                  .withValues(alpha: 1.0),
-            ),
-          ),
+    // Animate the ring smoothly when steps change
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: progress),
+      duration: const Duration(milliseconds: 650),
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedProgress, _) {
+        // Base ring color at full progress
+        final Color base = isDark ? kMintBright : const Color(0xFF14532D);
 
-          // Text
-          Column(
-            mainAxisSize: MainAxisSize.min,
+        // Very light color at 0 progress (so the start is almost white)
+ final Color veryLight = isDark
+    ? Colors.white.withValues(alpha: 0.16)
+    : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
+
+
+        // End color gets darker as progress increases
+        final Color endColor = Color.lerp(veryLight, base, animatedProgress)!;
+
+        return SizedBox(
+          width: size,
+          height: size,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Text(
-                '$steps',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? kTextPrimary : Colors.black87,
-                  height: 1.0,
+              CustomPaint(
+                size: const Size(size, size),
+                painter: _GradientRingPainter(
+                  progress: animatedProgress,
+                  strokeWidth: stroke,
+                 trackColor: isDark
+    ? Colors.white.withValues(alpha: 0.10)
+    : const Color(0xFFD7E2D7), // ✅ slightly darker track so ring feels consistent
+
+                  // ✅ start ALWAYS very light
+                  startColor: veryLight,
+                  // ✅ end darkens with progress
+                  endColor: endColor,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Steps',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? kTextSecondary : Colors.black54,
-                  height: 1.0,
-                ),
+
+              // Text in the middle
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$steps',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? kTextPrimary : Colors.black87,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Steps',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isDark ? kTextSecondary : Colors.black54,
+                      height: 1.0,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -1710,9 +1814,7 @@ class _GradientRingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final p = progress.clamp(0.0, 1.0);
-    final rect = Offset.zero & size;
 
-    // Keep ring inside bounds (avoid clipping)
     final inset = strokeWidth / 2;
     final ringRect = Rect.fromLTWH(
       inset,
@@ -1721,68 +1823,42 @@ class _GradientRingPainter extends CustomPainter {
       size.height - strokeWidth,
     );
 
-    final center = ringRect.center;
-    final radius = ringRect.width / 2;
-
     const startAngle = -math.pi / 2; // top
-    final sweepAngle = 2 * math.pi * p;
 
-    // Track ring (full circle behind) — use drawCircle so no seam/join
+    // Slightly shorten at 100% so rounded caps don't overlap visually
+    final safeP = (p >= 1.0) ? 0.999 : p;
+    final sweepAngle = 2 * math.pi * safeP;
+
+    // Track (full circle)
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt;
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
 
-    canvas.drawCircle(center, radius, trackPaint);
+    canvas.drawArc(ringRect, 0, 2 * math.pi, false, trackPaint);
 
     if (p <= 0) return;
 
-    // Gradient along ONLY the progress arc: very faded start -> solid end
-    final gradient = SweepGradient(
-      startAngle: startAngle,
-      endAngle: startAngle + sweepAngle,
-      tileMode: TileMode.clamp,
-      colors: [
-        startColor.withValues(alpha: 0.12), // super light at the beginning
-        endColor, // darker at the end
-      ],
-      stops: const [0.0, 1.0],
-    );
+    // Gradient on the progress arc
+final gradient = SweepGradient(
+  // ✅ end with startColor again → seam becomes light (no dark tick at top)
+  colors: [startColor, endColor, startColor],
+  stops: const [0.0, 0.85, 1.0],
+  transform: const GradientRotation(-math.pi / 2),
+);
 
-    final progressPaint = Paint()
-      ..shader = gradient.createShader(ringRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round; // smooth rounded end
+
+final progressPaint = Paint()
+  ..shader = gradient.createShader(ringRect)
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = strokeWidth
+  ..strokeCap = StrokeCap.round
+  ..isAntiAlias = true;
+
 
     canvas.drawArc(ringRect, startAngle, sweepAngle, false, progressPaint);
-
-    // Manual round caps (smooth)
-    Offset pointOnCircle(double angle) {
-      return Offset(
-        center.dx + radius * math.cos(angle),
-        center.dy + radius * math.sin(angle),
-      );
-    }
-
-    final capRadius = strokeWidth / 2;
-
-    final startCapPaint = Paint()
-      ..color = startColor.withValues(alpha: 0.35)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(pointOnCircle(startAngle), capRadius, startCapPaint);
-
-    final endCapPaint = Paint()
-      ..color = endColor
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      pointOnCircle(startAngle + sweepAngle),
-      capRadius,
-      endCapPaint,
-    );
   }
 
   @override

@@ -148,6 +148,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _weeklyMotivationText({
+  required double progress,
+  required double weeklyKm,
+  required double weeklyGoalKm,
+  required int streakDays,
+}) {
+  if (weeklyKm <= 0.0) return 'Let’s start small—join a short walk today.';
+  if (progress >= 1.0) return 'Goal achieved! Bonus walk? 💪';
+  if (progress >= 0.75) return 'Great pace—almost there!';
+  if (progress >= 0.50) return 'You’re building momentum—keep going!';
+  if (progress >= 0.25) return 'Nice start—stay consistent!';
+  return 'Good start—one more walk will help a lot.';
+}
+
+
   String get _walkerLevel {
     final km = widget.totalKm;
     if (km < 5) return 'New walker';
@@ -504,45 +519,95 @@ Center(
                       ),
                       const SizedBox(height: 8),
                       Card(
-                        elevation: 0.5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                                '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: weeklyProgress,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.green.shade50,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                widget.streakDays > 0
-                                    ? 'Streak: ${widget.streakDays} day${widget.streakDays == 1 ? '' : 's'} in a row'
-                                    : 'No streak yet. Join a walk today!',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+  elevation: 0.5,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(18),
+  ),
+  child: Padding(
+    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
+                '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withOpacity(0.08)
+                    : const Color(0xFFE5F3D9),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${(weeklyProgress * 100).round()}%',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Progress bar (step-counter style, but horizontal)
+        LayoutBuilder(
+          builder: (context, c) {
+            final trackH = 10.0;
+            final fillW = (c.maxWidth * weeklyProgress).clamp(0.0, c.maxWidth);
+
+            return Stack(
+              children: [
+                Container(
+                  height: trackH,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.10)
+                        : Colors.black.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                Container(
+                  height: trackH,
+                  width: fillW,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF9BD77A) : const Color(0xFF4F925C),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        const SizedBox(height: 10),
+
+        Text(
+          _weeklyMotivationText(
+            progress: weeklyProgress,
+            weeklyKm: widget.weeklyKm,
+            weeklyGoalKm: _weeklyGoalKmLocal,
+            streakDays: widget.streakDays,
+          ),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: isDark ? Colors.white70 : Colors.black54,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
 
                       const SizedBox(height: 20),
 
