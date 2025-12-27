@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             final loaded = snap.docs.map((doc) {
               final data = Map<String, dynamic>.from(
-                doc.data() as Map<String, dynamic>,
+                doc.data(),
               );
               data['firestoreId'] = doc.id;
               data['id'] ??= doc.id;
@@ -302,51 +302,105 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCalendarDayCell(
-    DateTime day,
-    bool isDark, {
-    bool forceSelected = false,
-  }) {
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final label = labels[day.weekday - 1];
+Widget _buildCalendarDayCell(DateTime day, bool isDark,
+    {bool forceSelected = false}) {
+  final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
+  final bool isToday = isSameDay(day, DateTime.now());
+  final bool hasWalk = _hasUpcomingWalkOnDay(day);
 
-    final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
-    final bool isToday = isSameDay(day, DateTime.now());
-    final bool hasWalk = _hasUpcomingWalkOnDay(day);
-
-    // Priority:
-    // 1) Selected
-    // 2) Has upcoming walk
-    // 3) Today (only if no walk and not selected)
-    // 4) Normal day
-    Color bg;
-    Color border;
-
-    if (isSelected) {
-      bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
-      border = Colors.transparent;
-    } else if (hasWalk) {
-      bg = const Color(0xFF9BD77A);
-      border = Colors.transparent;
-    } else if (isToday) {
-      bg = isDark ? Colors.white12 : const Color(0xFFEDE7D6);
-      border = isDark ? Colors.white24 : Colors.black12;
-    } else {
-      bg = isDark ? Colors.white10 : const Color(0xFFEF5F3D9);
-      border = Colors.transparent;
+  // ✅ Single-letter labels to match your UI
+  String dowLetter(int weekday) {
+    // weekday: Mon=1 ... Sun=7
+    switch (weekday) {
+      case DateTime.monday:
+        return 'M';
+      case DateTime.tuesday:
+        return 'T';
+      case DateTime.wednesday:
+        return 'W';
+      case DateTime.thursday:
+        return 'T';
+      case DateTime.friday:
+        return 'F';
+      case DateTime.saturday:
+        return 'S';
+      case DateTime.sunday:
+      default:
+        return 'S';
     }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: border),
-      ),
-      child: _buildDayPill(label, day.day, isSelected, isDark: isDark),
-    );
   }
+
+  // ✅ Priority: Selected > Walk day > Today > Normal
+  Color bg;
+  Color border;
+  Color labelColor;
+  Color numberColor;
+
+  if (isSelected) {
+    bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
+    border = Colors.transparent;
+    labelColor = Colors.white.withOpacity(0.9);
+    numberColor = Colors.white;
+  } else if (hasWalk) {
+    bg = isDark ? const Color(0xFF9BD77A) : const Color(0xFF9BD77A);
+    border = Colors.transparent;
+    labelColor = isDark ? Colors.black87 : Colors.black87;
+    numberColor = Colors.black87;
+  } else if (isToday) {
+    // ✅ Today gets a subtle outline ONLY (different from walk highlight)
+    bg = Colors.transparent;
+    border = isDark ? Colors.white24 : Colors.black12;
+    labelColor = isDark ? Colors.white70 : Colors.black54;
+    numberColor = isDark ? Colors.white : Colors.black87;
+  } else {
+    bg = isDark ? Colors.white10 : const Color(0xFFEFE6D9);
+    border = Colors.transparent;
+    labelColor = isDark ? Colors.white70 : Colors.black54;
+    numberColor = isDark ? Colors.white : Colors.black87;
+  }
+
+  // ✅ FIX: Force every cell to same size to prevent weird pills + overflow
+  const double cellSize = 44;
+
+  return Center(
+    child: SizedBox(
+      width: cellSize,
+      height: cellSize,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: bg,
+          shape: BoxShape.circle,
+          border: Border.all(color: border, width: 1.2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              dowLetter(day.weekday),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                height: 1.0,
+                color: labelColor,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                height: 1.0,
+                color: numberColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 
   // --- Step counter setup (Android only for now) ---
 
@@ -1120,7 +1174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                '${_greetingForTime()}, $_userName 👋',
+                                                '${_greetingForTime()}, $_userName ',
                                                 style: theme
                                                     .textTheme
                                                     .titleLarge
@@ -1184,76 +1238,63 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                     const SizedBox(height: 8),
 
-                                    // Calendar
-                                    // ===== Calendar (week swipe + no dots + different highlight for Today vs Walk days) =====
-                                    TableCalendar(
-                                      firstDay: DateTime(2020, 1, 1),
-                                      lastDay: DateTime(2035, 12, 31),
-                                      focusedDay: _focusedDay,
-                                      calendarFormat: CalendarFormat.week,
-                                      headerVisible: false,
-                                      daysOfWeekVisible: false,
-                                      rowHeight: 60,
+// ===== Calendar (week swipe + no dots + fixed sizing) =====
+TableCalendar(
+  firstDay: DateTime(2020, 1, 1),
+  lastDay: DateTime(2035, 12, 31),
+  focusedDay: _focusedDay,
+  calendarFormat: CalendarFormat.week,
+  headerVisible: false,
+  daysOfWeekVisible: false,
+  rowHeight: 60,
 
-                                      // ✅ No dots (we are NOT using eventLoader)
-                                      calendarStyle: const CalendarStyle(
-                                        isTodayHighlighted:
-                                            false, // we custom-draw today ourselves
-                                        outsideDaysVisible: false,
-                                      ),
+  // ✅ IMPORTANT: keep outside days visible so the week row is consistent
+  calendarStyle: const CalendarStyle(
+    isTodayHighlighted: false,
+    outsideDaysVisible: true,
+  ),
 
-                                      // ✅ swipe weeks
-                                      onPageChanged: (focusedDay) {
-                                        setState(
-                                          () => _focusedDay = focusedDay,
-                                        );
-                                      },
+  onPageChanged: (focusedDay) {
+    setState(() => _focusedDay = focusedDay);
+  },
 
-                                      // ✅ selection
-                                      selectedDayPredicate: (day) =>
-                                          isSameDay(_selectedDay, day),
+  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
 
-                                      calendarBuilders: CalendarBuilders(
-                                        defaultBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: false,
-                                              );
-                                            },
-                                        selectedBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: true,
-                                              );
-                                            },
-                                        todayBuilder: (context, day, focusedDay) {
-                                          // today is NOT special unless it has walks or selected → we handle it in the same cell builder
-                                          return _buildCalendarDayCell(
-                                            day,
-                                            isDark,
-                                            forceSelected: false,
-                                          );
-                                        },
-                                      ),
+  calendarBuilders: CalendarBuilders(
+    defaultBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: false);
+    },
+    selectedBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: true);
+    },
+    todayBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: false);
+    },
 
-                                      onDaySelected: (selectedDay, focusedDay) {
-                                        setState(() {
-                                          _selectedDay = selectedDay;
-                                          _focusedDay = focusedDay;
-                                        });
+    // ✅ FIX: outside days were not using your pill builder
+    outsideBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: false);
+    },
 
-                                        final events = _eventsForDay(
-                                          selectedDay,
-                                        );
-                                        if (events.isNotEmpty) {
-                                          _navigateToDetails(events.first);
-                                        }
-                                      },
-                                    ),
+    // ✅ (optional safety) disabled days also use the same pill rendering
+    disabledBuilder: (context, day, focusedDay) {
+      return _buildCalendarDayCell(day, isDark, forceSelected: false);
+    },
+  ),
+
+  onDaySelected: (selectedDay, focusedDay) {
+    setState(() {
+      _selectedDay = selectedDay;
+      _focusedDay = focusedDay;
+    });
+
+    final events = _eventsForDay(selectedDay);
+    if (events.isNotEmpty) {
+      _navigateToDetails(events.first);
+    }
+  },
+),
+// ===== End Calendar =====
 
                                     const SizedBox(height: 20),
 
@@ -1453,8 +1494,9 @@ class _WeeklySummaryCard extends StatelessWidget {
         : (theme.textTheme.bodySmall?.color);
 
     String motivationText(double p) {
-      if (kmGoal <= 0)
+      if (kmGoal <= 0) {
         return 'Set a weekly goal in Settings to start tracking.';
+      }
       if (p <= 0.01) return 'Let’s get the first steps in 💪';
       if (p < 0.25) return 'Nice start — keep the momentum going!';
       if (p < 0.50) return 'You’re building a habit — great progress!';
