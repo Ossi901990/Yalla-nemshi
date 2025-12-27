@@ -367,11 +367,26 @@ Widget _buildCalendarDayCell(DateTime day, bool isDark,
       width: cellSize,
       height: cellSize,
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: bg,
-          shape: BoxShape.circle,
-          border: Border.all(color: border, width: 1.2),
+decoration: BoxDecoration(
+  color: bg,
+  borderRadius: BorderRadius.circular(999),
+
+  // ✅ Walk day indicator
+  // - if it has an upcoming walk and it's not selected → show a subtle border
+  // - if it's selected → keep selected clean (no extra border needed)
+  border: (hasWalk && !isSelected)
+      ? Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.18)
+              : const Color(0xFF2E7D32).withValues(alpha: 0.55),
+          width: 1.4,
+        )
+      : Border.all(
+          color: border, // your existing border logic (today/normal/selected)
+          width: 1.0,
         ),
+),
+
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1174,7 +1189,7 @@ Widget _buildCalendarDayCell(DateTime day, bool isDark,
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                '${_greetingForTime()}, $_userName ',
+                                                '${_greetingForTime()}, $_userName',
                                                 style: theme
                                                     .textTheme
                                                     .titleLarge
@@ -1243,10 +1258,16 @@ TableCalendar(
   firstDay: DateTime(2020, 1, 1),
   lastDay: DateTime(2035, 12, 31),
   focusedDay: _focusedDay,
-  calendarFormat: CalendarFormat.week,
-  headerVisible: false,
-  daysOfWeekVisible: false,
-  rowHeight: 60,
+ calendarFormat: CalendarFormat.week,
+headerVisible: false,
+daysOfWeekVisible: false,
+rowHeight: 60,
+
+// ✅ smoother swipe between weeks
+pageAnimationEnabled: true,
+pageAnimationDuration: const Duration(milliseconds: 220),
+pageAnimationCurve: Curves.easeOutCubic,
+
 
   // ✅ IMPORTANT: keep outside days visible so the week row is consistent
   calendarStyle: const CalendarStyle(
