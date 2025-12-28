@@ -36,6 +36,17 @@ const kTextSecondary = Color(0xFF9BB9B1); // normal text
 const kTextMuted = Color(0xFF6A8580); // hints / placeholders
 const kOnMint = Color(0xFF0C1A17); // text on mint buttons
 
+// ===== Design tokens (radius) =====
+const double kRadiusCard = 24;
+const double kRadiusControl = 16; // buttons, small containers, inputs
+const double kRadiusPill = 999; // badges, chips
+
+// ===== Design tokens (spacing) =====
+const double kSpace1 = 8;
+const double kSpace2 = 16;
+const double kSpace3 = 24;
+const double kSpace4 = 32;
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -57,9 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
             debugPrint('WALKS SNAP: docs=${snap.docs.length} uid=$currentUid');
 
             final loaded = snap.docs.map((doc) {
-              final data = Map<String, dynamic>.from(
-                doc.data(),
-              );
+              final data = Map<String, dynamic>.from(doc.data());
               data['firestoreId'] = doc.id;
               data['id'] ??= doc.id;
 
@@ -302,120 +311,123 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-Widget _buildCalendarDayCell(DateTime day, bool isDark,
-    {bool forceSelected = false}) {
-  final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
-  final bool isToday = isSameDay(day, DateTime.now());
-  final bool hasWalk = _hasUpcomingWalkOnDay(day);
+  Widget _buildCalendarDayCell(
+    DateTime day,
+    bool isDark, {
+    bool forceSelected = false,
+  }) {
+    final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
+    final bool isToday = isSameDay(day, DateTime.now());
+    final bool hasWalk = _hasUpcomingWalkOnDay(day);
 
-  // ✅ Single-letter labels to match your UI
-  String dowLetter(int weekday) {
-    // weekday: Mon=1 ... Sun=7
-    switch (weekday) {
-      case DateTime.monday:
-        return 'M';
-      case DateTime.tuesday:
-        return 'T';
-      case DateTime.wednesday:
-        return 'W';
-      case DateTime.thursday:
-        return 'T';
-      case DateTime.friday:
-        return 'F';
-      case DateTime.saturday:
-        return 'S';
-      case DateTime.sunday:
-      default:
-        return 'S';
+    // ✅ Single-letter labels to match your UI
+    String dowLetter(int weekday) {
+      // weekday: Mon=1 ... Sun=7
+      switch (weekday) {
+        case DateTime.monday:
+          return 'M';
+        case DateTime.tuesday:
+          return 'T';
+        case DateTime.wednesday:
+          return 'W';
+        case DateTime.thursday:
+          return 'T';
+        case DateTime.friday:
+          return 'F';
+        case DateTime.saturday:
+          return 'S';
+        case DateTime.sunday:
+        default:
+          return 'S';
+      }
     }
-  }
 
-  // ✅ Priority: Selected > Walk day > Today > Normal
-  Color bg;
-  Color border;
-  Color labelColor;
-  Color numberColor;
+    // ✅ Priority: Selected > Walk day > Today > Normal
+    Color bg;
+    Color border;
+    Color labelColor;
+    Color numberColor;
 
-  if (isSelected) {
-    bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
-    border = Colors.transparent;
-    labelColor = Colors.white.withOpacity(0.9);
-    numberColor = Colors.white;
-  } else if (hasWalk) {
-    bg = isDark ? const Color(0xFF9BD77A) : const Color(0xFF9BD77A);
-    border = Colors.transparent;
-    labelColor = isDark ? Colors.black87 : Colors.black87;
-    numberColor = Colors.black87;
-  } else if (isToday) {
-    // ✅ Today gets a subtle outline ONLY (different from walk highlight)
-    bg = Colors.transparent;
-    border = isDark ? Colors.white24 : Colors.black12;
-    labelColor = isDark ? Colors.white70 : Colors.black54;
-    numberColor = isDark ? Colors.white : Colors.black87;
-  } else {
-    bg = isDark ? Colors.white10 : const Color(0xFFEFE6D9);
-    border = Colors.transparent;
-    labelColor = isDark ? Colors.white70 : Colors.black54;
-    numberColor = isDark ? Colors.white : Colors.black87;
-  }
+    if (isSelected) {
+      bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
+      border = Colors.transparent;
+      labelColor = Colors.white.withOpacity(0.9);
+      numberColor = Colors.white;
+    } else if (hasWalk) {
+      bg = isDark ? const Color(0xFF9BD77A) : const Color(0xFF9BD77A);
+      border = Colors.transparent;
+      labelColor = isDark ? Colors.black87 : Colors.black87;
+      numberColor = Colors.black87;
+    } else if (isToday) {
+      // ✅ Today gets a subtle outline ONLY (different from walk highlight)
+      bg = Colors.transparent;
+      border = isDark ? Colors.white24 : Colors.black12;
+      labelColor = isDark ? Colors.white70 : Colors.black54;
+      numberColor = isDark ? Colors.white : Colors.black87;
+    } else {
+      bg = isDark ? Colors.white10 : const Color(0xFFEFE6D9);
+      border = Colors.transparent;
+      labelColor = isDark ? Colors.white70 : Colors.black54;
+      numberColor = isDark ? Colors.white : Colors.black87;
+    }
 
-  // ✅ FIX: Force every cell to same size to prevent weird pills + overflow
-  const double cellSize = 44;
+    // ✅ FIX: Force every cell to same size to prevent weird pills + overflow
+    const double cellSize = 44;
 
-  return Center(
-    child: SizedBox(
-      width: cellSize,
-      height: cellSize,
-      child: DecoratedBox(
-decoration: BoxDecoration(
-  color: bg,
-  borderRadius: BorderRadius.circular(999),
+    return Center(
+      child: SizedBox(
+        width: cellSize,
+        height: cellSize,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(kRadiusPill),
 
-  // ✅ Walk day indicator
-  // - if it has an upcoming walk and it's not selected → show a subtle border
-  // - if it's selected → keep selected clean (no extra border needed)
-  border: (hasWalk && !isSelected)
-      ? Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.18)
-              : const Color(0xFF2E7D32).withValues(alpha: 0.55),
-          width: 1.4,
-        )
-      : Border.all(
-          color: border, // your existing border logic (today/normal/selected)
-          width: 1.0,
-        ),
-),
+            // ✅ Walk day indicator
+            // - if it has an upcoming walk and it's not selected → show a subtle border
+            // - if it's selected → keep selected clean (no extra border needed)
+            border: (hasWalk && !isSelected)
+                ? Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : const Color(0xFF2E7D32).withValues(alpha: 0.55),
+                    width: 1.4,
+                  )
+                : Border.all(
+                    color:
+                        border, // your existing border logic (today/normal/selected)
+                    width: 1.0,
+                  ),
+          ),
 
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              dowLetter(day.weekday),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                height: 1.0,
-                color: labelColor,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                dowLetter(day.weekday),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  height: 1.0,
+                  color: labelColor,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${day.day}',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                height: 1.0,
-                color: numberColor,
+              const SizedBox(height: 2),
+              Text(
+                '${day.day}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  height: 1.0,
+                  color: numberColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   // --- Step counter setup (Android only for now) ---
 
@@ -677,14 +689,14 @@ decoration: BoxDecoration(
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFFFCFEF9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusCard)),
       ),
       builder: (ctx) {
         // ✅ If nothing stored yet → same placeholder as before
         if (notifications.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            padding: EdgeInsets.fromLTRB(kSpace2, 20, kSpace2, kSpace4),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -704,7 +716,7 @@ decoration: BoxDecoration(
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: kSpace2),
               ],
             ),
           );
@@ -713,7 +725,7 @@ decoration: BoxDecoration(
         // ✅ Real notifications list
         return SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -902,7 +914,7 @@ decoration: BoxDecoration(
           if (isDark)
             // --- Dark: floating header (no bar) ---
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1007,7 +1019,7 @@ decoration: BoxDecoration(
           else
             // --- Light: keep the gradient bar ---
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF294630), Color(0xFF4F925C)],
@@ -1123,18 +1135,18 @@ decoration: BoxDecoration(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(kRadiusCard),
+                  topRight: Radius.circular(kRadiusCard),
                 ),
               ),
 
               // overlay so text stays readable on top of the photo
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(kRadiusCard),
+                    topRight: Radius.circular(kRadiusCard),
                   ),
                   gradient: isDark
                       ? const LinearGradient(
@@ -1156,7 +1168,12 @@ decoration: BoxDecoration(
                   slivers: [
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                        padding: EdgeInsets.fromLTRB(
+                          kSpace2,
+                          12,
+                          kSpace2,
+                          kSpace3,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1167,16 +1184,19 @@ decoration: BoxDecoration(
                                   : const Color(0xFFFBFEF8),
                               elevation: 0.5,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(
+                                  kRadiusCard,
+                                ),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  16,
-                                  16,
-                                  20,
-                                ),
-                                child: Column(
+  padding: EdgeInsets.fromLTRB(
+    kSpace2,
+    kSpace2,
+    kSpace2,
+    20,
+  ),
+  child: Column(
+
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
@@ -1218,14 +1238,13 @@ decoration: BoxDecoration(
                                         ),
                                         const SizedBox(width: 12),
                                         _StepsRing(
-                                          steps:
-                                              _sessionSteps,
+                                          steps: _sessionSteps,
                                           goal: 10000,
                                           isDark: isDark,
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: kSpace2),
 
                                     // Today + date row
                                     Row(
@@ -1251,72 +1270,103 @@ decoration: BoxDecoration(
                                       ],
                                     ),
 
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: kSpace1),
 
-// ===== Calendar (week swipe + no dots + fixed sizing) =====
-TableCalendar(
-  firstDay: DateTime(2020, 1, 1),
-  lastDay: DateTime(2035, 12, 31),
-  focusedDay: _focusedDay,
- calendarFormat: CalendarFormat.week,
-headerVisible: false,
-daysOfWeekVisible: false,
-rowHeight: 60,
+                                    // ===== Calendar (week swipe + no dots + fixed sizing) =====
+                                    TableCalendar(
+                                      firstDay: DateTime(2020, 1, 1),
+                                      lastDay: DateTime(2035, 12, 31),
+                                      focusedDay: _focusedDay,
+                                      calendarFormat: CalendarFormat.week,
+                                      headerVisible: false,
+                                      daysOfWeekVisible: false,
+                                      rowHeight: 60,
 
-// ✅ smoother swipe between weeks
-pageAnimationEnabled: true,
-pageAnimationDuration: const Duration(milliseconds: 220),
-pageAnimationCurve: Curves.easeOutCubic,
+                                      // ✅ smoother swipe between weeks
+                                      pageAnimationEnabled: true,
+                                      pageAnimationDuration: const Duration(
+                                        milliseconds: 220,
+                                      ),
+                                      pageAnimationCurve: Curves.easeOutCubic,
 
+                                      // ✅ IMPORTANT: keep outside days visible so the week row is consistent
+                                      calendarStyle: const CalendarStyle(
+                                        isTodayHighlighted: false,
+                                        outsideDaysVisible: true,
+                                      ),
 
-  // ✅ IMPORTANT: keep outside days visible so the week row is consistent
-  calendarStyle: const CalendarStyle(
-    isTodayHighlighted: false,
-    outsideDaysVisible: true,
-  ),
+                                      onPageChanged: (focusedDay) {
+                                        setState(
+                                          () => _focusedDay = focusedDay,
+                                        );
+                                      },
 
-  onPageChanged: (focusedDay) {
-    setState(() => _focusedDay = focusedDay);
-  },
+                                      selectedDayPredicate: (day) =>
+                                          isSameDay(_selectedDay, day),
 
-  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                                      calendarBuilders: CalendarBuilders(
+                                        defaultBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: false,
+                                              );
+                                            },
+                                        selectedBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: true,
+                                              );
+                                            },
+                                        todayBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: false,
+                                              );
+                                            },
 
-  calendarBuilders: CalendarBuilders(
-    defaultBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: false);
-    },
-    selectedBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: true);
-    },
-    todayBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: false);
-    },
+                                        // ✅ FIX: outside days were not using your pill builder
+                                        outsideBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: false,
+                                              );
+                                            },
 
-    // ✅ FIX: outside days were not using your pill builder
-    outsideBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: false);
-    },
+                                        // ✅ (optional safety) disabled days also use the same pill rendering
+                                        disabledBuilder:
+                                            (context, day, focusedDay) {
+                                              return _buildCalendarDayCell(
+                                                day,
+                                                isDark,
+                                                forceSelected: false,
+                                              );
+                                            },
+                                      ),
 
-    // ✅ (optional safety) disabled days also use the same pill rendering
-    disabledBuilder: (context, day, focusedDay) {
-      return _buildCalendarDayCell(day, isDark, forceSelected: false);
-    },
-  ),
+                                      onDaySelected: (selectedDay, focusedDay) {
+                                        setState(() {
+                                          _selectedDay = selectedDay;
+                                          _focusedDay = focusedDay;
+                                        });
 
-  onDaySelected: (selectedDay, focusedDay) {
-    setState(() {
-      _selectedDay = selectedDay;
-      _focusedDay = focusedDay;
-    });
+                                        final events = _eventsForDay(
+                                          selectedDay,
+                                        );
+                                        if (events.isNotEmpty) {
+                                          _navigateToDetails(events.first);
+                                        }
+                                      },
+                                    ),
 
-    final events = _eventsForDay(selectedDay);
-    if (events.isNotEmpty) {
-      _navigateToDetails(events.first);
-    }
-  },
-),
-// ===== End Calendar =====
-
+                                    // ===== End Calendar =====
                                     const SizedBox(height: 20),
 
                                     // Ready to walk + buttons
@@ -1327,12 +1377,12 @@ pageAnimationCurve: Curves.easeOutCubic,
                                             fontWeight: FontWeight.bold,
                                           ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: kSpace1),
                                     Text(
                                       'Start a walk now or join others nearby. Your steps, your pace.',
                                       style: theme.textTheme.bodyMedium,
                                     ),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: kSpace2),
                                     SizedBox(
                                       width: double.infinity,
                                       child: FilledButton.icon(
@@ -1398,7 +1448,7 @@ pageAnimationCurve: Curves.easeOutCubic,
                                             fontWeight: FontWeight.bold,
                                           ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: kSpace1),
                                     if (_myHostedWalks.isEmpty)
                                       Text(
                                         'No walks yet.\nTap "Start walk" above to create your first one.',
@@ -1426,7 +1476,7 @@ pageAnimationCurve: Curves.easeOutCubic,
                               ),
                             ),
 
-                            const SizedBox(height: 16),
+                            SizedBox(height: kSpace2),
 
                             // ===== WEEKLY SUMMARY =====
                             Text(
@@ -1435,14 +1485,14 @@ pageAnimationCurve: Curves.easeOutCubic,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: kSpace1),
                             _WeeklySummaryCard(
                               walks: _weeklyWalkCount,
                               kmSoFar: _weeklyKm,
                               kmGoal: _weeklyGoalKm,
                               streakDays: _streakDays,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: kSpace2),
 
                             // ===== QUICK STATS =====
                             Text(
@@ -1532,7 +1582,7 @@ class _WeeklySummaryCard extends StatelessWidget {
       color: isDark ? kDarkSurface : null,
       elevation: isDark ? 0 : 0.6,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(kRadiusCard),
         side: BorderSide(
           color: isDark
               ? Colors.white.withValues(alpha: 0.06)
@@ -1540,7 +1590,7 @@ class _WeeklySummaryCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1566,7 +1616,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                     color: isDark
                         ? kDarkSurface2
                         : Colors.black.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(kRadiusPill),
                   ),
                   child: Text(
                     kmGoal <= 0 ? '--' : '$percent%',
@@ -1593,7 +1643,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                   height: 14,
                   decoration: BoxDecoration(
                     color: trackColor,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(kRadiusPill),
                   ),
                   child: Stack(
                     children: [
@@ -1603,7 +1653,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                         width: c.maxWidth * (kmGoal <= 0 ? 0.0 : progress),
                         decoration: BoxDecoration(
                           color: fillColor,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(kRadiusPill),
                         ),
                       ),
 
@@ -1614,7 +1664,9 @@ class _WeeklySummaryCard extends StatelessWidget {
                             opacity: isDark ? 0.10 : 0.08,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(999),
+                                borderRadius: BorderRadius.circular(
+                                  kRadiusPill,
+                                ),
                                 gradient: const LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
@@ -1672,7 +1724,7 @@ class _StatCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         elevation: isDark ? 0 : 0.5,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(kRadiusControl),
           side: BorderSide(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.06)
@@ -1726,7 +1778,9 @@ class _WalkCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kRadiusControl),
+      ),
       elevation: 0.5,
       child: ListTile(
         onTap: onTap,
@@ -1799,10 +1853,9 @@ class _StepsRing extends StatelessWidget {
         final Color base = isDark ? kMintBright : const Color(0xFF14532D);
 
         // Very light color at 0 progress (so the start is almost white)
- final Color veryLight = isDark
-    ? Colors.white.withValues(alpha: 0.16)
-    : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
-
+        final Color veryLight = isDark
+            ? Colors.white.withValues(alpha: 0.16)
+            : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
 
         // End color gets darker as progress increases
         final Color endColor = Color.lerp(veryLight, base, animatedProgress)!;
@@ -1818,10 +1871,11 @@ class _StepsRing extends StatelessWidget {
                 painter: _GradientRingPainter(
                   progress: animatedProgress,
                   strokeWidth: stroke,
-                 trackColor: isDark
-    ? Colors.white.withValues(alpha: 0.10)
-    : const Color(0xFFD7E2D7), // ✅ slightly darker track so ring feels consistent
-
+                  trackColor: isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : const Color(
+                          0xFFD7E2D7,
+                        ), // ✅ slightly darker track so ring feels consistent
                   // ✅ start ALWAYS very light
                   startColor: veryLight,
                   // ✅ end darkens with progress
@@ -1905,21 +1959,19 @@ class _GradientRingPainter extends CustomPainter {
     if (p <= 0) return;
 
     // Gradient on the progress arc
-final gradient = SweepGradient(
-  // ✅ end with startColor again → seam becomes light (no dark tick at top)
-  colors: [startColor, endColor, startColor],
-  stops: const [0.0, 0.85, 1.0],
-  transform: const GradientRotation(-math.pi / 2),
-);
+    final gradient = SweepGradient(
+      // ✅ end with startColor again → seam becomes light (no dark tick at top)
+      colors: [startColor, endColor, startColor],
+      stops: const [0.0, 0.85, 1.0],
+      transform: const GradientRotation(-math.pi / 2),
+    );
 
-
-final progressPaint = Paint()
-  ..shader = gradient.createShader(ringRect)
-  ..style = PaintingStyle.stroke
-  ..strokeWidth = strokeWidth
-  ..strokeCap = StrokeCap.round
-  ..isAntiAlias = true;
-
+    final progressPaint = Paint()
+      ..shader = gradient.createShader(ringRect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true;
 
     canvas.drawArc(ringRect, startAngle, sweepAngle, false, progressPaint);
   }
