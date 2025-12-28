@@ -19,6 +19,8 @@ import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
 import 'dart:math' as math;
 import 'walk_chat_screen.dart';
+import 'package:flutter/services.dart';
+
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -817,12 +819,24 @@ TextButton(
   // --- UI ---
 
   @override
-  Widget build(BuildContext context) {
-    Widget body;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+Widget build(BuildContext context) {
+  Widget body;
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
 
-    switch (_currentTab) {
+  // ✅ Force the phone status-bar area to match our header color
+SystemChrome.setSystemUIOverlayStyle(
+  SystemUiOverlayStyle(
+    // ✅ Match the TOP of your gradient bar: Color(0xFF294630)
+    statusBarColor: isDark ? Colors.transparent : const Color(0xFF294630),
+    statusBarIconBrightness: Brightness.light, // Android icons
+    statusBarBrightness: Brightness.dark, // iOS text/icons
+  ),
+);
+
+
+  switch (_currentTab) {
+
       case 0:
         body = _buildHomeTab(context);
         break;
@@ -877,12 +891,13 @@ TextButton(
         break;
     }
 
-    return Scaffold(
-      // Deep green behind the top bar only – content sits on a card.
-      backgroundColor: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+   return Scaffold(
+  // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
+  backgroundColor: isDark ? kDarkBg : const Color(0xFF4F925C),
 
-      body: body,
-      bottomNavigationBar: BottomNavigationBar(
+  body: body,
+  bottomNavigationBar: BottomNavigationBar(
+
         currentIndex: _currentTab,
         onTap: (index) {
           setState(() {
@@ -920,11 +935,11 @@ TextButton(
     final today = DateTime.now();
     final isDark = theme.brightness == Brightness.dark;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // ===== HEADER =====
-          if (isDark)
+   return Column(
+  children: [
+      // ===== HEADER =====
+      if (isDark)
+
             // --- Dark: floating header (no bar) ---
             Padding(
               padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
@@ -1029,118 +1044,113 @@ TextButton(
                 ],
               ),
             )
-          else
-            // --- Light: keep the gradient bar ---
+         else
+  // --- Light: same header as Nearby/Profile ---
+  Container(
+    padding: const EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, 12),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF294630), Color(0xFF4F925C)],
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
             Container(
-              padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
+              width: 32,
+              height: 32,
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                shape: BoxShape.circle,
+                color: Colors.white24,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: const Icon(
+                Icons.directions_walk,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Yalla Nemshi',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: _openNotificationsSheet,
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white24,
+                    ),
+                    child: const Icon(
+                      Icons.notifications_none,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  if (_unreadNotifCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white24,
+                          color: Colors.red,
                         ),
-                        child: const Icon(
-                          Icons.directions_walk,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Yalla Nemshi',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _openNotificationsSheet,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white24,
-                              ),
-                              child: const Icon(
-                                Icons.notifications_none,
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                            ),
-                            if (_unreadNotifCount > 0)
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 2,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(999),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _unreadNotifCount > 99
-                                        ? '99+'
-                                        : '$_unreadNotifCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: _openProfileQuickSheet,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
+                        child: Text(
+                          _unreadNotifCount > 99 ? '99+' : '$_unreadNotifCount',
+                          style: const TextStyle(
+                            fontSize: 9,
                             color: Colors.white,
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            size: 18,
-                            color: Color(0xFF14532D),
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: _openProfileQuickSheet,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 18,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+
+
 
           // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
           Expanded(
@@ -1574,8 +1584,8 @@ Row(
             ),
           ),
         ],
-      ),
-    );
+      );
+    
   }
 }
 //end of homescreeninstant

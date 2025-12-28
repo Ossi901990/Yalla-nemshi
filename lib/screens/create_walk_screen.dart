@@ -6,7 +6,22 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/walk_event.dart';
 import 'map_pick_screen.dart';
-import '../services/app_preferences.dart'; 
+import '../services/app_preferences.dart';
+
+// ===== Design tokens (match Home / Profile) =====
+const double kRadiusCard = 24;
+const double kRadiusControl = 16;
+const double kRadiusPill = 999;
+
+const double kSpace1 = 8;
+const double kSpace2 = 16;
+const double kSpace3 = 24;
+const double kSpace4 = 32;
+
+const Color kLightSurface = Color(0xFFFBFEF8);
+const double kCardElevationLight = 0.6;
+const double kCardElevationDark = 0.0;
+const double kCardBorderAlpha = 0.06;
 
 class CreateWalkScreen extends StatefulWidget {
   final void Function(WalkEvent) onEventCreated;
@@ -28,7 +43,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   String _title = '';
   double _distanceKm = 3.0;
   String _gender = 'Mixed';
-
 
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
@@ -58,23 +72,32 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   }
 
   String _formatDateTime(DateTime dt) {
-  // Short weekday names
-  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
+    // Short weekday names
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
 
-  final w = weekdays[dt.weekday - 1];
-  final m = months[dt.month - 1];
-  final d = dt.day.toString().padLeft(2, '0');
-  final hh = dt.hour.toString().padLeft(2, '0');
-  final mm = dt.minute.toString().padLeft(2, '0');
+    final w = weekdays[dt.weekday - 1];
+    final m = months[dt.month - 1];
+    final d = dt.day.toString().padLeft(2, '0');
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
 
-  // Example: "Tue, 10 Dec • 18:30"
-  return '$w, $d $m • $hh:$mm';
-}
-
+    // Example: "Tue, 10 Dec • 18:30"
+    return '$w, $d $m • $hh:$mm';
+  }
 
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
@@ -117,66 +140,64 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
   }
 
-Future<void> _submit() async {
-  if (!_formKey.currentState!.validate()) return;
-  _formKey.currentState!.save();
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
 
-  final uid = FirebaseAuth.instance.currentUser?.uid;
-  if (uid == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('You must be logged in to create a walk.')),
-    );
-    return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to create a walk.')),
+      );
+      return;
+    }
+
+    // 1) Build the Firestore payload
+    final payload = <String, dynamic>{
+      'title': _title,
+      'dateTime': _dateTime.toIso8601String(),
+      'distanceKm': _distanceKm,
+      'gender': _gender,
+      'hostUid': uid,
+      'cancelled': false,
+      'meetingPlaceName': _meetingPlace.isEmpty ? null : _meetingPlace,
+      'meetingLat': _meetingLatLng?.latitude,
+      'meetingLng': _meetingLatLng?.longitude,
+      'description': _description.isEmpty ? null : _description,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      // 2) Create walk doc in Firestore
+      final docRef =
+          await FirebaseFirestore.instance.collection('walks').add(payload);
+
+      // 3) Build your local WalkEvent with the REAL firestoreId
+      final newEvent = WalkEvent(
+        id: docRef.id,
+        hostUid: uid,
+        firestoreId: docRef.id, // ✅ this is what chat uses
+        title: _title,
+        dateTime: _dateTime,
+        distanceKm: _distanceKm,
+        gender: _gender,
+        isOwner: true,
+        joined: false,
+        meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
+        meetingLat: _meetingLatLng?.latitude,
+        meetingLng: _meetingLatLng?.longitude,
+        description: _description.isEmpty ? null : _description,
+      );
+
+      // 4) Notify HomeScreen + go back
+      widget.onEventCreated(newEvent);
+      widget.onCreatedNavigateHome();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create walk: $e')),
+      );
+    }
   }
-
-  // 1) Build the Firestore payload
-  final payload = <String, dynamic>{
-    'title': _title,
-    'dateTime': _dateTime.toIso8601String(),
-    'distanceKm': _distanceKm,
-    'gender': _gender,
-    'hostUid': uid,
-    'cancelled': false,
-    'meetingPlaceName': _meetingPlace.isEmpty ? null : _meetingPlace,
-    'meetingLat': _meetingLatLng?.latitude,
-    'meetingLng': _meetingLatLng?.longitude,
-    'description': _description.isEmpty ? null : _description,
-    'createdAt': FieldValue.serverTimestamp(),
-  };
-
-  try {
-    // 2) Create walk doc in Firestore
-    final docRef = await FirebaseFirestore.instance
-        .collection('walks')
-        .add(payload);
-
-    // 3) Build your local WalkEvent with the REAL firestoreId
-    final newEvent = WalkEvent(
-      id: docRef.id,       
-      hostUid: uid,       // keep your app stable
-      firestoreId: docRef.id,     // ✅ this is what chat uses
-      title: _title,
-      dateTime: _dateTime,
-      distanceKm: _distanceKm,
-      gender: _gender,
-      isOwner: true,
-      joined: false,
-      meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
-      meetingLat: _meetingLatLng?.latitude,
-      meetingLng: _meetingLatLng?.longitude,
-      description: _description.isEmpty ? null : _description,
-    );
-
-    // 4) Notify HomeScreen + go back
-    widget.onEventCreated(newEvent);
-    widget.onCreatedNavigateHome();
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to create walk: $e')),
-    );
-  }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -185,8 +206,7 @@ Future<void> _submit() async {
 
     return Scaffold(
       // ✅ match Home / Nearby / Profile
-      backgroundColor:
-          isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+      backgroundColor: isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -215,7 +235,6 @@ Future<void> _submit() async {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: const [
-                    // logo
                     _HeaderLogo(),
                     SizedBox(width: 8),
                     Text(
@@ -231,7 +250,7 @@ Future<void> _submit() async {
               ),
             ),
 
-            // ===== MAIN SHEET WITH BG IMAGE (matches Home/Profile) =====
+            // ===== MAIN AREA: background stays "normal", content sits on a Card (like Home) =====
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -239,9 +258,7 @@ Future<void> _submit() async {
                   color: isDark
                       ? const Color.fromARGB(255, 9, 2, 7)
                       : const Color(0xFFF7F9F2),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   image: DecorationImage(
                     image: AssetImage(
                       isDark
@@ -252,278 +269,265 @@ Future<void> _submit() async {
                     alignment: Alignment.topCenter,
                   ),
                 ),
-                // overlay so text & form stay readable
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.black.withOpacity(0.35)
-                        : Colors.transparent,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
+                    color: isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   ),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title + subtitle
-                        Text(
-                          'Create walk',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF294630),
-                          ),
+                    padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace3),
+                    child: Card(
+                      color: isDark ? theme.colorScheme.surface : kLightSurface,
+                      elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(kRadiusCard),
+                        side: BorderSide(
+                          color: (isDark ? Colors.white : Colors.black)
+                              .withValues(alpha: kCardBorderAlpha),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Set your walk details and invite others to join.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color:
-                                isDark ? Colors.white70 : Colors.black54,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace3),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Title + subtitle INSIDE the card (Home-style)
+                            Text(
+                              'Create walk',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF294630),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Set your walk details and invite others to join.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                        // ===== FORM =====
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              // Title
-                              TextFormField(
-                                decoration: const InputDecoration(
-                                  labelText: 'Title',
-                                ),
-                                onSaved: (val) => _title = val!.trim(),
-                                validator: (val) =>
-                                    (val == null || val.trim().isEmpty)
+                            // ===== FORM =====
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  // Title
+                                  TextFormField(
+                                    decoration: const InputDecoration(labelText: 'Title'),
+                                    onSaved: (val) => _title = val!.trim(),
+                                    validator: (val) => (val == null || val.trim().isEmpty)
                                         ? 'Required'
                                         : null,
-                              ),
-                              const SizedBox(height: 12),
-
-                              // Distance
-TextFormField(
-  key: ValueKey(_distanceKm), // 👈 so initialValue updates
-  decoration: const InputDecoration(
-    labelText: 'Distance (km)',
-  ),
-  keyboardType:
-      const TextInputType.numberWithOptions(decimal: true),
-  initialValue: _distanceKm.toStringAsFixed(1),
-
-  // ✅ NEW: validation
-  validator: (val) {
-    final d = double.tryParse(val ?? '');
-    if (d == null) {
-      return 'Please enter a number';
-    }
-    if (d <= 0) {
-      return 'Distance must be greater than 0';
-    }
-    if (d > 100) {
-      return 'That’s a long walk! Try under 100 km';
-    }
-    return null; // OK
-  },
-
-  onSaved: (val) =>
-      _distanceKm = double.tryParse(val ?? '') ?? 3.0,
-),
-                              const SizedBox(height: 12),
-
-                              // Gender filter
-                              DropdownButtonFormField<String>(
-                                initialValue: _gender, // 👈 binds to state
-                                decoration: const InputDecoration(
-                                  labelText: 'Who can join?',
-                                ),
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'Mixed',
-                                    child: Text('Mixed'),
                                   ),
-                                  DropdownMenuItem(
-                                    value: 'Women only',
-                                    child: Text('Women only'),
+                                  const SizedBox(height: 12),
+
+                                  // Distance
+                                  TextFormField(
+                                    key: ValueKey(_distanceKm), // so initialValue updates
+                                    decoration: const InputDecoration(labelText: 'Distance (km)'),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(decimal: true),
+                                    initialValue: _distanceKm.toStringAsFixed(1),
+                                    validator: (val) {
+                                      final d = double.tryParse(val ?? '');
+                                      if (d == null) return 'Please enter a number';
+                                      if (d <= 0) return 'Distance must be greater than 0';
+                                      if (d > 100) return 'That’s a long walk! Try under 100 km';
+                                      return null;
+                                    },
+                                    onSaved: (val) =>
+                                        _distanceKm = double.tryParse(val ?? '') ?? 3.0,
                                   ),
-                                  DropdownMenuItem(
-                                    value: 'Men only',
-                                    child: Text('Men only'),
+                                  const SizedBox(height: 12),
+
+                                  // Gender filter
+                                  DropdownButtonFormField<String>(
+                                    initialValue: _gender,
+                                    decoration: const InputDecoration(labelText: 'Who can join?'),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: 'Mixed',
+                                        child: Text('Mixed'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'Women only',
+                                        child: Text('Women only'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'Men only',
+                                        child: Text('Men only'),
+                                      ),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _gender = val);
+                                      }
+                                    },
                                   ),
-                                ],
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() => _gender = val);
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 12),
+                                  const SizedBox(height: 12),
 
-                              // Date & time
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(
-                                  'Date & time',
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                                subtitle: Text(
-  _formatDateTime(_dateTime),
-  style: theme.textTheme.bodySmall?.copyWith(
-    color: isDark ? Colors.white70 : Colors.black87,
-  ),
-),
+                                  // Date & time
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      'Date & time',
+                                      style: theme.textTheme.titleMedium,
+                                    ),
+                                    subtitle: Text(
+                                      _formatDateTime(_dateTime),
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                      ),
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.calendar_today),
+                                      onPressed: _pickDateTime,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
 
-                                trailing: IconButton(
-                                  icon:
-                                      const Icon(Icons.calendar_today),
-                                  onPressed: _pickDateTime,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
+                                  // Meeting point
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      'Meeting point',
+                                      style: theme.textTheme.titleMedium,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
 
-                              // Meeting point name + pick on map
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Meeting point',
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
+                                  TextFormField(
+                                    decoration: const InputDecoration(
+                                      labelText: 'Location name (optional)',
+                                      hintText: 'e.g. Rainbow St. entrance',
+                                    ),
+                                    onSaved: (val) => _meetingPlace = (val ?? '').trim(),
+                                  ),
+                                  const SizedBox(height: 8),
 
-                              // Optional custom name
-                              TextFormField(
-                                decoration: const InputDecoration(
-                                  labelText: 'Location name (optional)',
-                                  hintText:
-                                      'e.g. Rainbow St. entrance',
-                                ),
-                                onSaved: (val) => _meetingPlace =
-                                    (val ?? '').trim(),
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Button to pick on map
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: _pickOnMap,
-                                  icon:
-                                      const Icon(Icons.map_outlined),
-                                  label: const Text('Pick on map'),
-                                ),
-                              ),
-
-                              const SizedBox(height: 4),
-
-                              // Show status + optional mini map preview
-if (_meetingLatLng == null)
-  Align(
-    alignment: Alignment.centerLeft,
-    child: Text(
-      'No location chosen yet',
-      style: theme.textTheme.bodySmall,
+                                 SizedBox(
+  width: double.infinity,
+  child: OutlinedButton.icon(
+    onPressed: _pickOnMap,
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(52),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
     ),
-  )
-else
-  Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Location selected on map',
-        style: theme.textTheme.bodySmall,
-      ),
-      const SizedBox(height: 4),
-      Text(
-        'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
-        'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: Colors.grey.shade600,
-        ),
-      ),
-      const SizedBox(height: 8),
-
-      // 🔍 Mini map preview (read-only)
-      ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 160,
-          width: double.infinity,
-          child: AbsorbPointer(
-            // make it non-interactive so it doesn't fight the scroll
-            absorbing: true,
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _meetingLatLng!,
-                zoom: 15,
-              ),
-              markers: {
-                Marker(
-                  markerId: const MarkerId('meeting_point'),
-                  position: _meetingLatLng!,
-                ),
-              },
-              zoomControlsEnabled: false,
-              myLocationButtonEnabled: false,
-              compassEnabled: false,
-              scrollGesturesEnabled: false,
-              tiltGesturesEnabled: false,
-              rotateGesturesEnabled: false,
-              zoomGesturesEnabled: false,
-              liteModeEnabled: true, // nicer & lighter on Android
-            ),
-          ),
-        ),
-      ),
-
-      const SizedBox(height: 4),
-      TextButton.icon(
-        onPressed: _pickOnMap, // reopen map to adjust
-        style: TextButton.styleFrom(
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        icon: const Icon(Icons.map_outlined, size: 16),
-        label: const Text('Change location'),
-      ),
-    ],
+    icon: const Icon(Icons.map_outlined),
+    label: const Text('Pick on map'),
   ),
+),
 
-const SizedBox(height: 16),
+                                  const SizedBox(height: 4),
 
-                              // Description
-                              TextFormField(
-                                decoration: const InputDecoration(
-                                  labelText: 'Description (optional)',
-                                ),
-                                maxLines: 3,
-                                onSaved: (val) => _description =
-                                    (val ?? '').trim(),
-                              ),
+                                  if (_meetingLatLng == null)
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        'No location chosen yet',
+                                        style: theme.textTheme.bodySmall,
+                                      ),
+                                    )
+                                  else
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Location selected on map',
+                                          style: theme.textTheme.bodySmall,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
+                                          'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: SizedBox(
+                                            height: 160,
+                                            width: double.infinity,
+                                            child: AbsorbPointer(
+                                              absorbing: true,
+                                              child: GoogleMap(
+                                                initialCameraPosition: CameraPosition(
+                                                  target: _meetingLatLng!,
+                                                  zoom: 15,
+                                                ),
+                                                markers: {
+                                                  Marker(
+                                                    markerId: const MarkerId('meeting_point'),
+                                                    position: _meetingLatLng!,
+                                                  ),
+                                                },
+                                                zoomControlsEnabled: false,
+                                                myLocationButtonEnabled: false,
+                                                compassEnabled: false,
+                                                scrollGesturesEnabled: false,
+                                                tiltGesturesEnabled: false,
+                                                rotateGesturesEnabled: false,
+                                                zoomGesturesEnabled: false,
+                                                liteModeEnabled: true,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        TextButton.icon(
+                                          onPressed: _pickOnMap,
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
+                                          icon: const Icon(Icons.map_outlined, size: 16),
+                                          label: const Text('Change location'),
+                                        ),
+                                      ],
+                                    ),
 
-                              const SizedBox(height: 24),
+                                  const SizedBox(height: 16),
 
-                              // Submit button
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton(
-                                  onPressed: () => _submit(),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor:
-                                        const Color(0xFF14532D),
-                                    foregroundColor: Colors.white,
+                                  // Description
+                                  TextFormField(
+                                    decoration: const InputDecoration(
+                                      labelText: 'Description (optional)',
+                                    ),
+                                    maxLines: 3,
+                                    onSaved: (val) => _description = (val ?? '').trim(),
                                   ),
-                                  child: const Text('Create walk'),
-                                ),
+
+                                  const SizedBox(height: 24),
+
+                                  // Submit button (we’ll polish styles later)
+                                 SizedBox(
+  width: double.infinity,
+  child: FilledButton(
+    onPressed: _submit,
+    style: FilledButton.styleFrom(
+      minimumSize: const Size.fromHeight(52),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      backgroundColor: const Color(0xFF14532D),
+      foregroundColor: Colors.white,
+    ),
+    child: const Text('Create walk'),
+  ),
+),
+
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

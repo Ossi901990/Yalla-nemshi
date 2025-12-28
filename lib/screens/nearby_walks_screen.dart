@@ -4,6 +4,25 @@ import 'package:flutter/material.dart';
 import '../models/walk_event.dart';
 import 'profile_screen.dart';
 
+// ===== Design tokens (match HomeScreen) =====
+
+// Radius
+const double kRadiusCard = 24;
+const double kRadiusControl = 16;
+const double kRadiusPill = 999;
+
+// Spacing
+const double kSpace1 = 8;
+const double kSpace2 = 16;
+const double kSpace3 = 24;
+const double kSpace4 = 32;
+
+// Cards
+const kLightSurface = Color(0xFFFBFEF8);
+const double kCardElevationLight = 0.6;
+const double kCardElevationDark = 0.0;
+const double kCardBorderAlpha = 0.06;
+
 enum _DateFilter { all, today, thisWeek }
 enum _DistanceFilter { all, short, medium, long }
 
@@ -99,9 +118,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     }
   }
 
-  // ===== SHEETS (same behaviour as Home) =====
+  // ===== SHEETS =====
 
-     void _showNotificationsSheet() {
+  void _showNotificationsSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -145,8 +164,6 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     );
   }
 
-
-
   void _showProfileQuickSheet() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -164,73 +181,47 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     );
   }
 
-
-  Widget _quickStat({required String label, required String value}) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: Colors.black54,
-          ),
-        ),
-      ],
-    );
-  }
-
   // ===== BUILD =====
 
   @override
-Widget build(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  final upcoming = widget.events
-      .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
-      .where(_matchDateFilter)
-      .where(_matchDistanceFilter)
-      .where((e) => !_interestedOnly || e.interested)
-      .toList()
-    ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming = widget.events
+        .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
+        .where(_matchDateFilter)
+        .where(_matchDistanceFilter)
+        .where((e) => !_interestedOnly || e.interested)
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-  return Scaffold(
-    // same idea as HomeScreen
-    backgroundColor:
-        isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
-    body: SafeArea(
-      bottom: false,
-      child: Column(
+   return Scaffold(
+  backgroundColor: isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+
+  // ✅ Important: body is now a Column (NOT wrapped in SafeArea)
+  body: Column(
+    children: [
+      // ===== STANDARD HEADER (fills status bar + same width/height) =====
+Container(
+  height: 64, // ✅ was 56
+  width: double.infinity,
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: isDark
+          ? const [Color(0xFF020908), Color(0xFF0B1A13)]
+          : const [Color(0xFF294630), Color(0xFF4F925C)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+    ),
+  ),
+  child: SafeArea(
+    bottom: false,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // ✅ added vertical
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ===== GREEN HEADER BAR (MATCH HOME) =====
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? const [
-                        Color(0xFF020908), // darker top
-                        Color(0xFF0B1A13), // darker bottom
-                      ]
-                    : const [
-                        Color(0xFF294630), // top
-                        Color(0xFF4F925C), // bottom
-                      ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Logo + app name
                 Row(
                   children: [
                     Container(
@@ -257,8 +248,6 @@ Widget build(BuildContext context) {
                     ),
                   ],
                 ),
-
-                // Notifications + profile (tappable)
                 Row(
                   children: [
                     GestureDetector(
@@ -322,135 +311,138 @@ Widget build(BuildContext context) {
               ],
             ),
           ),
+        ),
+      ),
 
-          // ===== MAIN SHEET WITH BG IMAGE (DARK + LIGHT) =====
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1A1A1A)
-                    : const Color(0xFFFAF7F0),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-
-
+      // ===== MAIN AREA (unchanged) =====
+      Expanded(
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color.fromARGB(255, 9, 2, 7)
+                : const Color(0xFFF7F9F2),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(kRadiusCard),
+            ),
+            image: DecorationImage(
+              image: AssetImage(
+                isDark
+                    ? 'assets/images/Dark_Grey_Background.png'
+                    : 'assets/images/Light_Beige_background.png',
               ),
-              // same overlay idea as Home so text stays readable
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.35)
-                      : Colors.white.withOpacity(0.65),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(kRadiusCard),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace2),
+              child: Card(
+                color: isDark ? theme.colorScheme.surface : kLightSurface,
+                elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusCard),
+                  side: BorderSide(
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: kCardBorderAlpha),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         'Nearby walks',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF111827),
+                          color: isDark ? Colors.white : const Color(0xFF111827),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
+                      const SizedBox(height: 4),
+                      Text(
                         'Find walks happening around you and join with one tap.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: isDark ? Colors.white70 : Colors.black54,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Filters card
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _buildFiltersCard(context),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Walk list
-                    Expanded(
-                      child: upcoming.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24.0),
-                                child: Text(
-                                  'No walks match your filters.\n'
-                                  'Try changing the date or distance filters.',
-                                  textAlign: TextAlign.center,
+                      const SizedBox(height: 12),
+                      _buildFiltersCard(context),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: upcoming.isEmpty
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(24.0),
+                                  child: Text(
+                                    'No walks match your filters.\n'
+                                    'Try changing the date or distance filters.',
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
+                                itemCount: upcoming.length,
+                                itemBuilder: (context, index) {
+                                  final e = upcoming[index];
+                                  return _NearbyWalkCard(
+                                    event: e,
+                                    onToggleJoin: widget.onToggleJoin,
+                                    onToggleInterested: widget.onToggleInterested,
+                                    onTap: () => widget.onTapEvent(e),
+                                  );
+                                },
                               ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(
-                                  12, 8, 12, 16),
-                              itemCount: upcoming.length,
-                              itemBuilder: (context, index) {
-                                final e = upcoming[index];
-                                return _NearbyWalkCard(
-                                  event: e,
-                                  onToggleJoin: widget.onToggleJoin,
-                                  onToggleInterested:
-                                      widget.onToggleInterested,
-                                  onTap: () => widget.onTapEvent(e),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
-    ),
-  );
-}
+    ],
+  ),
+);
 
+  }
 
   // ===== FILTER CARD =====
 
   Widget _buildFiltersCard(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  return Card(
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-    ),
-    elevation: 0,
-    // light vs dark card background
-    color: isDark
-        ? theme.colorScheme.surface.withOpacity(0.9)
-        : const Color(0xFFF2F6EA),
-    child: Padding(
-  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
+    return Card(
+      color: isDark ? theme.colorScheme.surface : kLightSurface,
+      elevation: isDark ? kCardElevationDark : kCardElevationLight,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kRadiusCard),
+        side: BorderSide(
+          color: (isDark ? Colors.white : Colors.black).withValues(
+            alpha: kCardBorderAlpha,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             // Date row
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Date:',
-                  style: theme.textTheme.bodySmall,
-                ),
+                Text('Date:', style: theme.textTheme.bodySmall),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Wrap(
@@ -460,24 +452,18 @@ Widget build(BuildContext context) {
                       _buildFilterChip(
                         label: 'All',
                         selected: _dateFilter == _DateFilter.all,
-                        onTap: () {
-                          setState(() => _dateFilter = _DateFilter.all);
-                        },
+                        onTap: () => setState(() => _dateFilter = _DateFilter.all),
                         showCheck: true,
                       ),
                       _buildFilterChip(
                         label: 'Today',
                         selected: _dateFilter == _DateFilter.today,
-                        onTap: () {
-                          setState(() => _dateFilter = _DateFilter.today);
-                        },
+                        onTap: () => setState(() => _dateFilter = _DateFilter.today),
                       ),
                       _buildFilterChip(
                         label: 'This week',
                         selected: _dateFilter == _DateFilter.thisWeek,
-                        onTap: () {
-                          setState(() => _dateFilter = _DateFilter.thisWeek);
-                        },
+                        onTap: () => setState(() => _dateFilter = _DateFilter.thisWeek),
                       ),
                     ],
                   ),
@@ -490,10 +476,7 @@ Widget build(BuildContext context) {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Distance:',
-                  style: theme.textTheme.bodySmall,
-                ),
+                Text('Distance:', style: theme.textTheme.bodySmall),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Wrap(
@@ -503,33 +486,23 @@ Widget build(BuildContext context) {
                       _buildFilterChip(
                         label: 'All',
                         selected: _distanceFilter == _DistanceFilter.all,
-                        onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.all);
-                        },
+                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.all),
                         showCheck: true,
                       ),
                       _buildFilterChip(
                         label: '< 3 km',
                         selected: _distanceFilter == _DistanceFilter.short,
-                        onTap: () {
-                          setState(
-                              () => _distanceFilter = _DistanceFilter.short);
-                        },
+                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.short),
                       ),
                       _buildFilterChip(
                         label: '3–6 km',
                         selected: _distanceFilter == _DistanceFilter.medium,
-                        onTap: () {
-                          setState(
-                              () => _distanceFilter = _DistanceFilter.medium);
-                        },
+                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.medium),
                       ),
                       _buildFilterChip(
                         label: '> 6 km',
                         selected: _distanceFilter == _DistanceFilter.long,
-                        onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.long);
-                        },
+                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.long),
                       ),
                     ],
                   ),
@@ -538,14 +511,11 @@ Widget build(BuildContext context) {
             ),
             const SizedBox(height: 8),
 
-            // Interested only
             Row(
               children: [
                 Checkbox(
                   value: _interestedOnly,
-                  onChanged: (val) {
-                    setState(() => _interestedOnly = val ?? false);
-                  },
+                  onChanged: (val) => setState(() => _interestedOnly = val ?? false),
                   visualDensity: VisualDensity.compact,
                 ),
                 const Text('Interested only'),
@@ -563,39 +533,43 @@ Widget build(BuildContext context) {
     required VoidCallback onTap,
     bool showCheck = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bg = selected
+        ? const Color(0xFFCDE9B7)
+        : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white);
+
+    final border = selected
+        ? const Color(0xFF4F925C)
+        : (isDark ? Colors.white.withValues(alpha: 0.14) : Colors.grey.withValues(alpha: 0.30));
+
+    final textColor = selected
+        ? const Color(0xFF1F2933)
+        : (isDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF374151));
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFCDE9B7) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? const Color(0xFF4F925C)
-                : Colors.grey.withOpacity(0.3),
-          ),
+          color: bg,
+          borderRadius: BorderRadius.circular(kRadiusPill),
+          border: Border.all(color: border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (showCheck && selected) ...[
-              const Icon(
-                Icons.check,
-                size: 14,
-                color: Color(0xFF1F2933),
-              ),
+              const Icon(Icons.check, size: 14, color: Color(0xFF1F2933)),
               const SizedBox(width: 4),
             ],
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected
-                    ? const Color(0xFF1F2933)
-                    : const Color(0xFF374151),
+                fontWeight: FontWeight.w600,
+                color: textColor,
               ),
             ),
           ],
@@ -632,21 +606,42 @@ class _NearbyWalkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // ✅ Button tokens (match Home "round icon" feel)
+    const btnSize = 38.0;
+    final btnBg = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFEFF6EA);
+
+    // star has special tint when selected
+    final starIconColor = event.interested
+        ? Colors.amber
+        : (isDark ? Colors.white70 : const Color(0xFF374151));
+
+    // join has special tint when joined
+    final joinIconColor = event.joined
+        ? const Color(0xFF2E7D32)
+        : (isDark ? Colors.white70 : const Color(0xFF374151));
 
     return Card(
+      color: isDark ? theme.colorScheme.surface : kLightSurface,
       margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: isDark ? kCardElevationDark : kCardElevationLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kRadiusControl),
+        side: BorderSide(
+          color: (isDark ? Colors.white : Colors.black)
+              .withValues(alpha: kCardBorderAlpha),
+        ),
       ),
-      elevation: 0.5,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kRadiusControl),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           child: Row(
             children: [
-              // Small avatar / distance bubble
               Container(
                 width: 40,
                 height: 40,
@@ -667,7 +662,6 @@ class _NearbyWalkCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
 
-              // Title + subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,18 +679,18 @@ class _NearbyWalkCard extends StatelessWidget {
                         if (event.interested)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
+                              horizontal: kSpace1,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(999),
+                              color: Colors.amber.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(kRadiusPill),
                             ),
                             child: const Text(
                               'Interested',
                               style: TextStyle(
                                 fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
@@ -706,51 +700,58 @@ class _NearbyWalkCard extends StatelessWidget {
                     Text(
                       _formatDateTime(event.dateTime),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
+                        color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${event.gender} • '
-                      '${event.meetingPlaceName ?? 'Meeting point TBA'}',
+                      '${event.gender} • ${event.meetingPlaceName ?? 'Meeting point TBA'}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
+                        color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
 
-              // Icons
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      event.interested
-                          ? Icons.star
-                          : Icons.star_border_outlined,
-                      color: event.interested ? Colors.amber : null,
-                      size: 20,
-                    ),
-                    tooltip: 'Mark as interested',
-                    onPressed: () => onToggleInterested(event),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      event.joined
-                          ? Icons.check_circle
-                          : Icons.add_circle_outline,
-                      color: event.joined ? Colors.green : null,
-                      size: 20,
-                    ),
-                    tooltip: event.joined ? 'Leave walk' : 'Join walk',
-                    onPressed: () => onToggleJoin(event),
-                  ),
-                ],
-              ),
+// ✅ Action buttons (simple, clean; better dark-mode contrast)
+Column(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    IconButton(
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(
+        event.interested ? Icons.star : Icons.star_border_outlined,
+        color: event.interested
+            ? Colors.amber
+            : (isDark ? Colors.white70 : const Color(0xFF374151)),
+        size: 22,
+      ),
+      tooltip: 'Mark as interested',
+      onPressed: () => onToggleInterested(event),
+    ),
+    const SizedBox(height: 6),
+    IconButton(
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(
+        event.joined ? Icons.check_circle : Icons.add_circle_outline,
+        color: event.joined
+            ? const Color(0xFF2E7D32)
+            : (isDark ? Colors.white70 : const Color(0xFF374151)),
+        size: 22,
+      ),
+      tooltip: event.joined ? 'Leave walk' : 'Join walk',
+      onPressed: () => onToggleJoin(event),
+    ),
+  ],
+),
+
             ],
           ),
         ),
@@ -758,3 +759,4 @@ class _NearbyWalkCard extends StatelessWidget {
     );
   }
 }
+
