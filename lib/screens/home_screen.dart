@@ -47,6 +47,12 @@ const double kSpace2 = 16;
 const double kSpace3 = 24;
 const double kSpace4 = 32;
 
+// ===== Card tokens =====
+const kLightSurface = Color(0xFFFBFEF8); // light-mode card background
+const double kCardElevationLight = 0.6; // subtle shadow in light mode
+const double kCardElevationDark = 0.0; // no shadow in dark mode
+const double kCardBorderAlpha = 0.06; // subtle border for both themes
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -1179,24 +1185,27 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             // Big inner card: greeting + calendar + "Your walks"
                             Card(
-                              color: isDark
-                                  ? kDarkSurface
-                                  : const Color(0xFFFBFEF8),
-                              elevation: 0.5,
+                              color: isDark ? kDarkSurface : kLightSurface,
+                              elevation: isDark
+                                  ? kCardElevationDark
+                                  : kCardElevationLight,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
                                   kRadiusCard,
                                 ),
+                                side: BorderSide(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withValues(alpha: kCardBorderAlpha),
+                                ),
                               ),
                               child: Padding(
-  padding: EdgeInsets.fromLTRB(
-    kSpace2,
-    kSpace2,
-    kSpace2,
-    20,
-  ),
-  child: Column(
-
+                                padding: EdgeInsets.fromLTRB(
+                                  kSpace2,
+                                  kSpace2,
+                                  kSpace2,
+                                  20,
+                                ),
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
@@ -1515,6 +1524,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _StatCard(
                                   label: 'Total km',
                                   value: _totalKmJoined.toStringAsFixed(1),
+                                  isLast: true,
                                 ),
                               ],
                             ),
@@ -1579,14 +1589,14 @@ class _WeeklySummaryCard extends StatelessWidget {
     final percent = (progress * 100).round();
 
     return Card(
-      color: isDark ? kDarkSurface : null,
-      elevation: isDark ? 0 : 0.6,
+      color: isDark ? kDarkSurface : kLightSurface,
+      elevation: isDark ? kCardElevationDark : kCardElevationLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusCard),
         side: BorderSide(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.06),
+          color: (isDark ? Colors.white : Colors.black).withValues(
+            alpha: kCardBorderAlpha,
+          ),
         ),
       ),
       child: Padding(
@@ -1710,8 +1720,13 @@ class _WeeklySummaryCard extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
+  final bool isLast;
 
-  const _StatCard({required this.label, required this.value});
+  const _StatCard({
+    required this.label,
+    required this.value,
+    this.isLast = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1720,15 +1735,15 @@ class _StatCard extends StatelessWidget {
 
     return Expanded(
       child: Card(
-        color: isDark ? kDarkSurface : null,
-        margin: const EdgeInsets.only(right: 8),
-        elevation: isDark ? 0 : 0.5,
+        color: isDark ? kDarkSurface : kLightSurface,
+        margin: EdgeInsets.only(right: isLast ? 0 : 8),
+        elevation: isDark ? kCardElevationDark : kCardElevationLight,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadiusControl),
           side: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.06),
+            color: (isDark ? Colors.white : Colors.black).withValues(
+              alpha: kCardBorderAlpha,
+            ),
           ),
         ),
         child: Padding(
@@ -1777,11 +1792,23 @@ class _WalkCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
+      color: Theme.of(context).brightness == Brightness.dark
+          ? kDarkSurface
+          : kLightSurface,
       margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+      elevation: Theme.of(context).brightness == Brightness.dark
+          ? kCardElevationDark
+          : kCardElevationLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusControl),
+        side: BorderSide(
+          color:
+              (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black)
+                  .withValues(alpha: kCardBorderAlpha),
+        ),
       ),
-      elevation: 0.5,
       child: ListTile(
         onTap: onTap,
         title: Text(
