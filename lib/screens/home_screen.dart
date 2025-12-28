@@ -53,6 +53,10 @@ const double kCardElevationLight = 0.6; // subtle shadow in light mode
 const double kCardElevationDark = 0.0; // no shadow in dark mode
 const double kCardBorderAlpha = 0.06; // subtle border for both themes
 
+// ===== Button tokens =====
+const double kBtnHeight = 52;
+const EdgeInsets kBtnPadding = EdgeInsets.symmetric(vertical: kSpace2);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -754,20 +758,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
 
                     // 🔹 NEW: Clear button (top-right)
-                    TextButton(
-                      onPressed: () async {
-                        await NotificationStorage.clearNotifications();
-                        Navigator.of(context).pop(); // close sheet
-                        _openNotificationsSheet(); // reopen with updated list
-                      },
-                      child: const Text(
-                        'Clear',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+TextButton(
+  onPressed: () async {
+    await NotificationStorage.clearNotifications();
+    Navigator.of(context).pop(); // close sheet
+    _openNotificationsSheet(); // reopen with updated list
+  },
+  style: TextButton.styleFrom(
+    foregroundColor: Colors.red,
+    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    padding: EdgeInsets.symmetric(horizontal: kSpace1, vertical: 6),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(kRadiusPill),
+    ),
+  ),
+  child: const Text('Clear'),
+),
+
                   ],
                 ),
 
@@ -1394,19 +1401,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                     SizedBox(height: kSpace2),
                                     SizedBox(
                                       width: double.infinity,
+                                      height: kBtnHeight,
                                       child: FilledButton.icon(
                                         onPressed: _openCreateWalk,
                                         style: FilledButton.styleFrom(
-                                          backgroundColor:
-                                              kMintBright, // mint button
-                                          foregroundColor:
-                                              kOnMint, // dark text/icon
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 16,
-                                          ),
+                                          backgroundColor: kMintBright,
+                                          foregroundColor: kOnMint,
+                                          padding: kBtnPadding,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
-                                              999,
+                                              kRadiusPill,
                                             ),
                                           ),
                                           textStyle: const TextStyle(
@@ -1420,32 +1424,64 @@ class _HomeScreenState extends State<HomeScreen> {
                                         label: const Text('Start walk'),
                                       ),
                                     ),
+
                                     const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              setState(() => _currentTab = 1);
-                                            },
-                                            child: const Text(
-                                              'Find nearby walks',
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              setState(() => _currentTab = 2);
-                                            },
-                                            child: const Text(
-                                              'Profile & stats',
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+Row(
+  children: [
+    Expanded(
+      child: SizedBox(
+        height: kBtnHeight,
+        child: OutlinedButton(
+          onPressed: () {
+            setState(() => _currentTab = 1);
+          },
+          style: OutlinedButton.styleFrom(
+            padding: kBtnPadding,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(kRadiusControl),
+            ),
+            side: BorderSide(
+              color: (isDark ? Colors.white : Colors.black)
+                  .withValues(alpha: 0.14),
+            ),
+            foregroundColor: isDark ? kTextPrimary : const Color(0xFF14532D),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          child: const Text('Find nearby walks'),
+        ),
+      ),
+    ),
+    SizedBox(width: kSpace1),
+    Expanded(
+      child: SizedBox(
+        height: kBtnHeight,
+        child: OutlinedButton(
+          onPressed: () {
+            setState(() => _currentTab = 2);
+          },
+          style: OutlinedButton.styleFrom(
+            padding: kBtnPadding,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(kRadiusControl),
+            ),
+            side: BorderSide(
+              color: (isDark ? Colors.white : Colors.black)
+                  .withValues(alpha: 0.14),
+            ),
+            foregroundColor: isDark ? kTextPrimary : const Color(0xFF14532D),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          child: const Text('Profile & stats'),
+        ),
+      ),
+    ),
+  ],
+),
+
 
                                     const SizedBox(height: 20),
 
