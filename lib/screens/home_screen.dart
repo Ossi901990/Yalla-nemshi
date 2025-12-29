@@ -1044,111 +1044,118 @@ SystemChrome.setSystemUIOverlayStyle(
                 ],
               ),
             )
-         else
-  // --- Light: same header as Nearby/Profile ---
+else
   Container(
-    padding: const EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, 12),
+    height: 64, // ✅ matches Nearby
+    width: double.infinity,
     decoration: const BoxDecoration(
       gradient: LinearGradient(
+        colors: [Color(0xFF294630), Color(0xFF4F925C)],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF294630), Color(0xFF4F925C)],
       ),
     ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
+    child: SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white24,
-              ),
-              child: const Icon(
-                Icons.directions_walk,
-                color: Colors.white,
-                size: 18,
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white24,
+                  ),
+                  child: const Icon(
+                    Icons.directions_walk,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Yalla Nemshi',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Text(
-              'Yalla Nemshi',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: _openNotificationsSheet,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: _openNotificationsSheet,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white24,
+                        ),
+                        child: const Icon(
+                          Icons.notifications_none,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      if (_unreadNotifCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red,
+                            ),
+                            child: Text(
+                              _unreadNotifCount > 99 ? '99+' : '$_unreadNotifCount',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: _openProfileQuickSheet,
+                  child: Container(
                     width: 32,
                     height: 32,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white24,
+                      color: Colors.white,
                     ),
                     child: const Icon(
-                      Icons.notifications_none,
-                      color: Colors.white,
+                      Icons.person,
                       size: 18,
+                      color: Colors.black87,
                     ),
                   ),
-                  if (_unreadNotifCount > 0)
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.red,
-                        ),
-                        child: Text(
-                          _unreadNotifCount > 99 ? '99+' : '$_unreadNotifCount',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: _openProfileQuickSheet,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
                 ),
-                child: const Icon(
-                  Icons.person,
-                  size: 18,
-                  color: Colors.black87,
-                ),
-              ),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     ),
   ),
+
 
 
 

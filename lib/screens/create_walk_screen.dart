@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/walk_event.dart';
 import 'map_pick_screen.dart';
 import '../services/app_preferences.dart';
+import 'package:flutter/services.dart';
+
 
 // ===== Design tokens (match Home / Profile) =====
 const double kRadiusCard = 24;
@@ -204,36 +206,33 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      // ✅ match Home / Nearby / Profile
-      backgroundColor: isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // ===== HEADER (same gradient pattern) =====
-            Container(
-              height: 56,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? const [
-                          Color(0xFF020908), // darker top
-                          Color(0xFF0B1A13), // darker bottom
-                        ]
-                      : const [
-                          Color(0xFF294630), // top
-                          Color(0xFF4F925C), // bottom
-                        ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+return Scaffold(
+  backgroundColor: isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+
+  // ✅ Important: body is a Column (NOT wrapped in SafeArea)
+  body: Column(
+    children: [
+      // ===== STANDARD HEADER (EXACTLY like Nearby) =====
+      Container(
+        height: 64, // ✅ same as Nearby
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? const [Color(0xFF020908), Color(0xFF0B1A13)]
+                : const [Color(0xFF294630), Color(0xFF4F925C)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // ✅ same as Nearby
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ same as Nearby
+              children: [
+                Row(
                   children: const [
                     _HeaderLogo(),
                     SizedBox(width: 8),
@@ -247,8 +246,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     ),
                   ],
                 ),
-              ),
+
+                // ✅ Keep spacing identical to Nearby (even if Create screen has no right icons)
+                const SizedBox(width: 32),
+              ],
             ),
+          ),
+        ),
+      ),
 
             // ===== MAIN AREA: background stays "normal", content sits on a Card (like Home) =====
             Expanded(
@@ -535,7 +540,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 }
