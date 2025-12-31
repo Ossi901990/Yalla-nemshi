@@ -930,121 +930,122 @@ SystemChrome.setSystemUIOverlayStyle(
     );
   }
 
-  Widget _buildHomeTab(BuildContext context) {
-    final theme = Theme.of(context);
-    final today = DateTime.now();
-    final isDark = theme.brightness == Brightness.dark;
+ Widget _buildHomeTab(BuildContext context) {
+  final theme = Theme.of(context);
+  final today = DateTime.now();
+  final isDark = theme.brightness == Brightness.dark;
 
-   return Column(
-  children: [
+  return Column(
+    children: [
       // ===== HEADER =====
       if (isDark)
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Left: logo + title
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                      child: const Icon(
+                        Icons.directions_walk,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Yalla Nemshi',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
 
-            // --- Dark: floating header (no bar) ---
-            Padding(
-              padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
+                // Right: notif + profile
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _openNotificationsSheet,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          if (_unreadNotifCount > 0)
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.red,
+                                ),
+                                child: Text(
+                                  _unreadNotifCount > 99
+                                      ? '99+'
+                                      : '$_unreadNotifCount',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: _openProfileQuickSheet,
+                      child: Container(
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white.withValues(alpha: 0.08),
                         ),
                         child: const Icon(
-                          Icons.directions_walk,
-                          size: 30,
-                          color: kMintBright,
+                          Icons.person,
+                          size: 18,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Yalla Nemshi',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          color: kTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _openNotificationsSheet,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.08),
-                              ),
-                              child: const Icon(
-                                Icons.notifications_none,
-                                size: 18,
-                                color: kTextPrimary,
-                              ),
-                            ),
-                            if (_unreadNotifCount > 0)
-                              Positioned(
-                                right: -2,
-                                top: -2,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                    vertical: 2,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(999),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _unreadNotifCount > 99
-                                        ? '99+'
-                                        : '$_unreadNotifCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: _openProfileQuickSheet,
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            size: 18,
-                            color: kTextPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-else
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        )
+      else
+
+
   Container(
     height: 64, // ✅ matches Nearby
     width: double.infinity,

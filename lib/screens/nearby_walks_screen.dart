@@ -11,6 +11,15 @@ const double kRadiusCard = 24;
 const double kRadiusControl = 16;
 const double kRadiusPill = 999;
 
+// ===== Dark Theme (match HomeScreen) palette =====
+const kDarkBg = Color(0xFF071B26); // primary background
+const kDarkSurface = Color(0xFF0C2430); // cards / sheets
+const kDarkSurface2 = Color(0xFF0E242E); // secondary surfaces
+
+const kTextPrimary = Color(0xFFD9F5EA);
+const kTextSecondary = Color(0xFF9BB9B1);
+const kTextMuted = Color(0xFF6A8580);
+
 // Spacing
 const double kSpace1 = 8;
 const double kSpace2 = 16;
@@ -24,6 +33,7 @@ const double kCardElevationDark = 0.0;
 const double kCardBorderAlpha = 0.06;
 
 enum _DateFilter { all, today, thisWeek }
+
 enum _DistanceFilter { all, short, medium, long }
 
 class NearbyWalksScreen extends StatefulWidget {
@@ -188,72 +198,129 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final upcoming = widget.events
-        .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
-        .where(_matchDateFilter)
-        .where(_matchDistanceFilter)
-        .where((e) => !_interestedOnly || e.interested)
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming =
+        widget.events
+            .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
+            .where(_matchDateFilter)
+            .where(_matchDistanceFilter)
+            .where((e) => !_interestedOnly || e.interested)
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-   return Scaffold(
-  backgroundColor: isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+    return Scaffold(
+      // ✅ Match HomeScreen background colors
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
 
-  // ✅ Important: body is now a Column (NOT wrapped in SafeArea)
-  body: Column(
-    children: [
-      // ===== STANDARD HEADER (fills status bar + same width/height) =====
-Container(
-  height: 64, // ✅ was 56
-  width: double.infinity,
-  decoration: BoxDecoration(
-    gradient: LinearGradient(
-      colors: isDark
-          ? const [Color(0xFF020908), Color(0xFF0B1A13)]
-          : const [Color(0xFF294630), Color(0xFF4F925C)],
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-    ),
-  ),
-  child: SafeArea(
-    bottom: false,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // ✅ added vertical
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Column(
         children: [
-                Row(
+          // ===== HEADER (match Home) =====
+          if (isDark)
+            // ✅ Dark: NO BAR, floating header
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white24,
-                      ),
-                      child: const Icon(
-                        Icons.directions_walk,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                    // Left: logo + title
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                          child: const Icon(
+                            Icons.directions_walk,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Yalla Nemshi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Yalla Nemshi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
+
+                    // Right: notif + profile
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _showNotificationsSheet,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: _showProfileQuickSheet,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _showNotificationsSheet,
-                      child: Stack(
-                        clipBehavior: Clip.none,
+              ),
+            )
+          else
+            // ✅ Light: gradient bar (same as Home/Nearby style)
+            Container(
+              height: 64,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
                         children: [
                           Container(
                             width: 32,
@@ -263,157 +330,167 @@ Container(
                               color: Colors.white24,
                             ),
                             child: const Icon(
-                              Icons.notifications_none,
+                              Icons.directions_walk,
                               color: Colors.white,
                               size: 18,
                             ),
                           ),
-                          Positioned(
-                            right: -2,
-                            top: -2,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.red,
-                              ),
-                              child: const Text(
-                                '3',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.white,
-                                ),
-                              ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Yalla Nemshi',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _showProfileQuickSheet,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-
-      // ===== MAIN AREA (unchanged) =====
-      Expanded(
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: isDark
-                ? const Color.fromARGB(255, 9, 2, 7)
-                : const Color(0xFFF7F9F2),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(kRadiusCard),
-            ),
-            image: DecorationImage(
-              image: AssetImage(
-                isDark
-                    ? 'assets/images/Dark_Grey_Background.png'
-                    : 'assets/images/Light_Beige_background.png',
-              ),
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(kRadiusCard),
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace2),
-              child: Card(
-                color: isDark ? theme.colorScheme.surface : kLightSurface,
-                elevation: isDark ? kCardElevationDark : kCardElevationLight,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(kRadiusCard),
-                  side: BorderSide(
-                    color: (isDark ? Colors.white : Colors.black)
-                        .withValues(alpha: kCardBorderAlpha),
-                  ),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Nearby walks',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Find walks happening around you and join with one tap.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isDark ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildFiltersCard(context),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: upcoming.isEmpty
-                            ? const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(24.0),
-                                  child: Text(
-                                    'No walks match your filters.\n'
-                                    'Try changing the date or distance filters.',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(0, 6, 0, 8),
-                                itemCount: upcoming.length,
-                                itemBuilder: (context, index) {
-                                  final e = upcoming[index];
-                                  return _NearbyWalkCard(
-                                    event: e,
-                                    onToggleJoin: widget.onToggleJoin,
-                                    onToggleInterested: widget.onToggleInterested,
-                                    onTap: () => widget.onTapEvent(e),
-                                  );
-                                },
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _showNotificationsSheet,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white24,
                               ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: _showProfileQuickSheet,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                size: 18,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    ],
-  ),
-);
 
+          // ===== MAIN AREA (background) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                // ✅ match Home dark base (no image, no overlay)
+                color: isDark
+                    ? const Color(0xFF071B26)
+                    : const Color(0xFFF7F9F2),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(kRadiusCard),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  kSpace2,
+                  kSpace2,
+                  kSpace2,
+                  kSpace2,
+                ),
+                child: Card(
+                  color: isDark ? kDarkSurface : kLightSurface,
+                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(kRadiusCard),
+                    side: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withValues(
+                        alpha: kCardBorderAlpha,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      kSpace2,
+                      kSpace3,
+                      kSpace2,
+                      kSpace2,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Nearby walks',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Find walks happening around you and join with one tap.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFiltersCard(context),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: upcoming.isEmpty
+                              ? const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(24.0),
+                                    child: Text(
+                                      'No walks match your filters.\n'
+                                      'Try changing the date or distance filters.',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    0,
+                                    6,
+                                    0,
+                                    8,
+                                  ),
+                                  itemCount: upcoming.length,
+                                  itemBuilder: (context, index) {
+                                    final e = upcoming[index];
+                                    return _NearbyWalkCard(
+                                      event: e,
+                                      onToggleJoin: widget.onToggleJoin,
+                                      onToggleInterested:
+                                          widget.onToggleInterested,
+                                      onTap: () => widget.onTapEvent(e),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ===== FILTER CARD =====
@@ -423,7 +500,8 @@ Container(
     final isDark = theme.brightness == Brightness.dark;
 
     return Card(
-      color: isDark ? theme.colorScheme.surface : kLightSurface,
+      color: isDark ? kDarkSurface : kLightSurface,
+
       elevation: isDark ? kCardElevationDark : kCardElevationLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusCard),
@@ -442,126 +520,165 @@ Container(
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Date:', style: theme.textTheme.bodySmall),
-                const SizedBox(width: 8),
+                SizedBox(
+                  width: 70, // ✅ consistent label width = better alignment
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text('Date:', style: theme.textTheme.bodySmall),
+                  ),
+                ),
                 Expanded(
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _buildFilterChip(
+                        context,
                         label: 'All',
                         selected: _dateFilter == _DateFilter.all,
-                        onTap: () => setState(() => _dateFilter = _DateFilter.all),
+                        onTap: () {
+                          setState(() => _dateFilter = _DateFilter.all);
+                        },
                         showCheck: true,
                       ),
                       _buildFilterChip(
+                        context,
                         label: 'Today',
                         selected: _dateFilter == _DateFilter.today,
-                        onTap: () => setState(() => _dateFilter = _DateFilter.today),
+                        onTap: () {
+                          setState(() => _dateFilter = _DateFilter.today);
+                        },
                       ),
                       _buildFilterChip(
+                        context,
                         label: 'This week',
                         selected: _dateFilter == _DateFilter.thisWeek,
-                        onTap: () => setState(() => _dateFilter = _DateFilter.thisWeek),
+                        onTap: () {
+                          setState(() => _dateFilter = _DateFilter.thisWeek);
+                        },
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             // Distance row
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Distance:', style: theme.textTheme.bodySmall),
-                const SizedBox(width: 8),
+                SizedBox(
+                  width: 70, // ✅ same label width
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text('Distance:', style: theme.textTheme.bodySmall),
+                  ),
+                ),
                 Expanded(
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _buildFilterChip(
+                        context,
                         label: 'All',
                         selected: _distanceFilter == _DistanceFilter.all,
-                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.all),
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.all);
+                        },
                         showCheck: true,
                       ),
                       _buildFilterChip(
+                        context,
                         label: '< 3 km',
                         selected: _distanceFilter == _DistanceFilter.short,
-                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.short),
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.short);
+                        },
                       ),
                       _buildFilterChip(
+                        context,
                         label: '3–6 km',
                         selected: _distanceFilter == _DistanceFilter.medium,
-                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.medium),
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.medium);
+                        },
                       ),
                       _buildFilterChip(
+                        context,
                         label: '> 6 km',
                         selected: _distanceFilter == _DistanceFilter.long,
-                        onTap: () => setState(() => _distanceFilter = _DistanceFilter.long),
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.long);
+                        },
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             Row(
               children: [
                 Checkbox(
                   value: _interestedOnly,
-                  onChanged: (val) => setState(() => _interestedOnly = val ?? false),
+                  onChanged: (val) =>
+                      setState(() => _interestedOnly = val ?? false),
                   visualDensity: VisualDensity.compact,
                 ),
                 const Text('Interested only'),
               ],
             ),
+
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterChip({
+  Widget _buildFilterChip(
+    BuildContext context, {
     required String label,
     required bool selected,
     required VoidCallback onTap,
     bool showCheck = false,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     final bg = selected
-        ? const Color(0xFFCDE9B7)
-        : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white);
+        ? (isDark ? const Color(0xFF123647) : const Color(0xFFCDE9B7))
+        : (isDark ? Colors.white.withOpacity(0.06) : Colors.white);
 
     final border = selected
-        ? const Color(0xFF4F925C)
-        : (isDark ? Colors.white.withValues(alpha: 0.14) : Colors.grey.withValues(alpha: 0.30));
+        ? (isDark ? Colors.white.withOpacity(0.18) : const Color(0xFF4F925C))
+        : (isDark
+              ? Colors.white.withOpacity(0.12)
+              : Colors.grey.withOpacity(0.30));
 
     final textColor = selected
-        ? const Color(0xFF1F2933)
-        : (isDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF374151));
+        ? (isDark ? Colors.white : const Color(0xFF1F2933))
+        : (isDark ? Colors.white70 : const Color(0xFF374151));
+
+    final iconColor = isDark ? Colors.white : const Color(0xFF1F2933);
 
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(kRadiusPill),
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(color: border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (showCheck && selected) ...[
-              const Icon(Icons.check, size: 14, color: Color(0xFF1F2933)),
+              Icon(Icons.check, size: 14, color: iconColor),
               const SizedBox(width: 4),
             ],
             Text(
@@ -625,14 +742,15 @@ class _NearbyWalkCard extends StatelessWidget {
         : (isDark ? Colors.white70 : const Color(0xFF374151));
 
     return Card(
-      color: isDark ? theme.colorScheme.surface : kLightSurface,
+      color: isDark ? kDarkSurface : kLightSurface,
       margin: const EdgeInsets.symmetric(vertical: 6),
       elevation: isDark ? kCardElevationDark : kCardElevationLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusControl),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black)
-              .withValues(alpha: kCardBorderAlpha),
+          color: (isDark ? Colors.white : Colors.black).withValues(
+            alpha: kCardBorderAlpha,
+          ),
         ),
       ),
       child: InkWell(
@@ -716,42 +834,51 @@ class _NearbyWalkCard extends StatelessWidget {
 
               const SizedBox(width: 6),
 
-// ✅ Action buttons (simple, clean; better dark-mode contrast)
-Column(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-    IconButton(
-      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      icon: Icon(
-        event.interested ? Icons.star : Icons.star_border_outlined,
-        color: event.interested
-            ? Colors.amber
-            : (isDark ? Colors.white70 : const Color(0xFF374151)),
-        size: 22,
-      ),
-      tooltip: 'Mark as interested',
-      onPressed: () => onToggleInterested(event),
-    ),
-    const SizedBox(height: 6),
-    IconButton(
-      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      icon: Icon(
-        event.joined ? Icons.check_circle : Icons.add_circle_outline,
-        color: event.joined
-            ? const Color(0xFF2E7D32)
-            : (isDark ? Colors.white70 : const Color(0xFF374151)),
-        size: 22,
-      ),
-      tooltip: event.joined ? 'Leave walk' : 'Join walk',
-      onPressed: () => onToggleJoin(event),
-    ),
-  ],
-),
-
+              // ✅ Action buttons (simple, clean; better dark-mode contrast)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      event.interested
+                          ? Icons.star
+                          : Icons.star_border_outlined,
+                      color: event.interested
+                          ? Colors.amber
+                          : (isDark ? Colors.white70 : const Color(0xFF374151)),
+                      size: 22,
+                    ),
+                    tooltip: 'Mark as interested',
+                    onPressed: () => onToggleInterested(event),
+                  ),
+                  const SizedBox(height: 6),
+                  IconButton(
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      event.joined
+                          ? Icons.check_circle
+                          : Icons.add_circle_outline,
+                      color: event.joined
+                          ? const Color(0xFF2E7D32)
+                          : (isDark ? Colors.white70 : const Color(0xFF374151)),
+                      size: 22,
+                    ),
+                    tooltip: event.joined ? 'Leave walk' : 'Join walk',
+                    onPressed: () => onToggleJoin(event),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -759,4 +886,3 @@ Column(
     );
   }
 }
-

@@ -101,31 +101,182 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     return '$w, $d $m • $hh:$mm';
   }
 
-  Future<void> _pickDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _dateTime,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (date == null) return;
+Future<void> _pickDateTime() async {
+  final date = await showDatePicker(
+    context: context,
+    initialDate: _dateTime,
+    firstDate: DateTime.now(),
+    lastDate: DateTime.now().add(const Duration(days: 365)),
+builder: (context, child) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
 
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_dateTime),
-    );
-    if (time == null) return;
+  if (!isDark) return child!;
 
-    setState(() {
-      _dateTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
-    });
-  }
+  const dialogBg = Color(0xFF0C2430); // bluish surface
+  const accent = Color(0xFF1F6E8C);   // bluish highlight
+  const accentContainer = Color(0xFF164B60);
+
+  final cs = theme.colorScheme.copyWith(
+    brightness: Brightness.dark,
+
+    // These help some internal surfaces
+    surface: dialogBg,
+    surfaceVariant: dialogBg,
+    background: dialogBg,
+
+    onSurface: Colors.white,
+    onBackground: Colors.white,
+
+    primary: accent,
+    onPrimary: Colors.white,
+
+    primaryContainer: accentContainer,
+    onPrimaryContainer: Colors.white,
+
+    secondary: accent,
+    onSecondary: Colors.white,
+
+    secondaryContainer: accentContainer,
+    onSecondaryContainer: Colors.white,
+  );
+
+  return Theme(
+    data: theme.copyWith(
+      colorScheme: cs,
+      dialogBackgroundColor: dialogBg,
+
+      // This controls the date picker background/header
+      datePickerTheme: const DatePickerThemeData(
+        backgroundColor: dialogBg,
+        headerBackgroundColor: dialogBg,
+        headerForegroundColor: Colors.white,
+      ),
+    ),
+    child: child!,
+  );
+},
+
+  );
+
+  if (date == null) return;
+
+  final time = await showTimePicker(
+    context: context,
+    initialTime: TimeOfDay.fromDateTime(_dateTime),
+builder: (context, child) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+
+  if (!isDark) return child!;
+
+  const dialogBg = Color(0xFF0C2430); // bluish surface
+  const accent = Color(0xFF1F6E8C);   // bluish highlight
+  const accentContainer = Color(0xFF164B60);
+
+  final cs = theme.colorScheme.copyWith(
+    brightness: Brightness.dark,
+    surface: dialogBg,
+    surfaceVariant: dialogBg,
+    background: dialogBg,
+    onSurface: Colors.white,
+    onBackground: Colors.white,
+    primary: accent,
+    onPrimary: Colors.white,
+    primaryContainer: accentContainer,
+    onPrimaryContainer: Colors.white,
+  );
+
+  return Theme(
+    data: theme.copyWith(
+      colorScheme: cs,
+      dialogBackgroundColor: dialogBg,
+
+      // ✅ Forces time picker background + dial look
+timePickerTheme: TimePickerThemeData(
+  backgroundColor: dialogBg,
+
+  // More breathing room
+  padding: const EdgeInsets.all(20),
+
+  // Rounder + "bigger" feel
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(28),
+  ),
+
+  // Header / help
+  helpTextStyle: const TextStyle(
+    color: Colors.white70,
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+  ),
+
+  // Hour/minute fields (make larger)
+  hourMinuteColor: dialogBg,
+  hourMinuteTextColor: Colors.white,
+  hourMinuteTextStyle: const TextStyle(
+    color: Colors.white,
+    fontSize: 34,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.5,
+  ),
+
+  // Dial
+  dialBackgroundColor: dialogBg,
+  dialHandColor: accent,
+  dialTextColor: Colors.white,
+  dialTextStyle: const TextStyle(
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: FontWeight.w500,
+  ),
+
+  // Entry mode icon
+  entryModeIconColor: Colors.white70,
+
+  // AM/PM (if shown)
+  dayPeriodColor: dialogBg,
+  dayPeriodTextColor: Colors.white,
+  dayPeriodTextStyle: const TextStyle(
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+  ),
+  dayPeriodBorderSide: const BorderSide(color: Colors.white24),
+
+  // Buttons (Cancel / OK) larger tap targets
+  cancelButtonStyle: TextButton.styleFrom(
+    foregroundColor: Colors.white70,
+    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+  ),
+  confirmButtonStyle: TextButton.styleFrom(
+    foregroundColor: Colors.white,
+    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+  ),
+),
+
+    ),
+    child: child!,
+  );
+},
+
+  );
+
+  if (time == null) return;
+
+  setState(() {
+    _dateTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+  });
+}
+
 
   Future<void> _pickOnMap() async {
     // Push the map screen and wait for the selected LatLng
@@ -207,117 +358,137 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
 return Scaffold(
-  backgroundColor: isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
+    backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF4F925C),
 
   // ✅ Important: body is a Column (NOT wrapped in SafeArea)
   body: Column(
     children: [
-      // ===== STANDARD HEADER (EXACTLY like Nearby) =====
-      Container(
-        height: 64, // ✅ same as Nearby
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? const [Color(0xFF020908), Color(0xFF0B1A13)]
-                : const [Color(0xFF294630), Color(0xFF4F925C)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // ✅ same as Nearby
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ same as Nearby
-              children: [
-                Row(
-                  children: const [
-                    _HeaderLogo(),
-                    SizedBox(width: 8),
-                    Text(
-                      'Yalla Nemshi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
+      // ===== HOME-STYLE HEADER (no bar) =====
+      SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const _HeaderLogo(),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Yalla Nemshi',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
 
-                // ✅ Keep spacing identical to Nearby (even if Create screen has no right icons)
-                const SizedBox(width: 32),
-              ],
-            ),
+              // Keep the right side empty like before (no feature changes)
+              const SizedBox(width: 32),
+            ],
           ),
         ),
       ),
 
-            // ===== MAIN AREA: background stays "normal", content sits on a Card (like Home) =====
+
+
+            // ===== MAIN AREA: solid background (no images), content sits on a Card =====
             Expanded(
               child: Container(
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color.fromARGB(255, 9, 2, 7)
-                      : const Color(0xFFF7F9F2),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  image: DecorationImage(
-                    image: AssetImage(
-                      isDark
-                          ? 'assets/images/Dark_Grey_Background.png'
-                          : 'assets/images/Light_Beige_background.png',
+            decoration: BoxDecoration(
+  color: isDark
+      ? const Color(0xFF071B26) // match HomeScreen dark background
+      : const Color(0xFFF7F9F2),
+  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+),
+
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace3),
+                  child: Card(
+                   color: isDark ? const Color(0xFF0C2430) : kLightSurface,
+                    elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(kRadiusCard),
+                      side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: kCardBorderAlpha),
+                      ),
                     ),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace3),
-                    child: Card(
-                      color: isDark ? theme.colorScheme.surface : kLightSurface,
-                      elevation: isDark ? kCardElevationDark : kCardElevationLight,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(kRadiusCard),
-                        side: BorderSide(
-                          color: (isDark ? Colors.white : Colors.black)
-                              .withValues(alpha: kCardBorderAlpha),
+                    child: Theme(
+                      data: theme.copyWith(
+                        inputDecorationTheme: InputDecorationTheme(
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.white,
+
+                          labelStyle: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                          hintStyle: TextStyle(
+                            color: isDark ? Colors.white54 : Colors.black54,
+                          ),
+
+                          // default border
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(kRadiusControl),
+                            borderSide: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.12),
+                            ),
+                          ),
+
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(kRadiusControl),
+                            borderSide: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.12),
+                            ),
+                          ),
+
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(kRadiusControl),
+                            borderSide: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.35)
+                                  : const Color(0xFF294630),
+                              width: 1.2,
+                            ),
+                          ),
                         ),
                       ),
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace3),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title + subtitle INSIDE the card (Home-style)
-                            Text(
-                              'Create walk',
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF294630),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Set your walk details and invite others to join.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDark ? Colors.white70 : Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
 
-                            // ===== FORM =====
-                            Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title + subtitle INSIDE the card (Home-style)
+                          Text(
+                            'Create walk',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : const Color(0xFF294630),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Set your walk details and invite others to join.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // ===== FORM =====
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+
                                   // Title
                                   TextFormField(
                                     decoration: const InputDecoration(labelText: 'Title'),
@@ -373,7 +544,7 @@ return Scaffold(
                                   ),
                                   const SizedBox(height: 12),
 
-                                  // Date & time
+                                                                    // Date & time
                                   ListTile(
                                     contentPadding: EdgeInsets.zero,
                                     title: Text(
@@ -383,14 +554,18 @@ return Scaffold(
                                     subtitle: Text(
                                       _formatDateTime(_dateTime),
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        color: isDark ? Colors.white70 : Colors.black54,
                                       ),
                                     ),
                                     trailing: IconButton(
-                                      icon: const Icon(Icons.calendar_today),
+                                      icon: Icon(
+                                        Icons.calendar_today,
+                                        color: isDark ? Colors.white70 : Colors.white,
+                                      ),
                                       onPressed: _pickDateTime,
                                     ),
                                   ),
+
                                   const SizedBox(height: 12),
 
                                   // Meeting point
@@ -412,20 +587,27 @@ return Scaffold(
                                   ),
                                   const SizedBox(height: 8),
 
-                                 SizedBox(
-  width: double.infinity,
-  child: OutlinedButton.icon(
-    onPressed: _pickOnMap,
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(52),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-    ),
-    icon: const Icon(Icons.map_outlined),
-    label: const Text('Pick on map'),
-  ),
-),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _pickOnMap,
+                                      style: OutlinedButton.styleFrom(
+                                        minimumSize: const Size.fromHeight(52),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        side: BorderSide(
+                                          color: (isDark ? Colors.white : Colors.black)
+                                              .withValues(alpha: 0.18),
+                                        ),
+                                        foregroundColor:
+                                            isDark ? Colors.white : Colors.black,
+                                      ),
+                                      icon: const Icon(Icons.map_outlined),
+                                      label: const Text('Pick on map'),
+                                    ),
+                                  ),
+
 
                                   const SizedBox(height: 4),
 
@@ -485,15 +667,18 @@ return Scaffold(
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        TextButton.icon(
-                                          onPressed: _pickOnMap,
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          ),
-                                          icon: const Icon(Icons.map_outlined, size: 16),
-                                          label: const Text('Change location'),
-                                        ),
+                                                                          TextButton.icon(
+                                      onPressed: _pickOnMap,
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        foregroundColor:
+                                            isDark ? Colors.white70 : const Color(0xFF294630),
+                                      ),
+                                      icon: const Icon(Icons.map_outlined, size: 16),
+                                      label: const Text('Change location'),
+                                    ),
+
                                       ],
                                     ),
 
@@ -511,21 +696,23 @@ return Scaffold(
                                   const SizedBox(height: 24),
 
                                   // Submit button (we’ll polish styles later)
-                                 SizedBox(
-  width: double.infinity,
-  child: FilledButton(
-    onPressed: _submit,
-    style: FilledButton.styleFrom(
-      minimumSize: const Size.fromHeight(52),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      backgroundColor: const Color(0xFF14532D),
-      foregroundColor: Colors.white,
-    ),
-    child: const Text('Create walk'),
-  ),
-),
+                                                             SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton(
+                                      onPressed: _submit,
+                                      style: FilledButton.styleFrom(
+                                        minimumSize: const Size.fromHeight(52),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        backgroundColor: const Color(0xFF14532D),
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('Create walk'),
+                                    ),
+                                  ),
+
+
 
                                 ],
                               ),
