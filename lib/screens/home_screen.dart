@@ -1695,7 +1695,7 @@ class _WeeklySummaryCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Fancy progress bar (step-counter style but horizontal)
+            // progress bar 
             LayoutBuilder(
               builder: (context, c) {
                 final trackColor = isDark ? kDarkSurface2 : Colors.black12;
@@ -1719,9 +1719,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                           color: fillColor,
                           borderRadius: BorderRadius.circular(kRadiusPill),
                         ),
-                      ),
-
-                      // subtle “shine” overlay to feel more premium
+                      ),                   
                       Positioned.fill(
                         child: IgnorePointer(
                           child: Opacity(
