@@ -55,9 +55,9 @@ class EventDetailsScreen extends StatelessWidget {
     if (ok == true) {
       onCancelHosted(event);
       Navigator.pop(context); // close details
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Walk cancelled')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Walk cancelled')));
     }
   }
 
@@ -129,7 +129,9 @@ class EventDetailsScreen extends StatelessWidget {
     if (ok == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Thank you. Your report was submitted: $selectedReason'),
+          content: Text(
+            'Thank you. Your report was submitted: $selectedReason',
+          ),
         ),
       );
     }
@@ -143,13 +145,12 @@ class EventDetailsScreen extends StatelessWidget {
     final joinText = event.joined ? 'Leave walk' : 'Join walk';
 
     final canInterested = !event.isOwner && !event.cancelled;
-    final interestedText =
-        event.interested ? 'Remove from interested' : 'Mark as interested';
+    final interestedText = event.interested
+        ? 'Remove from interested'
+        : 'Mark as interested';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(event.title),
-      ),
+      appBar: AppBar(title: Text(event.title)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -249,7 +250,7 @@ class EventDetailsScreen extends StatelessWidget {
               Text(
                 event.meetingLat != null && event.meetingLng != null
                     ? 'Lat: ${event.meetingLat!.toStringAsFixed(5)}, '
-                        'Lng: ${event.meetingLng!.toStringAsFixed(5)}'
+                          'Lng: ${event.meetingLng!.toStringAsFixed(5)}'
                     : 'Custom location (no coordinates)',
               ),
             const SizedBox(height: 16),
@@ -310,7 +311,8 @@ class EventDetailsScreen extends StatelessWidget {
             const SizedBox(height: 8),
 
             // ✅ Group chat button (ONLY here)
-            if ((event.joined || event.isOwner) && event.firestoreId.isNotEmpty) ...[
+            if ((event.joined || event.isOwner) &&
+                event.firestoreId.isNotEmpty) ...[
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -318,15 +320,14 @@ class EventDetailsScreen extends StatelessWidget {
                     debugPrint('OPEN WALK CHAT: walk_${event.id}');
 
                     Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (_) => WalkChatScreen(
-      walkId: event.firestoreId, // ✅ raw Firestore doc id
-      walkTitle: event.title,
-    ),
-  ),
-);
-
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => WalkChatScreen(
+                          walkId: event.firestoreId, // ✅ raw Firestore doc id
+                          walkTitle: event.title,
+                        ),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.forum_outlined),
                   label: const Text('Chat with participants'),

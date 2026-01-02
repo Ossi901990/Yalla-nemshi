@@ -71,7 +71,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required String label,
   }) {
     final theme = Theme.of(context);
-    final borderColor = (isDark ? Colors.white : Colors.black).withOpacity(0.18);
+    final borderColor = (isDark ? Colors.white : Colors.black).withOpacity(
+      0.18,
+    );
 
     return InputDecoration(
       labelText: label,
@@ -117,7 +119,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     IconButton(
@@ -156,7 +161,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
@@ -189,7 +197,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: isDark ? _kDarkBase : _kLightBase,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
                 image: DecorationImage(
                   image: AssetImage(
                     isDark
@@ -202,8 +212,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  color: isDark
+                      ? Colors.black.withOpacity(0.35)
+                      : Colors.transparent,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                 ),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -213,7 +227,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                       side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black).withOpacity(0.06),
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withOpacity(0.06),
                       ),
                     ),
                     child: Padding(
@@ -227,7 +242,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               'Your details',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF111827),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF111827),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -274,7 +291,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 isDark: isDark,
                                 label: 'Gender',
                               ),
-                              dropdownColor: isDark ? _kDarkSurface : Colors.white,
+                              dropdownColor: isDark
+                                  ? _kDarkSurface
+                                  : Colors.white,
                               icon: Icon(
                                 Icons.arrow_drop_down,
                                 color: isDark ? Colors.white70 : Colors.black54,

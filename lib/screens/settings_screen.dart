@@ -64,8 +64,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SliderThemeData _sliderTheme() {
       return theme.sliderTheme.copyWith(
         trackHeight: 4,
-        inactiveTrackColor:
-            (isDark ? Colors.white : Colors.black).withOpacity(0.14),
+        inactiveTrackColor: (isDark ? Colors.white : Colors.black).withOpacity(
+          0.14,
+        ),
         activeTrackColor: const Color(0xFF9BD77A),
         thumbColor: const Color(0xFF9BD77A),
         overlayColor: Colors.transparent,
@@ -92,7 +93,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       // ✅ fixes the green-corner “bleed” in light mode
-      backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF4F925C),
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
       body: Column(
         children: [
           // ===== HEADER (match Home/Nearby) =====
@@ -100,7 +103,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     IconButton(
@@ -113,12 +119,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       splashRadius: 20,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Settings',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 24,
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: const Text(
+                          'Settings',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 24,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -139,7 +151,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
@@ -152,12 +167,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         splashRadius: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
-                        'Settings',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 24,
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: const Text(
+                            'Settings',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 24,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -171,8 +192,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF071B26) : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                color: isDark
+                    ? const Color(0xFF071B26)
+                    : const Color(0xFFF7F9F2),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
                 image: DecorationImage(
                   image: AssetImage(
                     isDark
@@ -185,9 +210,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  color: isDark
+                      ? Colors.black.withOpacity(0.35)
+                      : Colors.transparent,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -226,7 +254,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 title: const Text('Dark mode'),
                                 subtitle: Text(
-                                  isDark ? 'Using dark theme' : 'Using light theme',
+                                  isDark
+                                      ? 'Using dark theme'
+                                      : 'Using light theme',
                                 ),
                                 trailing: Switch(
                                   value: isDark,
@@ -246,7 +276,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.phone_iphone_outlined),
+                                leading: const Icon(
+                                  Icons.phone_iphone_outlined,
+                                ),
                                 title: const Text('Use system theme'),
                                 subtitle: const Text(
                                   'Coming soon – follow device setting',
@@ -271,11 +303,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               SwitchListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('Walk reminders'),
-                                subtitle: const Text('Notify me before walks I join'),
+                                subtitle: const Text(
+                                  'Notify me before walks I join',
+                                ),
                                 value: _walkReminders,
                                 onChanged: (val) async {
                                   setState(() => _walkReminders = val);
-                                  await AppPreferences.setWalkRemindersEnabled(val);
+                                  await AppPreferences.setWalkRemindersEnabled(
+                                    val,
+                                  );
                                   await _bootstrap();
                                 },
                               ),
@@ -289,7 +325,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 value: _nearbyAlerts,
                                 onChanged: (val) async {
                                   setState(() => _nearbyAlerts = val);
-                                  await AppPreferences.setNearbyAlertsEnabled(val);
+                                  await AppPreferences.setNearbyAlertsEnabled(
+                                    val,
+                                  );
                                   await _bootstrap();
                                 },
                               ),
@@ -307,12 +345,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               // Default walk distance
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Default walk distance'),
-                                  Text('${_defaultDistanceKm.toStringAsFixed(1)} km'),
+                                  const Expanded(
+                                    child: Text(
+                                      'Default walk distance',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${_defaultDistanceKm.toStringAsFixed(1)} km',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
+
                               const SizedBox(height: 10),
                               Container(
                                 decoration: _framedSliderBox(),
@@ -323,10 +372,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     max: 10.0,
                                     divisions: 18, // snap 0.5
                                     value: _defaultDistanceKm,
-                                    label: '${_defaultDistanceKm.toStringAsFixed(1)} km',
+                                    label:
+                                        '${_defaultDistanceKm.toStringAsFixed(1)} km',
                                     onChanged: (value) async {
-                                      setState(() => _defaultDistanceKm = value);
-                                      await AppPreferences.setDefaultDistanceKm(value);
+                                      setState(
+                                        () => _defaultDistanceKm = value,
+                                      );
+                                      await AppPreferences.setDefaultDistanceKm(
+                                        value,
+                                      );
                                     },
                                   ),
                                 ),
@@ -336,12 +390,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                               // Weekly distance goal
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text('Weekly distance goal'),
-                                  Text('${_weeklyGoalKmLocal.toStringAsFixed(1)} km'),
+                                  const Expanded(
+                                    child: Text(
+                                      'Weekly distance goal',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
+
                               const SizedBox(height: 10),
                               Container(
                                 decoration: _framedSliderBox(),
@@ -352,10 +417,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     max: 60.0,
                                     divisions: 55, // snap 1km
                                     value: _weeklyGoalKmLocal.clamp(5.0, 60.0),
-                                    label: '${_weeklyGoalKmLocal.toStringAsFixed(0)} km',
+                                    label:
+                                        '${_weeklyGoalKmLocal.toStringAsFixed(0)} km',
                                     onChanged: (value) async {
-                                      setState(() => _weeklyGoalKmLocal = value);
-                                      await AppPreferences.setWeeklyGoalKm(value);
+                                      setState(
+                                        () => _weeklyGoalKmLocal = value,
+                                      );
+                                      await AppPreferences.setWeeklyGoalKm(
+                                        value,
+                                      );
                                     },
                                   ),
                                 ),
@@ -367,7 +437,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 'Default gender preference',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isDark ? Colors.white70 : Colors.black54,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -382,8 +454,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: (isDark ? Colors.white : Colors.black)
-                                        .withOpacity(0.18),
+                                    color:
+                                        (isDark ? Colors.white : Colors.black)
+                                            .withOpacity(0.28),
                                     width: 1,
                                   ),
                                   color: Colors.transparent,
@@ -395,11 +468,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     focusColor: Colors.transparent,
                                     icon: Icon(
                                       Icons.arrow_drop_down,
-                                      color:
-                                          isDark ? Colors.white70 : Colors.black54,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
                                     ),
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: isDark ? Colors.white : Colors.black87,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                       fontWeight: FontWeight.w600,
                                     ),
                                     dropdownColor: isDark
@@ -408,21 +484,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     items: const [
                                       DropdownMenuItem(
                                         value: 'Mixed',
-                                        child: Text('Mixed'),
+                                        child: Text(
+                                          'Mixed',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                       DropdownMenuItem(
                                         value: 'Women only',
-                                        child: Text('Women only'),
+                                        child: Text(
+                                          'Women only',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                       DropdownMenuItem(
                                         value: 'Men only',
-                                        child: Text('Men only'),
+                                        child: Text(
+                                          'Men only',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
+
                                     onChanged: (val) async {
                                       if (val == null) return;
                                       setState(() => _defaultGender = val);
-                                      await AppPreferences.setDefaultGender(val);
+                                      await AppPreferences.setDefaultGender(
+                                        val,
+                                      );
                                     },
                                   ),
                                 ),
@@ -469,7 +560,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   showDialog(
                                     context: context,
                                     builder: (dCtx) => AlertDialog(
-                                      title: const Text('Terms & privacy policy'),
+                                      title: const Text(
+                                        'Terms & privacy policy',
+                                      ),
                                       content: const Text(
                                         'This is a placeholder.\n\n'
                                         'Later you can link to a web page or detailed in-app text '
@@ -477,7 +570,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.of(dCtx).pop(),
+                                          onPressed: () =>
+                                              Navigator.of(dCtx).pop(),
                                           child: const Text('Close'),
                                         ),
                                       ],

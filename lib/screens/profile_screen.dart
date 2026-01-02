@@ -118,7 +118,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _onAvatarTap() {
     final hasPhoto =
-        _profile?.profileImagePath != null && _profile!.profileImagePath!.isNotEmpty;
+        _profile?.profileImagePath != null &&
+        _profile!.profileImagePath!.isNotEmpty;
 
     if (!hasPhoto) {
       _pickAndSaveImage();
@@ -207,8 +208,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: Row(
             children: [
               CircleAvatar(
-                backgroundColor:
-                    badge.achieved ? theme.colorScheme.primary : Colors.grey.shade300,
+                backgroundColor: badge.achieved
+                    ? theme.colorScheme.primary
+                    : Colors.grey.shade300,
                 child: Icon(
                   badge.icon,
                   color: badge.achieved ? Colors.white : Colors.grey.shade700,
@@ -231,19 +233,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _openSafetyTips() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SafetyTipsScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SafetyTipsScreen()));
   }
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      LoginScreen.routeName,
-      (route) => false,
-    );
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
   }
 
   void _showNotificationsSheet() {
@@ -307,21 +308,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       totalKm: widget.totalKm,
     );
 
-    final achievedBadges =
-        allBadges.where((b) => b.achieved).toList(growable: false);
+    final achievedBadges = allBadges
+        .where((b) => b.achieved)
+        .toList(growable: false);
 
     final double weeklyProgress = _weeklyGoalKmLocal <= 0
         ? 0
         : (widget.weeklyKm / _weeklyGoalKmLocal).clamp(0.0, 1.0);
 
-   return Scaffold(
+    return Scaffold(
       backgroundColor: isDark
-          ? const Color(0xFF071B26) 
+          ? const Color(0xFF071B26)
           : const Color(0xFF4F925C),
 
       body: Column(
         children: [
-// ===== HEADER (match Home/Nearby) =====
+          // ===== HEADER (match Home/Nearby) =====
           if (isDark)
             // ✅ Dark: NO BAR, floating header (same as Nearby/Home)
             SafeArea(
@@ -521,12 +523,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-
           // ===== MAIN AREA =====
           Expanded(
             child: Container(
               width: double.infinity,
-decoration: BoxDecoration(
+              decoration: BoxDecoration(
                 color: isDark
                     ? const Color(0xFF071B26)
                     : const Color(0xFFF7F9F2),
@@ -535,19 +536,30 @@ decoration: BoxDecoration(
                 ),
               ),
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace3),
+                padding: EdgeInsets.fromLTRB(
+                  kSpace2,
+                  kSpace2,
+                  kSpace2,
+                  kSpace3 + MediaQuery.of(context).padding.bottom,
+                ),
                 child: Card(
                   color: isDark ? const Color(0xFF0C2430) : kLightSurface,
                   elevation: isDark ? kCardElevationDark : kCardElevationLight,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(kRadiusCard),
                     side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black)
-                          .withOpacity(kCardBorderAlpha),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(
+                        kCardBorderAlpha,
+                      ),
                     ),
                   ),
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace3),
+                    padding: EdgeInsets.fromLTRB(
+                      kSpace2,
+                      kSpace3,
+                      kSpace2,
+                      kSpace3,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -581,34 +593,39 @@ decoration: BoxDecoration(
                                 ],
                               ),
                               const SizedBox(height: 8),
-SizedBox(
-  width: double.infinity,
-  child: Stack(
-    alignment: Alignment.center,
-    children: [
-      // ✅ Name stays perfectly centered
-      Center(
-        child: Text(
-          profile?.name.isNotEmpty == true ? profile!.name : 'Your name',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // ✅ Name stays perfectly centered
+                                    Center(
+                                      child: Text(
+                                        profile?.name.isNotEmpty == true
+                                            ? profile!.name
+                                            : 'Your name',
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
 
-      // ✅ Pen icon on the right, does NOT shift the text
-      Positioned(
-        right: 0,
-        child: IconButton(
-          onPressed: _openEditProfile,
-          icon: const Icon(Icons.edit, size: 18),
-          tooltip: 'Edit profile',
-        ),
-      ),
-    ],
-  ),
-),
+                                    // ✅ Pen icon on the right, does NOT shift the text
+                                    Positioned(
+                                      right: 0,
+                                      child: IconButton(
+                                        onPressed: _openEditProfile,
+                                        icon: const Icon(Icons.edit, size: 18),
+                                        tooltip: 'Edit profile',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
                               const SizedBox(height: 4),
                               Text(
@@ -638,7 +655,9 @@ SizedBox(
                           ChipTheme(
                             data: theme.chipTheme.copyWith(
                               backgroundColor: isDark
-                                  ? const Color(0xFF123647) // 👈 bluish chip surface
+                                  ? const Color(
+                                      0xFF123647,
+                                    ) // 👈 bluish chip surface
                                   : theme.colorScheme.surface,
                               side: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
@@ -659,15 +678,24 @@ SizedBox(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Chip(label: Text('Age: ${profile.age}')),
-                                const SizedBox(width: 8),
-                                Chip(label: Text('Gender: ${profile.gender}')),
+                                Flexible(
+                                  child: Wrap(
+                                    alignment: WrapAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      Chip(label: Text('Age: ${profile.age}')),
+                                      Chip(
+                                        label: Text(
+                                          'Gender: ${profile.gender}',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-
-
-
 
                         const SizedBox(height: 24),
 
@@ -680,100 +708,121 @@ SizedBox(
                         ),
                         const SizedBox(height: 8),
                         Card(
-  color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-  elevation: isDark ? 0.0 : 0.5,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(18),
-    side: BorderSide(
-      color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
-    ),
-  ),
-  child: Padding(
-    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : null,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : const Color(0xFFE5F3D9),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '${(weeklyProgress * 100).round()}%',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : null,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, c) {
-            final trackH = 10.0;
-            final fillW =
-                (c.maxWidth * weeklyProgress).clamp(0.0, c.maxWidth);
+                          color: isDark
+                              ? const Color(0xFF0C2430)
+                              : theme.cardColor,
+                          elevation: isDark ? 0.0 : 0.5,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withOpacity(0.08),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
+                                        '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : null,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.08)
+                                            : const Color(0xFFE5F3D9),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${(weeklyProgress * 100).round()}%',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : null,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                LayoutBuilder(
+                                  builder: (context, c) {
+                                    final trackH = 10.0;
+                                    final fillW = (c.maxWidth * weeklyProgress)
+                                        .clamp(0.0, c.maxWidth);
 
-            return Stack(
-              children: [
-                Container(
-                  height: trackH,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.10)
-                        : Colors.black.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                Container(
-                  height: trackH,
-                  width: fillW,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF9BD77A)
-                        : const Color(0xFF4F925C),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 10),
-        Text(
-          _weeklyMotivationText(
-            progress: weeklyProgress,
-            weeklyKm: widget.weeklyKm,
-            weeklyGoalKm: _weeklyGoalKmLocal,
-            streakDays: widget.streakDays,
-          ),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: isDark ? Colors.white70 : Colors.black54,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
-  ),
-),
-
+                                    return Stack(
+                                      children: [
+                                        Container(
+                                          height: trackH,
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white.withOpacity(0.10)
+                                                : Colors.black.withOpacity(
+                                                    0.06,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          height: trackH,
+                                          width: fillW,
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? const Color(0xFF9BD77A)
+                                                : const Color(0xFF4F925C),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _weeklyMotivationText(
+                                    progress: weeklyProgress,
+                                    weeklyKm: widget.weeklyKm,
+                                    weeklyGoalKm: _weeklyGoalKmLocal,
+                                    streakDays: widget.streakDays,
+                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
 
                         const SizedBox(height: 20),
 
@@ -824,7 +873,9 @@ SizedBox(
                         ),
                         const SizedBox(height: 8),
                         Card(
-                          color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+                          color: isDark
+                              ? const Color(0xFF0C2430)
+                              : theme.cardColor,
                           elevation: isDark ? 0.0 : 0.5,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -855,7 +906,8 @@ SizedBox(
                                         onTap: () => _showBadgeDetails(b),
                                         child: CircleAvatar(
                                           radius: 18,
-                                          backgroundColor: theme.colorScheme.primary,
+                                          backgroundColor:
+                                              theme.colorScheme.primary,
                                           child: Icon(
                                             b.icon,
                                             size: 18,
@@ -870,10 +922,12 @@ SizedBox(
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: TextButton(
-                                      onPressed: () => _openBadgesPage(allBadges),
+                                      onPressed: () =>
+                                          _openBadgesPage(allBadges),
                                       style: TextButton.styleFrom(
                                         padding: EdgeInsets.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       child: const Text('View all'),
                                     ),
@@ -888,44 +942,49 @@ SizedBox(
 
                         // Actions
                         const SizedBox(height: 8),
-SizedBox(
-  width: double.infinity,
-  child: OutlinedButton.icon(
-    onPressed: _openSafetyTips,
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(52),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      side: BorderSide(
-        color: (isDark ? Colors.white : Colors.black).withOpacity(0.18),
-      ),
-      foregroundColor: isDark ? Colors.white : Colors.black,
-    ),
-    icon: const Icon(Icons.shield_outlined),
-    label: const Text('Walking safety & community tips'),
-  ),
-),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _openSafetyTips,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: BorderSide(
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withOpacity(0.18),
+                              ),
+                              foregroundColor: isDark
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                            icon: const Icon(Icons.shield_outlined),
+                            label: const Text(
+                              'Walking safety & community tips',
+                            ),
+                          ),
+                        ),
 
                         const SizedBox(height: 8),
-                       SizedBox(
-  width: double.infinity,
-  child: OutlinedButton.icon(
-    onPressed: _signOut,
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(52),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      side: BorderSide(
-        color: Colors.red.withOpacity(0.5),
-      ),
-      foregroundColor: Colors.red,
-    ),
-    icon: const Icon(Icons.logout),
-    label: const Text('Sign out'),
-  ),
-),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _signOut,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: BorderSide(
+                                color: Colors.red.withOpacity(0.5),
+                              ),
+                              foregroundColor: Colors.red,
+                            ),
+                            icon: const Icon(Icons.logout),
+                            label: const Text('Sign out'),
+                          ),
+                        ),
 
                         const SizedBox(height: 12),
                         Center(
@@ -963,52 +1022,51 @@ SizedBox(
     );
   }
 
- Widget _statCard({
-  required String label,
-  required String value,
-  required IconData icon,
-}) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  Widget _statCard({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  return Expanded(
-    child: Card(
-      color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-      elevation: isDark ? 0.0 : 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+    return Expanded(
+      child: Card(
+        color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+        elevation: isDark ? 0.0 : 0.5,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Column(
+            children: [
+              Icon(icon, color: isDark ? Colors.white : null),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : null,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? Colors.white70 : null,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        child: Column(
-          children: [
-            Icon(icon, color: isDark ? Colors.white : null),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : null,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: isDark ? Colors.white70 : null,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
+    );
+  }
 }
 
 // Small reusable header pieces
@@ -1074,7 +1132,6 @@ class _HeaderNotifications extends StatelessWidget {
     );
   }
 }
-
 
 class _HeaderSettings extends StatelessWidget {
   final VoidCallback onTap;

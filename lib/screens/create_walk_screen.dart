@@ -9,7 +9,6 @@ import 'map_pick_screen.dart';
 import '../services/app_preferences.dart';
 import 'package:flutter/services.dart';
 
-
 // ===== Design tokens (match Home / Profile) =====
 const double kRadiusCard = 24;
 const double kRadiusControl = 16;
@@ -101,190 +100,196 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     return '$w, $d $m • $hh:$mm';
   }
 
-Future<void> _pickDateTime() async {
-  final date = await showDatePicker(
-    context: context,
-    initialDate: _dateTime,
-    firstDate: DateTime.now(),
-    lastDate: DateTime.now().add(const Duration(days: 365)),
-builder: (context, child) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _dateTime,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
 
-  if (!isDark) return child!;
+        if (!isDark) return child!;
 
-  const dialogBg = Color(0xFF0C2430); // bluish surface
-  const accent = Color(0xFF1F6E8C);   // bluish highlight
-  const accentContainer = Color(0xFF164B60);
+        const dialogBg = Color(0xFF0C2430); // bluish surface
+        const accent = Color(0xFF1F6E8C); // bluish highlight
+        const accentContainer = Color(0xFF164B60);
 
-  final cs = theme.colorScheme.copyWith(
-    brightness: Brightness.dark,
+        final cs = theme.colorScheme.copyWith(
+          brightness: Brightness.dark,
 
-    // These help some internal surfaces
-    surface: dialogBg,
-    surfaceVariant: dialogBg,
-    background: dialogBg,
+          // These help some internal surfaces
+          surface: dialogBg,
+          surfaceVariant: dialogBg,
+          background: dialogBg,
 
-    onSurface: Colors.white,
-    onBackground: Colors.white,
+          onSurface: Colors.white,
+          onBackground: Colors.white,
 
-    primary: accent,
-    onPrimary: Colors.white,
+          primary: accent,
+          onPrimary: Colors.white,
 
-    primaryContainer: accentContainer,
-    onPrimaryContainer: Colors.white,
+          primaryContainer: accentContainer,
+          onPrimaryContainer: Colors.white,
 
-    secondary: accent,
-    onSecondary: Colors.white,
+          secondary: accent,
+          onSecondary: Colors.white,
 
-    secondaryContainer: accentContainer,
-    onSecondaryContainer: Colors.white,
-  );
+          secondaryContainer: accentContainer,
+          onSecondaryContainer: Colors.white,
+        );
 
-  return Theme(
-    data: theme.copyWith(
-      colorScheme: cs,
-      dialogBackgroundColor: dialogBg,
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: cs,
+            dialogBackgroundColor: dialogBg,
 
-      // This controls the date picker background/header
-      datePickerTheme: const DatePickerThemeData(
-        backgroundColor: dialogBg,
-        headerBackgroundColor: dialogBg,
-        headerForegroundColor: Colors.white,
-      ),
-    ),
-    child: child!,
-  );
-},
-
-  );
-
-  if (date == null) return;
-
-  final time = await showTimePicker(
-    context: context,
-    initialTime: TimeOfDay.fromDateTime(_dateTime),
-builder: (context, child) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
-
-  if (!isDark) return child!;
-
-  const dialogBg = Color(0xFF0C2430); // bluish surface
-  const accent = Color(0xFF1F6E8C);   // bluish highlight
-  const accentContainer = Color(0xFF164B60);
-
-  final cs = theme.colorScheme.copyWith(
-    brightness: Brightness.dark,
-    surface: dialogBg,
-    surfaceVariant: dialogBg,
-    background: dialogBg,
-    onSurface: Colors.white,
-    onBackground: Colors.white,
-    primary: accent,
-    onPrimary: Colors.white,
-    primaryContainer: accentContainer,
-    onPrimaryContainer: Colors.white,
-  );
-
-  return Theme(
-    data: theme.copyWith(
-      colorScheme: cs,
-      dialogBackgroundColor: dialogBg,
-
-      // ✅ Forces time picker background + dial look
-timePickerTheme: TimePickerThemeData(
-  backgroundColor: dialogBg,
-
-  // More breathing room
-  padding: const EdgeInsets.all(20),
-
-  // Rounder + "bigger" feel
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(28),
-  ),
-
-  // Header / help
-  helpTextStyle: const TextStyle(
-    color: Colors.white70,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-  ),
-
-  // Hour/minute fields (make larger)
-  hourMinuteColor: dialogBg,
-  hourMinuteTextColor: Colors.white,
-  hourMinuteTextStyle: const TextStyle(
-    color: Colors.white,
-    fontSize: 34,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.5,
-  ),
-
-  // Dial
-  dialBackgroundColor: dialogBg,
-  dialHandColor: accent,
-  dialTextColor: Colors.white,
-  dialTextStyle: const TextStyle(
-    color: Colors.white,
-    fontSize: 18,
-    fontWeight: FontWeight.w500,
-  ),
-
-  // Entry mode icon
-  entryModeIconColor: Colors.white70,
-
-  // AM/PM (if shown)
-  dayPeriodColor: dialogBg,
-  dayPeriodTextColor: Colors.white,
-  dayPeriodTextStyle: const TextStyle(
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-  ),
-  dayPeriodBorderSide: const BorderSide(color: Colors.white24),
-
-  // Buttons (Cancel / OK) larger tap targets
-  cancelButtonStyle: TextButton.styleFrom(
-    foregroundColor: Colors.white70,
-    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-  ),
-  confirmButtonStyle: TextButton.styleFrom(
-    foregroundColor: Colors.white,
-    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-  ),
-),
-
-    ),
-    child: child!,
-  );
-},
-
-  );
-
-  if (time == null) return;
-
-  setState(() {
-    _dateTime = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
+            // This controls the date picker background/header
+            datePickerTheme: const DatePickerThemeData(
+              backgroundColor: dialogBg,
+              headerBackgroundColor: dialogBg,
+              headerForegroundColor: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-  });
-}
 
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_dateTime),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        if (!isDark) return child!;
+
+        const dialogBg = Color(0xFF0C2430); // bluish surface
+        const accent = Color(0xFF1F6E8C); // bluish highlight
+        const accentContainer = Color(0xFF164B60);
+
+        final cs = theme.colorScheme.copyWith(
+          brightness: Brightness.dark,
+          surface: dialogBg,
+          surfaceVariant: dialogBg,
+          background: dialogBg,
+          onSurface: Colors.white,
+          onBackground: Colors.white,
+          primary: accent,
+          onPrimary: Colors.white,
+          primaryContainer: accentContainer,
+          onPrimaryContainer: Colors.white,
+        );
+
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: cs,
+            dialogBackgroundColor: dialogBg,
+
+            // ✅ Forces time picker background + dial look
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: dialogBg,
+
+              // More breathing room
+              padding: const EdgeInsets.all(20),
+
+              // Rounder + "bigger" feel
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+
+              // Header / help
+              helpTextStyle: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+
+              // Hour/minute fields (make larger)
+              hourMinuteColor: dialogBg,
+              hourMinuteTextColor: Colors.white,
+              hourMinuteTextStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+
+              // Dial
+              dialBackgroundColor: dialogBg,
+              dialHandColor: accent,
+              dialTextColor: Colors.white,
+              dialTextStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+
+              // Entry mode icon
+              entryModeIconColor: Colors.white70,
+
+              // AM/PM (if shown)
+              dayPeriodColor: dialogBg,
+              dayPeriodTextColor: Colors.white,
+              dayPeriodTextStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              dayPeriodBorderSide: const BorderSide(color: Colors.white24),
+
+              // Buttons (Cancel / OK) larger tap targets
+              cancelButtonStyle: TextButton.styleFrom(
+                foregroundColor: Colors.white70,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+              ),
+              confirmButtonStyle: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (time == null) return;
+
+    setState(() {
+      _dateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
 
   Future<void> _pickOnMap() async {
     // Push the map screen and wait for the selected LatLng
-    final result = await Navigator.of(context).push<LatLng>(
-      MaterialPageRoute(
-        builder: (_) => const MapPickScreen(),
-      ),
-    );
+    final result = await Navigator.of(
+      context,
+    ).push<LatLng>(MaterialPageRoute(builder: (_) => const MapPickScreen()));
 
     if (result != null) {
       setState(() {
@@ -300,7 +305,9 @@ timePickerTheme: TimePickerThemeData(
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to create a walk.')),
+        const SnackBar(
+          content: Text('You must be logged in to create a walk.'),
+        ),
       );
       return;
     }
@@ -322,8 +329,9 @@ timePickerTheme: TimePickerThemeData(
 
     try {
       // 2) Create walk doc in Firestore
-      final docRef =
-          await FirebaseFirestore.instance.collection('walks').add(payload);
+      final docRef = await FirebaseFirestore.instance
+          .collection('walks')
+          .add(payload);
 
       // 3) Build your local WalkEvent with the REAL firestoreId
       final newEvent = WalkEvent(
@@ -346,9 +354,9 @@ timePickerTheme: TimePickerThemeData(
       widget.onEventCreated(newEvent);
       widget.onCreatedNavigateHome();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create walk: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to create walk: $e')));
     }
   }
 
@@ -357,114 +365,141 @@ timePickerTheme: TimePickerThemeData(
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-return Scaffold(
-    backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF4F925C),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
 
-  // ✅ Important: body is a Column (NOT wrapped in SafeArea)
-  body: Column(
-    children: [
-      // ===== HOME-STYLE HEADER (no bar) =====
-      SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+      body: Column(
+        children: [
+          // ===== HOME-STYLE HEADER (no bar) =====
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const _HeaderLogo(),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Yalla Nemshi',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                  Row(
+                    children: [
+                      _HeaderLogo(), // ✅ remove const so it can adapt correctly if needed
+                      const SizedBox(width: 8),
+                      Text(
+                        'Yalla Nemshi',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white
+                              : const Color.fromARGB(
+                                  255,
+                                  255,
+                                  255,
+                                  255,
+                                ), // ✅ dark text in light mode
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
                   ),
+
+                  // Keep the right side empty like before (no feature changes)
+                  const SizedBox(width: 32),
                 ],
               ),
-
-              // Keep the right side empty like before (no feature changes)
-              const SizedBox(width: 32),
-            ],
+            ),
           ),
-        ),
-      ),
 
+          // ===== MAIN AREA: solid background (no images), content sits on a Card =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(
+                        0xFF071B26,
+                      ) // match HomeScreen dark background
+                    : const Color(0xFFF7F9F2),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
 
-
-            // ===== MAIN AREA: solid background (no images), content sits on a Card =====
-            Expanded(
-              child: Container(
-                width: double.infinity,
-            decoration: BoxDecoration(
-  color: isDark
-      ? const Color(0xFF071B26) // match HomeScreen dark background
-      : const Color(0xFFF7F9F2),
-  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-),
-
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace3),
-                  child: Card(
-                   color: isDark ? const Color(0xFF0C2430) : kLightSurface,
-                    elevation: isDark ? kCardElevationDark : kCardElevationLight,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusCard),
-                      side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withValues(alpha: kCardBorderAlpha),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  kSpace2,
+                  kSpace2,
+                  kSpace2,
+                  kSpace3 +
+                      MediaQuery.of(context).viewInsets.bottom + // keyboard
+                      MediaQuery.of(
+                        context,
+                      ).padding.bottom, // gesture bar / safe bottom
+                ),
+                child: Card(
+                  color: isDark ? const Color(0xFF0C2430) : kLightSurface,
+                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(kRadiusCard),
+                    side: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withValues(
+                        alpha: kCardBorderAlpha,
                       ),
                     ),
-                    child: Theme(
-                      data: theme.copyWith(
-                        inputDecorationTheme: InputDecorationTheme(
-                          filled: true,
-                          fillColor: isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : Colors.white,
+                  ),
+                  child: Theme(
+                    data: theme.copyWith(
+                      inputDecorationTheme: InputDecorationTheme(
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.white,
 
-                          labelStyle: TextStyle(
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                          hintStyle: TextStyle(
-                            color: isDark ? Colors.white54 : Colors.black54,
-                          ),
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white54 : Colors.black54,
+                        ),
 
-                          // default border
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(kRadiusControl),
-                            borderSide: BorderSide(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withValues(alpha: 0.12),
-                            ),
+                        // default border
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(kRadiusControl),
+                          borderSide: BorderSide(
+                            color: (isDark ? Colors.white : Colors.black)
+                                .withValues(alpha: 0.12),
                           ),
+                        ),
 
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(kRadiusControl),
-                            borderSide: BorderSide(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withValues(alpha: 0.12),
-                            ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(kRadiusControl),
+                          borderSide: BorderSide(
+                            color: (isDark ? Colors.white : Colors.black)
+                                .withValues(alpha: 0.12),
                           ),
+                        ),
 
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(kRadiusControl),
-                            borderSide: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.35)
-                                  : const Color(0xFF294630),
-                              width: 1.2,
-                            ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(kRadiusControl),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.35)
+                                : const Color(0xFF294630),
+                            width: 1.2,
                           ),
                         ),
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace3),
-                        child: Column(
-
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        kSpace2,
+                        kSpace3,
+                        kSpace2,
+                        kSpace3,
+                      ),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Title + subtitle INSIDE the card (Home-style)
@@ -472,7 +507,9 @@ return Scaffold(
                             'Create walk',
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF294630),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF294630),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -488,245 +525,309 @@ return Scaffold(
                             key: _formKey,
                             child: Column(
                               children: [
-
-                                  // Title
-                                  TextFormField(
-                                    decoration: const InputDecoration(labelText: 'Title'),
-                                    onSaved: (val) => _title = val!.trim(),
-                                    validator: (val) => (val == null || val.trim().isEmpty)
-                                        ? 'Required'
-                                        : null,
+                                // Title
+                                TextFormField(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Title',
                                   ),
-                                  const SizedBox(height: 12),
+                                  onSaved: (val) => _title = val!.trim(),
+                                  validator: (val) =>
+                                      (val == null || val.trim().isEmpty)
+                                      ? 'Required'
+                                      : null,
+                                ),
+                                const SizedBox(height: 12),
 
-                                  // Distance
-                                  TextFormField(
-                                    key: ValueKey(_distanceKm), // so initialValue updates
-                                    decoration: const InputDecoration(labelText: 'Distance (km)'),
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(decimal: true),
-                                    initialValue: _distanceKm.toStringAsFixed(1),
-                                    validator: (val) {
-                                      final d = double.tryParse(val ?? '');
-                                      if (d == null) return 'Please enter a number';
-                                      if (d <= 0) return 'Distance must be greater than 0';
-                                      if (d > 100) return 'That’s a long walk! Try under 100 km';
-                                      return null;
-                                    },
-                                    onSaved: (val) =>
-                                        _distanceKm = double.tryParse(val ?? '') ?? 3.0,
+                                // Distance
+                                TextFormField(
+                                  key: ValueKey(
+                                    _distanceKm,
+                                  ), // so initialValue updates
+                                  decoration: const InputDecoration(
+                                    labelText: 'Distance (km)',
                                   ),
-                                  const SizedBox(height: 12),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  initialValue: _distanceKm.toStringAsFixed(1),
+                                  validator: (val) {
+                                    final d = double.tryParse(val ?? '');
+                                    if (d == null)
+                                      return 'Please enter a number';
+                                    if (d <= 0)
+                                      return 'Distance must be greater than 0';
+                                    if (d > 100)
+                                      return 'That’s a long walk! Try under 100 km';
+                                    return null;
+                                  },
+                                  onSaved: (val) => _distanceKm =
+                                      double.tryParse(val ?? '') ?? 3.0,
+                                ),
+                                const SizedBox(height: 12),
 
-                                  // Gender filter
-                                  DropdownButtonFormField<String>(
-                                    initialValue: _gender,
-                                    decoration: const InputDecoration(labelText: 'Who can join?'),
-                                    items: const [
-                                      DropdownMenuItem(
-                                        value: 'Mixed',
-                                        child: Text('Mixed'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'Women only',
-                                        child: Text('Women only'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'Men only',
-                                        child: Text('Men only'),
-                                      ),
-                                    ],
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setState(() => _gender = val);
-                                      }
-                                    },
+                                // Gender filter
+                                DropdownButtonFormField<String>(
+                                  initialValue: _gender,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Who can join?',
                                   ),
-                                  const SizedBox(height: 12),
-
-                                                                    // Date & time
-                                  ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      'Date & time',
-                                      style: theme.textTheme.titleMedium,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Mixed',
+                                      child: Text('Mixed'),
                                     ),
-                                    subtitle: Text(
-                                      _formatDateTime(_dateTime),
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: isDark ? Colors.white70 : Colors.black54,
-                                      ),
+                                    DropdownMenuItem(
+                                      value: 'Women only',
+                                      child: Text('Women only'),
                                     ),
-                                    trailing: IconButton(
-                                      icon: Icon(
-                                        Icons.calendar_today,
-                                        color: isDark ? Colors.white70 : Colors.white,
-                                      ),
-                                      onPressed: _pickDateTime,
+                                    DropdownMenuItem(
+                                      value: 'Men only',
+                                      child: Text('Men only'),
+                                    ),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _gender = val);
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Date & time
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    'Date & time',
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                  subtitle: Text(
+                                    _formatDateTime(_dateTime),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
                                     ),
                                   ),
 
-                                  const SizedBox(height: 12),
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      Icons.calendar_today,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.white,
+                                    ),
+                                    onPressed: _pickDateTime,
+                                  ),
+                                ),
 
-                                  // Meeting point
+                                const SizedBox(height: 12),
+
+                                // Meeting point
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Meeting point',
+                                    style: theme.textTheme.titleMedium,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+
+                                TextFormField(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Location name (optional)',
+                                    hintText: 'e.g. Rainbow St. entrance',
+                                  ),
+                                  onSaved: (val) =>
+                                      _meetingPlace = (val ?? '').trim(),
+                                ),
+                                const SizedBox(height: 8),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _pickOnMap,
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(52),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      side: BorderSide(
+                                        color:
+                                            (isDark
+                                                    ? Colors.white
+                                                    : Colors.black)
+                                                .withValues(alpha: 0.18),
+                                      ),
+                                      foregroundColor: isDark
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                    icon: const Icon(Icons.map_outlined),
+                                    label: const Text(
+                                      'Pick on map',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                if (_meetingLatLng == null)
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: Text(
-                                      'Meeting point',
-                                      style: theme.textTheme.titleMedium,
+                                      'No location chosen yet',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall,
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-
-                                  TextFormField(
-                                    decoration: const InputDecoration(
-                                      labelText: 'Location name (optional)',
-                                      hintText: 'e.g. Rainbow St. entrance',
-                                    ),
-                                    onSaved: (val) => _meetingPlace = (val ?? '').trim(),
-                                  ),
-                                  const SizedBox(height: 8),
-
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      onPressed: _pickOnMap,
-                                      style: OutlinedButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(52),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                        side: BorderSide(
-                                          color: (isDark ? Colors.white : Colors.black)
-                                              .withValues(alpha: 0.18),
-                                        ),
-                                        foregroundColor:
-                                            isDark ? Colors.white : Colors.black,
-                                      ),
-                                      icon: const Icon(Icons.map_outlined),
-                                      label: const Text('Pick on map'),
-                                    ),
-                                  ),
-
-
-                                  const SizedBox(height: 4),
-
-                                  if (_meetingLatLng == null)
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'No location chosen yet',
+                                  )
+                                else
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Location selected on map',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall,
                                       ),
-                                    )
-                                  else
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Location selected on map',
-                                          style: theme.textTheme.bodySmall,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
-                                          'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: SizedBox(
-                                            height: 160,
-                                            width: double.infinity,
-                                            child: AbsorbPointer(
-                                              absorbing: true,
-                                              child: GoogleMap(
-                                                initialCameraPosition: CameraPosition(
-                                                  target: _meetingLatLng!,
-                                                  zoom: 15,
-                                                ),
-                                                markers: {
-                                                  Marker(
-                                                    markerId: const MarkerId('meeting_point'),
-                                                    position: _meetingLatLng!,
+
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
+                                        'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? Colors.white54
+                                                  : Colors.grey.shade600,
+                                            ),
+                                      ),
+
+                                      const SizedBox(height: 8),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: SizedBox(
+                                          height:
+                                              MediaQuery.of(
+                                                    context,
+                                                  ).size.height <
+                                                  700
+                                              ? 140
+                                              : 160,
+                                          width: double.infinity,
+                                          child: AbsorbPointer(
+                                            absorbing: true,
+                                            child: GoogleMap(
+                                              initialCameraPosition:
+                                                  CameraPosition(
+                                                    target: _meetingLatLng!,
+                                                    zoom: 15,
                                                   ),
-                                                },
-                                                zoomControlsEnabled: false,
-                                                myLocationButtonEnabled: false,
-                                                compassEnabled: false,
-                                                scrollGesturesEnabled: false,
-                                                tiltGesturesEnabled: false,
-                                                rotateGesturesEnabled: false,
-                                                zoomGesturesEnabled: false,
-                                                liteModeEnabled: true,
-                                              ),
+                                              markers: {
+                                                Marker(
+                                                  markerId: const MarkerId(
+                                                    'meeting_point',
+                                                  ),
+                                                  position: _meetingLatLng!,
+                                                ),
+                                              },
+                                              zoomControlsEnabled: false,
+                                              myLocationButtonEnabled: false,
+                                              compassEnabled: false,
+                                              scrollGesturesEnabled: false,
+                                              tiltGesturesEnabled: false,
+                                              rotateGesturesEnabled: false,
+                                              zoomGesturesEnabled: false,
+                                              liteModeEnabled: true,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
-                                                                          TextButton.icon(
-                                      onPressed: _pickOnMap,
-                                      style: TextButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        foregroundColor:
-                                            isDark ? Colors.white70 : const Color(0xFF294630),
                                       ),
-                                      icon: const Icon(Icons.map_outlined, size: 16),
-                                      label: const Text('Change location'),
-                                    ),
-
-                                      ],
-                                    ),
-
-                                  const SizedBox(height: 16),
-
-                                  // Description
-                                  TextFormField(
-                                    decoration: const InputDecoration(
-                                      labelText: 'Description (optional)',
-                                    ),
-                                    maxLines: 3,
-                                    onSaved: (val) => _description = (val ?? '').trim(),
-                                  ),
-
-                                  const SizedBox(height: 24),
-
-                                  // Submit button (we’ll polish styles later)
-                                                             SizedBox(
-                                    width: double.infinity,
-                                    child: FilledButton(
-                                      onPressed: _submit,
-                                      style: FilledButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(52),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
+                                      const SizedBox(height: 4),
+                                      TextButton.icon(
+                                        onPressed: _pickOnMap,
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          foregroundColor: isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF294630),
                                         ),
-                                        backgroundColor: const Color(0xFF14532D),
-                                        foregroundColor: Colors.white,
+                                        icon: const Icon(
+                                          Icons.map_outlined,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Change location',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                      child: const Text('Create walk'),
-                                    ),
+                                    ],
                                   ),
 
+                                const SizedBox(height: 16),
 
+                                // Description
+                                TextFormField(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Description (optional)',
+                                  ),
+                                  minLines: 3,
+                                  maxLines:
+                                      MediaQuery.of(context).size.height < 700
+                                      ? 3
+                                      : 5,
 
-                                ],
-                              ),
+                                  onSaved: (val) =>
+                                      _description = (val ?? '').trim(),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Submit button (we’ll polish styles later)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: FilledButton(
+                                    onPressed: _submit,
+                                    style: FilledButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(52),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      backgroundColor: const Color(0xFF14532D),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text(
+                                      'Create walk',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -744,11 +845,7 @@ class _HeaderLogo extends StatelessWidget {
         shape: BoxShape.circle,
         color: Colors.white24,
       ),
-      child: const Icon(
-        Icons.directions_walk,
-        size: 18,
-        color: Colors.white,
-      ),
+      child: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
     );
   }
 }

@@ -21,16 +21,17 @@ class _MapPickScreenState extends State<MapPickScreen> {
   RouteResult? _routeResult;
 
   // IMPORTANT: Add your ORS API key
-  final routing = RoutingService(apiKey: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI3NjQyMjU0OTBjYjQ0M2E5MWRjYzBkZGIzNzVkZDVhIiwiaCI6Im11cm11cjY0In0=");
+  final routing = RoutingService(
+    apiKey:
+        "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI3NjQyMjU0OTBjYjQ0M2E5MWRjYzBkZGIzNzVkZDVhIiwiaCI6Im11cm11cjY0In0=",
+  );
 
   static const LatLng _initialPosition = LatLng(31.9539, 35.9106);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pick meeting point'),
-      ),
+      appBar: AppBar(title: const Text('Pick meeting point')),
       body: Stack(
         children: [
           GoogleMap(
@@ -50,9 +51,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
                 _selectedLatLng = tapped;
               });
 
-              _mapController?.animateCamera(
-                CameraUpdate.newLatLng(tapped),
-              );
+              _mapController?.animateCamera(CameraUpdate.newLatLng(tapped));
 
               await _fetchRouteTo(tapped);
             },
@@ -66,18 +65,21 @@ class _MapPickScreenState extends State<MapPickScreen> {
                 ),
             },
 
-            polylines: {
-              if (_routePolyline != null) _routePolyline!,
-            },
+            polylines: {if (_routePolyline != null) _routePolyline!},
           ),
 
           // Distance card
           if (_routeResult != null)
             Positioned(
-              top: 20,
               left: 16,
               right: 16,
-              child: _buildDistanceCard(),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _buildDistanceCard(),
+                ),
+              ),
             ),
 
           // Loop generator button
@@ -125,7 +127,11 @@ class _MapPickScreenState extends State<MapPickScreen> {
                           : () {
                               Navigator.of(context).pop(_selectedLatLng);
                             },
-                      child: const Text('Confirm meeting point'),
+                      child: const Text(
+                        'Confirm meeting point',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],
@@ -149,10 +155,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
 
     start = cameraPos ?? _initialPosition;
 
-    final result = await routing.getWalkingRoute(
-      start: start,
-      end: target,
-    );
+    final result = await routing.getWalkingRoute(start: start, end: target);
 
     if (result == null) {
       print("❌ Could not fetch route");
@@ -170,10 +173,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
     });
 
     _mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        _boundsFromLatLngList(result.points),
-        50,
-      ),
+      CameraUpdate.newLatLngBounds(_boundsFromLatLngList(result.points), 50),
     );
   }
 
@@ -246,10 +246,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
     });
 
     _mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        _boundsFromLatLngList(result.points),
-        50,
-      ),
+      CameraUpdate.newLatLngBounds(_boundsFromLatLngList(result.points), 50),
     );
   }
 
@@ -258,8 +255,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
   // ----------------------------------------------------------
   Widget _buildDistanceCard() {
     final km = (_routeResult!.distanceMeters / 1000).toStringAsFixed(2);
-    final min =
-        (_routeResult!.durationSeconds / 60).toStringAsFixed(0);
+    final min = (_routeResult!.durationSeconds / 60).toStringAsFixed(0);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -267,20 +263,13 @@ class _MapPickScreenState extends State<MapPickScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
       child: Center(
         child: Text(
           "$km km  •  $min min walk",
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -299,9 +288,6 @@ class _MapPickScreenState extends State<MapPickScreen> {
       if (latLng.longitude < y0) y0 = latLng.longitude;
     }
 
-    return LatLngBounds(
-      southwest: LatLng(x0, y0),
-      northeast: LatLng(x1, y1),
-    );
+    return LatLngBounds(southwest: LatLng(x0, y0), northeast: LatLng(x1, y1));
   }
 }

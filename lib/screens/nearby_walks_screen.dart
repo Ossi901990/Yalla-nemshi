@@ -451,9 +451,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         const SizedBox(height: 8),
                         Expanded(
                           child: upcoming.isEmpty
-                              ? const Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(24.0),
+                              ? Center(
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(24.0),
                                     child: Text(
                                       'No walks match your filters.\n'
                                       'Try changing the date or distance filters.',
@@ -520,13 +520,22 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 70, // ✅ consistent label width = better alignment
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 70,
+                    maxWidth: 100,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: Text('Date:', style: theme.textTheme.bodySmall),
+                    child: Text(
+                      'Date:',
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
+
                 Expanded(
                   child: Wrap(
                     spacing: 8,
@@ -568,13 +577,22 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 70, // ✅ same label width
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 70,
+                    maxWidth: 100,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: Text('Distance:', style: theme.textTheme.bodySmall),
+                    child: Text(
+                      'Distance:',
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
+
                 Expanded(
                   child: Wrap(
                     spacing: 8,
@@ -594,7 +612,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: '< 3 km',
                         selected: _distanceFilter == _DistanceFilter.short,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.short);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.short,
+                          );
                         },
                       ),
                       _buildFilterChip(
@@ -602,7 +622,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: '3–6 km',
                         selected: _distanceFilter == _DistanceFilter.medium,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.medium);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.medium,
+                          );
                         },
                       ),
                       _buildFilterChip(
@@ -610,7 +632,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: '> 6 km',
                         selected: _distanceFilter == _DistanceFilter.long,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.long);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.long,
+                          );
                         },
                       ),
                     ],
@@ -628,10 +652,16 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                       setState(() => _interestedOnly = val ?? false),
                   visualDensity: VisualDensity.compact,
                 ),
-                const Text('Interested only'),
+                const SizedBox(width: 4),
+                const Expanded(
+                  child: Text(
+                    'Interested only',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
-
           ],
         ),
       ),
@@ -674,22 +704,29 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: border),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (showCheck && selected) ...[
-              Icon(Icons.check, size: 14, color: iconColor),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: textColor,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 140),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showCheck && selected) ...[
+                Icon(Icons.check, size: 14, color: iconColor),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -789,31 +826,43 @@ class _NearbyWalkCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             event.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        if (event.interested)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: kSpace1,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(kRadiusPill),
-                            ),
-                            child: const Text(
-                              'Interested',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
+                        if (event.interested) ...[
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 110),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: kSpace1,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(
+                                  kRadiusPill,
+                                ),
+                              ),
+                              child: const Text(
+                                'Interested',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
+                        ],
                       ],
                     ),
+
                     const SizedBox(height: 4),
                     Text(
                       _formatDateTime(event.dateTime),
@@ -824,6 +873,8 @@ class _NearbyWalkCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${event.gender} • ${event.meetingPlaceName ?? 'Meeting point TBA'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isDark ? Colors.white70 : Colors.black54,
                       ),

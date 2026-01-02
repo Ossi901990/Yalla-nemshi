@@ -19,8 +19,9 @@ class WalkChatScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(walkTitle),
+        title: Text(walkTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
+
       body: Column(
         children: [
           Expanded(
@@ -33,7 +34,7 @@ class WalkChatScreen extends StatelessWidget {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                   return Center(child: Text('Chat error: ${snapshot.error}'));
+                  return Center(child: Text('Chat error: ${snapshot.error}'));
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -47,7 +48,10 @@ class WalkChatScreen extends StatelessWidget {
 
                 return ListView.builder(
                   reverse: true,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
@@ -57,19 +61,33 @@ class WalkChatScreen extends StatelessWidget {
                     final isMe = uid != null && senderId == uid;
 
                     return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: isMe
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        constraints: const BoxConstraints(maxWidth: 320),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
+
                         decoration: BoxDecoration(
                           color: isMe
-                              ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
-                              : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.primary.withOpacity(0.12)
+                              : Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withOpacity(0.6),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
                           text,
+                          softWrap: true,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
@@ -81,13 +99,13 @@ class WalkChatScreen extends StatelessWidget {
           ),
 
           // Input bar will come in the next step
-   _MessageComposer(walkId: walkId),
-
+          _MessageComposer(walkId: walkId),
         ],
       ),
     );
   }
 }
+
 class _MessageComposer extends StatefulWidget {
   final String walkId;
   const _MessageComposer({required this.walkId});
@@ -109,8 +127,9 @@ class _MessageComposerState extends State<_MessageComposer> {
     setState(() => _sending = true);
     _controller.clear();
 
-    final chatRef =
-        FirebaseFirestore.instance.collection('walk_chats').doc(widget.walkId);
+    final chatRef = FirebaseFirestore.instance
+        .collection('walk_chats')
+        .doc(widget.walkId);
     final msgRef = chatRef.collection('messages').doc();
 
     try {
@@ -140,40 +159,49 @@ class _MessageComposerState extends State<_MessageComposer> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _send(),
-                decoration: InputDecoration(
-                  hintText: 'Type a message…',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _send(),
+                  decoration: InputDecoration(
+                    hintText: 'Type a message…',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
-                  isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            IconButton(
-              onPressed: _sending ? null : _send,
-              icon: _sending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send),
-            ),
-          ],
+              const SizedBox(width: 10),
+              IconButton(
+                onPressed: _sending ? null : _send,
+                icon: _sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send),
+              ),
+            ],
+          ),
         ),
       ),
     );

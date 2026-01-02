@@ -19,21 +19,14 @@ class MapViewScreen extends StatelessWidget {
     final LatLng target = LatLng(lat, lng);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meeting point'),
-      ),
+      appBar: AppBar(title: const Text('Meeting point')),
       body: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: target,
-          zoom: 15,
-        ),
+        initialCameraPosition: CameraPosition(target: target, zoom: 15),
         markers: {
           Marker(
             markerId: const MarkerId('meeting_point'),
             position: target,
-            infoWindow: InfoWindow(
-              title: placeName ?? 'Meeting point',
-            ),
+            infoWindow: InfoWindow(title: placeName ?? 'Meeting point'),
           ),
         },
         myLocationEnabled: false,
