@@ -21,7 +21,6 @@ import 'dart:math' as math;
 import 'walk_chat_screen.dart';
 import 'package:flutter/services.dart';
 
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -303,14 +302,17 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          label,
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: 10,
-            color: labelColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+  label,
+  maxLines: 1,
+  overflow: TextOverflow.ellipsis,
+  textAlign: TextAlign.center,
+  style: TextStyle(
+    fontSize: 10,
+    color: labelColor,
+    fontWeight: FontWeight.w500,
+  ),
+),
+
         Text(
           '$dayNumber',
           style: TextStyle(
@@ -743,42 +745,47 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: const [
-                        Icon(Icons.notifications, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Notifications',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // 🔹 NEW: Clear button (top-right)
-TextButton(
-  onPressed: () async {
-    await NotificationStorage.clearNotifications();
-    Navigator.of(context).pop(); // close sheet
-    _openNotificationsSheet(); // reopen with updated list
-  },
-  style: TextButton.styleFrom(
-    foregroundColor: Colors.red,
-    textStyle: const TextStyle(fontWeight: FontWeight.w700),
-    padding: EdgeInsets.symmetric(horizontal: kSpace1, vertical: 6),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(kRadiusPill),
+  children: [
+    Expanded(
+      child: Row(
+        children: const [
+          Icon(Icons.notifications, size: 20),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Notifications',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
-  ),
-  child: const Text('Clear'),
+
+    // 🔹 Clear button (top-right)
+    TextButton(
+      onPressed: () async {
+        await NotificationStorage.clearNotifications();
+        Navigator.of(context).pop(); // close sheet
+        _openNotificationsSheet(); // reopen with updated list
+      },
+      child: const Text(
+        'Clear',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: Colors.red,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+  ],
 ),
 
-                  ],
-                ),
 
                 const SizedBox(height: 12),
                 ...notifications.map(
@@ -819,24 +826,22 @@ TextButton(
   // --- UI ---
 
   @override
-Widget build(BuildContext context) {
-  Widget body;
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    Widget body;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  // ✅ Force the phone status-bar area to match our header color
-SystemChrome.setSystemUIOverlayStyle(
-  SystemUiOverlayStyle(
-    // ✅ Match the TOP of your gradient bar: Color(0xFF294630)
-    statusBarColor: isDark ? Colors.transparent : const Color(0xFF294630),
-    statusBarIconBrightness: Brightness.light, // Android icons
-    statusBarBrightness: Brightness.dark, // iOS text/icons
-  ),
-);
+    // ✅ Force the phone status-bar area to match our header color
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        // ✅ Match the TOP of your gradient bar: Color(0xFF294630)
+        statusBarColor: isDark ? Colors.transparent : const Color(0xFF294630),
+        statusBarIconBrightness: Brightness.light, // Android icons
+        statusBarBrightness: Brightness.dark, // iOS text/icons
+      ),
+    );
 
-
-  switch (_currentTab) {
-
+    switch (_currentTab) {
       case 0:
         body = _buildHomeTab(context);
         break;
@@ -891,13 +896,12 @@ SystemChrome.setSystemUIOverlayStyle(
         break;
     }
 
-   return Scaffold(
-  // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
-  backgroundColor: isDark ? kDarkBg : const Color(0xFF4F925C),
+    return Scaffold(
+      // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
+      backgroundColor: isDark ? kDarkBg : const Color(0xFF4F925C),
 
-  body: body,
-  bottomNavigationBar: BottomNavigationBar(
-
+      body: body,
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
         onTap: (index) {
           setState(() {
@@ -930,100 +934,26 @@ SystemChrome.setSystemUIOverlayStyle(
     );
   }
 
- Widget _buildHomeTab(BuildContext context) {
-  final theme = Theme.of(context);
-  final today = DateTime.now();
-  final isDark = theme.brightness == Brightness.dark;
+  Widget _buildHomeTab(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = DateTime.now();
+    final isDark = theme.brightness == Brightness.dark;
 
-  return Column(
-    children: [
-      // ===== HEADER =====
-      if (isDark)
-        SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Left: logo + title
-                Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                      child: const Icon(
-                        Icons.directions_walk,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Yalla Nemshi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Right: notif + profile
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _openNotificationsSheet,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.08),
-                            ),
-                            child: const Icon(
-                              Icons.notifications_none,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                          if (_unreadNotifCount > 0)
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.red,
-                                ),
-                                child: Text(
-                                  _unreadNotifCount > 99
-                                      ? '99+'
-                                      : '$_unreadNotifCount',
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _openProfileQuickSheet,
-                      child: Container(
+    return Column(
+      children: [
+        // ===== HEADER =====
+        if (isDark)
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Left: logo + title
+                  Row(
+                    children: [
+                      Container(
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
@@ -1031,469 +961,331 @@ SystemChrome.setSystemUIOverlayStyle(
                           color: Colors.white.withValues(alpha: 0.08),
                         ),
                         child: const Icon(
-                          Icons.person,
-                          size: 18,
+                          Icons.directions_walk,
                           color: Colors.white,
+                          size: 18,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        )
-      else
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Yalla Nemshi',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
 
-
-  Container(
-    height: 64, // ✅ matches Nearby
-    width: double.infinity,
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xFF294630), Color(0xFF4F925C)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-    ),
-    child: SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white24,
-                  ),
-                  child: const Icon(
-                    Icons.directions_walk,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Yalla Nemshi',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                GestureDetector(
-                  onTap: _openNotificationsSheet,
-                  child: Stack(
-                    clipBehavior: Clip.none,
+                  // Right: notif + profile
+                  Row(
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white24,
-                        ),
-                        child: const Icon(
-                          Icons.notifications_none,
-                          color: Colors.white,
-                          size: 18,
+                      GestureDetector(
+                        onTap: _openNotificationsSheet,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.08),
+                              ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                            if (_unreadNotifCount > 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.red,
+                                  ),
+                                  child: Text(
+                                    _unreadNotifCount > 99
+                                        ? '99+'
+                                        : '$_unreadNotifCount',
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (_unreadNotifCount > 0)
-                        Positioned(
-                          right: -2,
-                          top: -2,
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: _openProfileQuickSheet,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          Container(
+            height: 64, // ✅ matches Nearby
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white24,
+                          ),
+                          child: const Icon(
+                            Icons.directions_walk,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Yalla Nemshi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _openNotificationsSheet,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white24,
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_none,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                              if (_unreadNotifCount > 0)
+                                Positioned(
+                                  right: -2,
+                                  top: -2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red,
+                                    ),
+                                    child: Text(
+                                      _unreadNotifCount > 99
+                                          ? '99+'
+                                          : '$_unreadNotifCount',
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: _openProfileQuickSheet,
                           child: Container(
-                            padding: const EdgeInsets.all(2),
+                            width: 32,
+                            height: 32,
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.red,
+                              color: Colors.white,
                             ),
-                            child: Text(
-                              _unreadNotifCount > 99 ? '99+' : '$_unreadNotifCount',
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: const Icon(
+                              Icons.person,
+                              size: 18,
+                              color: Colors.black87,
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _openProfileQuickSheet,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
+                      ],
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 18,
-                      color: Colors.black87,
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ],
-        ),
-      ),
-    ),
-  ),
+          ),
 
+        // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(kRadiusCard),
+                topRight: Radius.circular(kRadiusCard),
+              ),
+            ),
 
-
-
-          // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
-          Expanded(
+            // overlay so text stays readable on top of the photo
             child: Container(
-              width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(kRadiusCard),
                   topRight: Radius.circular(kRadiusCard),
                 ),
+                gradient: isDark
+                    ? const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF071B26), // top
+                          Color(0xFF041016), // bottom
+                        ],
+                      )
+                    : const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFFF7F3EA), Color(0xFFEEE6DA)],
+                      ),
               ),
 
-              // overlay so text stays readable on top of the photo
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(kRadiusCard),
-                    topRight: Radius.circular(kRadiusCard),
-                  ),
-                  gradient: isDark
-                      ? const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF071B26), // top
-                            Color(0xFF041016), // bottom
-                          ],
-                        )
-                      : const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xFFF7F3EA), Color(0xFFEEE6DA)],
-                        ),
-                ),
-
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          kSpace2,
-                          12,
-                          kSpace2,
-                          kSpace3,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Big inner card: greeting + calendar + "Your walks"
-                            Card(
-                              color: isDark ? kDarkSurface : kLightSurface,
-                              elevation: isDark
-                                  ? kCardElevationDark
-                                  : kCardElevationLight,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  kRadiusCard,
-                                ),
-                                side: BorderSide(
-                                  color: (isDark ? Colors.white : Colors.black)
-                                      .withValues(alpha: kCardBorderAlpha),
-                                ),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        kSpace2,
+                        12,
+                        kSpace2,
+                        kSpace3,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Big inner card: greeting + calendar + "Your walks"
+                          Card(
+                            color: isDark ? kDarkSurface : kLightSurface,
+                            elevation: isDark
+                                ? kCardElevationDark
+                                : kCardElevationLight,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(kRadiusCard),
+                              side: BorderSide(
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withValues(alpha: kCardBorderAlpha),
                               ),
-                              child: Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                  kSpace2,
-                                  kSpace2,
-                                  kSpace2,
-                                  20,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '${_greetingForTime()}, $_userName',
-                                                style: theme
-                                                    .textTheme
-                                                    .titleLarge
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: isDark
-                                                          ? kTextPrimary
-                                                          : const Color(
-                                                              0xFF14532D,
-                                                            ),
-                                                    ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                _formatFullDate(today),
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                      color: isDark
-                                                          ? kTextSecondary
-                                                          : Colors.black54,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        _StepsRing(
-                                          steps: _sessionSteps,
-                                          goal: 10000,
-                                          isDark: isDark,
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: kSpace2),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                kSpace2,
+                                kSpace2,
+                                kSpace2,
+                                20,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+Text(
+  '${_greetingForTime()}, $_userName',
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+  style: theme.textTheme.titleLarge?.copyWith(
+    fontWeight: FontWeight.bold,
+    color: isDark ? kTextPrimary : const Color(0xFF14532D),
+  ),
+),
 
-                                    // Today + date row
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Today',
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                            const SizedBox(height: 4),
+                                          ],
                                         ),
-                                        Text(
-                                          _formatFullDate(today),
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : Colors.black54,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    SizedBox(height: kSpace1),
-
-                                    // ===== Calendar (week swipe + no dots + fixed sizing) =====
-                                    TableCalendar(
-                                      firstDay: DateTime(2020, 1, 1),
-                                      lastDay: DateTime(2035, 12, 31),
-                                      focusedDay: _focusedDay,
-                                      calendarFormat: CalendarFormat.week,
-                                      headerVisible: false,
-                                      daysOfWeekVisible: false,
-                                      rowHeight: 60,
-
-                                      // ✅ smoother swipe between weeks
-                                      pageAnimationEnabled: true,
-                                      pageAnimationDuration: const Duration(
-                                        milliseconds: 220,
                                       ),
-                                      pageAnimationCurve: Curves.easeOutCubic,
-
-                                      // ✅ IMPORTANT: keep outside days visible so the week row is consistent
-                                      calendarStyle: const CalendarStyle(
-                                        isTodayHighlighted: false,
-                                        outsideDaysVisible: true,
+                                      const SizedBox(width: 12),
+                                      _StepsRing(
+                                        steps: _sessionSteps,
+                                        goal: 10000,
+                                        isDark: isDark,
                                       ),
+                                    ],
+                                  ),
+                                  SizedBox(height: kSpace2),
 
-                                      onPageChanged: (focusedDay) {
-                                        setState(
-                                          () => _focusedDay = focusedDay,
-                                        );
-                                      },
-
-                                      selectedDayPredicate: (day) =>
-                                          isSameDay(_selectedDay, day),
-
-                                      calendarBuilders: CalendarBuilders(
-                                        defaultBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: false,
-                                              );
-                                            },
-                                        selectedBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: true,
-                                              );
-                                            },
-                                        todayBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: false,
-                                              );
-                                            },
-
-                                        // ✅ FIX: outside days were not using your pill builder
-                                        outsideBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: false,
-                                              );
-                                            },
-
-                                        // ✅ (optional safety) disabled days also use the same pill rendering
-                                        disabledBuilder:
-                                            (context, day, focusedDay) {
-                                              return _buildCalendarDayCell(
-                                                day,
-                                                isDark,
-                                                forceSelected: false,
-                                              );
-                                            },
-                                      ),
-
-                                      onDaySelected: (selectedDay, focusedDay) {
-                                        setState(() {
-                                          _selectedDay = selectedDay;
-                                          _focusedDay = focusedDay;
-                                        });
-
-                                        final events = _eventsForDay(
-                                          selectedDay,
-                                        );
-                                        if (events.isNotEmpty) {
-                                          _navigateToDetails(events.first);
-                                        }
-                                      },
-                                    ),
-
-                                    // ===== End Calendar =====
-                                    const SizedBox(height: 20),
-
-                                    // Ready to walk + buttons
-                                    Text(
-                                      'Ready to walk?',
-                                      style: theme.textTheme.headlineSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                    SizedBox(height: kSpace1),
-                                    Text(
-                                      'Start a walk now or join others nearby. Your steps, your pace.',
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                    SizedBox(height: kSpace2),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: kBtnHeight,
-                                      child: FilledButton.icon(
-                                        onPressed: _openCreateWalk,
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: kMintBright,
-                                          foregroundColor: kOnMint,
-                                          padding: kBtnPadding,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              kRadiusPill,
-                                            ),
-                                          ),
-                                          textStyle: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        icon: const Icon(
-                                          Icons.directions_walk_outlined,
-                                        ),
-                                        label: const Text('Start walk'),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 12),
+                                  // Today + date row
 Row(
   children: [
-    Expanded(
-      child: SizedBox(
-        height: kBtnHeight,
-        child: OutlinedButton(
-          onPressed: () {
-            setState(() => _currentTab = 1);
-          },
-          style: OutlinedButton.styleFrom(
-            padding: kBtnPadding,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(kRadiusControl),
-            ),
-            side: BorderSide(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.14),
-            ),
-            foregroundColor: isDark ? kTextPrimary : const Color(0xFF14532D),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          child: const Text('Find nearby walks'),
-        ),
+    Text(
+      'Today',
+      style: theme.textTheme.bodyMedium?.copyWith(
+        fontWeight: FontWeight.bold,
       ),
     ),
-    SizedBox(width: kSpace1),
+    const SizedBox(width: 12),
     Expanded(
-      child: SizedBox(
-        height: kBtnHeight,
-        child: OutlinedButton(
-          onPressed: () {
-            setState(() => _currentTab = 2);
-          },
-          style: OutlinedButton.styleFrom(
-            padding: kBtnPadding,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(kRadiusControl),
-            ),
-            side: BorderSide(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.14),
-            ),
-            foregroundColor: isDark ? kTextPrimary : const Color(0xFF14532D),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          child: const Text('Profile & stats'),
+      child: Text(
+        _formatFullDate(today),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.right,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: isDark ? Colors.white70 : Colors.black54,
         ),
       ),
     ),
@@ -1501,99 +1293,348 @@ Row(
 ),
 
 
-                                    const SizedBox(height: 20),
+                                  SizedBox(height: kSpace1),
 
-                                    // Your walks inside main card
-                                    Text(
-                                      'Your walks',
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                  // ===== Calendar (week swipe + no dots + fixed sizing) =====
+                                  TableCalendar(
+                                    firstDay: DateTime(2020, 1, 1),
+                                    lastDay: DateTime(2035, 12, 31),
+                                    focusedDay: _focusedDay,
+                                    calendarFormat: CalendarFormat.week,
+                                    headerVisible: false,
+                                    daysOfWeekVisible: false,
+                                    rowHeight: (MediaQuery.of(context).textScaleFactor > 1.15) ? 72 : 60,
+
+
+                                    // ✅ smoother swipe between weeks
+                                    pageAnimationEnabled: true,
+                                    pageAnimationDuration: const Duration(
+                                      milliseconds: 220,
                                     ),
-                                    SizedBox(height: kSpace1),
-                                    if (_myHostedWalks.isEmpty)
-                                      Text(
-                                        'No walks yet.\nTap "Start walk" above to create your first one.',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              color: isDark
-                                                  ? Colors.white70
-                                                  : Colors.black54,
-                                            ),
-                                      )
-                                    else
-                                      Column(
-                                        children: _myHostedWalks
-                                            .map(
-                                              (e) => _WalkCard(
-                                                event: e,
-                                                onTap: () =>
-                                                    _navigateToDetails(e),
-                                              ),
-                                            )
-                                            .toList(),
+                                    pageAnimationCurve: Curves.easeOutCubic,
+
+                                    // ✅ IMPORTANT: keep outside days visible so the week row is consistent
+                                    calendarStyle: const CalendarStyle(
+                                      isTodayHighlighted: false,
+                                      outsideDaysVisible: true,
+                                    ),
+
+                                    onPageChanged: (focusedDay) {
+                                      setState(() => _focusedDay = focusedDay);
+                                    },
+
+                                    selectedDayPredicate: (day) =>
+                                        isSameDay(_selectedDay, day),
+
+                                    calendarBuilders: CalendarBuilders(
+                                      defaultBuilder:
+                                          (context, day, focusedDay) {
+                                            return _buildCalendarDayCell(
+                                              day,
+                                              isDark,
+                                              forceSelected: false,
+                                            );
+                                          },
+                                      selectedBuilder:
+                                          (context, day, focusedDay) {
+                                            return _buildCalendarDayCell(
+                                              day,
+                                              isDark,
+                                              forceSelected: true,
+                                            );
+                                          },
+                                      todayBuilder: (context, day, focusedDay) {
+                                        return _buildCalendarDayCell(
+                                          day,
+                                          isDark,
+                                          forceSelected: false,
+                                        );
+                                      },
+
+                                      // ✅ FIX: outside days were not using your pill builder
+                                      outsideBuilder:
+                                          (context, day, focusedDay) {
+                                            return _buildCalendarDayCell(
+                                              day,
+                                              isDark,
+                                              forceSelected: false,
+                                            );
+                                          },
+
+                                      // ✅ (optional safety) disabled days also use the same pill rendering
+                                      disabledBuilder:
+                                          (context, day, focusedDay) {
+                                            return _buildCalendarDayCell(
+                                              day,
+                                              isDark,
+                                              forceSelected: false,
+                                            );
+                                          },
+                                    ),
+
+                                    onDaySelected: (selectedDay, focusedDay) {
+                                      setState(() {
+                                        _selectedDay = selectedDay;
+                                        _focusedDay = focusedDay;
+                                      });
+
+                                      final events = _eventsForDay(selectedDay);
+                                      if (events.isNotEmpty) {
+                                        _navigateToDetails(events.first);
+                                      }
+                                    },
+                                  ),
+
+                                  // ===== End Calendar =====
+                                  const SizedBox(height: 20),
+
+                                  // Ready to walk + buttons
+                                  Text(
+                                    'Ready to walk?',
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(height: kSpace1),
+                                  Text(
+                                    'Start a walk now or join others nearby. Your steps, your pace.',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  SizedBox(height: kSpace2),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: kBtnHeight,
+                                    child: FilledButton.icon(
+                                      onPressed: _openCreateWalk,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: kMintBright,
+                                        foregroundColor: kOnMint,
+                                        padding: kBtnPadding,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            kRadiusPill,
+                                          ),
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
-                                  ],
-                                ),
+                                      icon: const Icon(
+                                        Icons.directions_walk_outlined,
+                                      ),
+                                      label: const Text('Start walk'),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: kBtnHeight,
+                                          child: OutlinedButton(
+                                            onPressed: () {
+                                              setState(() => _currentTab = 1);
+                                            },
+                                            style: OutlinedButton.styleFrom(
+                                              padding: kBtnPadding,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      kRadiusControl,
+                                                    ),
+                                              ),
+                                              side: BorderSide(
+                                                color:
+                                                    (isDark
+                                                            ? Colors.white
+                                                            : Colors.black)
+                                                        .withValues(
+                                                          alpha: 0.14,
+                                                        ),
+                                              ),
+                                              foregroundColor: isDark
+                                                  ? kTextPrimary
+                                                  : const Color(0xFF14532D),
+                                              textStyle: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Find nearby walks',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: kSpace1),
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: kBtnHeight,
+                                          child: OutlinedButton(
+                                            onPressed: () {
+                                              setState(() => _currentTab = 2);
+                                            },
+                                            style: OutlinedButton.styleFrom(
+                                              padding: kBtnPadding,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      kRadiusControl,
+                                                    ),
+                                              ),
+                                              side: BorderSide(
+                                                color:
+                                                    (isDark
+                                                            ? Colors.white
+                                                            : Colors.black)
+                                                        .withValues(
+                                                          alpha: 0.14,
+                                                        ),
+                                              ),
+                                              foregroundColor: isDark
+                                                  ? kTextPrimary
+                                                  : const Color(0xFF14532D),
+                                              textStyle: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Profile & stats',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  // Your walks inside main card
+                                  Text(
+                                    'Your walks',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(height: kSpace1),
+                                  if (_myHostedWalks.isEmpty)
+                                    Text(
+                                      'No walks yet.\nTap "Start walk" above to create your first one.',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: isDark
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                          ),
+                                    )
+                                  else
+                                    Column(
+                                      children: _myHostedWalks
+                                          .map(
+                                            (e) => _WalkCard(
+                                              event: e,
+                                              onTap: () =>
+                                                  _navigateToDetails(e),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                                ],
                               ),
                             ),
+                          ),
 
-                            SizedBox(height: kSpace2),
+                          SizedBox(height: kSpace2),
 
-                            // ===== WEEKLY SUMMARY =====
-                            Text(
-                              'This week',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          // ===== WEEKLY SUMMARY =====
+                          Text(
+                            'This week',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
-                            SizedBox(height: kSpace1),
-                            _WeeklySummaryCard(
-                              walks: _weeklyWalkCount,
-                              kmSoFar: _weeklyKm,
-                              kmGoal: _weeklyGoalKm,
-                              streakDays: _streakDays,
-                            ),
-                            SizedBox(height: kSpace2),
+                          ),
+                          SizedBox(height: kSpace1),
+                          _WeeklySummaryCard(
+                            walks: _weeklyWalkCount,
+                            kmSoFar: _weeklyKm,
+                            kmGoal: _weeklyGoalKm,
+                            streakDays: _streakDays,
+                          ),
+                          SizedBox(height: kSpace2),
 
-                            // ===== QUICK STATS =====
-                            Text(
-                              'Your quick stats',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          // ===== QUICK STATS =====
+                          Text(
+                            'Your quick stats',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                _StatCard(
-                                  label: 'Walks joined',
-                                  value: '$_walksJoined',
-                                ),
-                                _StatCard(
-                                  label: 'Events hosted',
-                                  value: '$_eventsHosted',
-                                ),
-                                _StatCard(
-                                  label: 'Total km',
-                                  value: _totalKmJoined.toStringAsFixed(1),
-                                  isLast: true,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                          ),
+                          const SizedBox(height: 12),
+                       LayoutBuilder(
+  builder: (context, c) {
+    final isNarrow = c.maxWidth < 380;
+
+    if (!isNarrow) {
+      return Row(
+        children: [
+          _StatCard(
+            label: 'Walks joined',
+            value: '$_walksJoined',
+          ),
+          _StatCard(
+            label: 'Events hosted',
+            value: '$_eventsHosted',
+          ),
+          _StatCard(
+            label: 'Total km',
+            value: _totalKmJoined.toStringAsFixed(1),
+            isLast: true,
           ),
         ],
       );
-    
+    }
+
+    // Narrow screens / large text: split into 2 rows to avoid squeeze/overflow
+    return Column(
+      children: [
+        Row(
+          children: [
+            _StatCard(
+              label: 'Walks joined',
+              value: '$_walksJoined',
+            ),
+            _StatCard(
+              label: 'Events hosted',
+              value: '$_eventsHosted',
+              isLast: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _StatCard(
+              label: 'Total km',
+              value: _totalKmJoined.toStringAsFixed(1),
+              isLast: true,
+            ),
+          ],
+        ),
+      ],
+    );
+  },
+),
+
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 //end of homescreeninstant
@@ -1663,13 +1704,16 @@ class _WeeklySummaryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '$walks walk${walks == 1 ? '' : 's'} • '
-                    '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: titleColor,
-                    ),
-                  ),
+  '$walks walk${walks == 1 ? '' : 's'} • '
+  '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+  style: theme.textTheme.titleMedium?.copyWith(
+    fontWeight: FontWeight.w800,
+    color: titleColor,
+  ),
+),
+
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1695,7 +1739,7 @@ class _WeeklySummaryCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // progress bar 
+            // progress bar
             LayoutBuilder(
               builder: (context, c) {
                 final trackColor = isDark ? kDarkSurface2 : Colors.black12;
@@ -1719,7 +1763,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                           color: fillColor,
                           borderRadius: BorderRadius.circular(kRadiusPill),
                         ),
-                      ),                   
+                      ),
                       Positioned.fill(
                         child: IgnorePointer(
                           child: Opacity(
@@ -1756,12 +1800,15 @@ class _WeeklySummaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              streakDays > 0
-                  ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
-                  : 'Start a walk today to begin your streak!',
-              style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
-            ),
+         Text(
+  streakDays > 0
+      ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
+      : 'Start a walk today to begin your streak!',
+  maxLines: 2,
+  overflow: TextOverflow.ellipsis,
+  style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
+),
+
           ],
         ),
       ),
