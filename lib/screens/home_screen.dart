@@ -1049,7 +1049,7 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         else
           Container(
-            height: 64, // ✅ matches Nearby
+            height: 64, 
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(

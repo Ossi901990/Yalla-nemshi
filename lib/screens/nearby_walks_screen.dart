@@ -389,27 +389,41 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
               ),
             ),
 
-          // ===== MAIN AREA (background) =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                // ✅ match Home dark base (no image, no overlay)
-                color: isDark
-                    ? const Color(0xFF071B26)
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusCard),
-                ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  kSpace2,
-                  kSpace2,
-                  kSpace2,
-                  kSpace2,
-                ),
-                child: Card(
+// ===== MAIN AREA (background) =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(kRadiusCard),
+      ),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(kRadiusCard),
+        ),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          kSpace2,
+          kSpace2,
+          kSpace2,
+          kSpace2,
+        ),
+        child: Card(
+
                   color: isDark ? kDarkSurface : kLightSurface,
                   elevation: isDark ? kCardElevationDark : kCardElevationLight,
                   shape: RoundedRectangleBorder(
@@ -488,6 +502,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
               ),
             ),
           ),
+),
         ],
       ),
     );

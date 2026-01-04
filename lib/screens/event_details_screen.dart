@@ -279,33 +279,31 @@ class EventDetailsScreen extends StatelessWidget {
               ),
             ),
 
-          // ===== MAIN AREA (same structure as other screens) =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF071B26) : const Color(0xFFF7F9F2),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-                image: DecorationImage(
-                  image: AssetImage(
-                    isDark
-                        ? 'assets/images/Dark_Grey_Background.png'
-                        : 'assets/images/Light_Beige_background.png',
-                  ),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color:
-                      isDark ? Colors.black.withOpacity(0.35) : Colors.transparent,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+// ===== MAIN AREA (same structure as other screens) =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+
                   child: Card(
                     color: isDark
                         ? const Color(0xFF0C2430)
@@ -488,27 +486,7 @@ class EventDetailsScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                           ],
 
-                          // Host-only cancel button
-                          if (event.isOwner && !event.cancelled) ...[
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(52),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  foregroundColor: theme.colorScheme.error,
-                                  side:
-                                      BorderSide(color: theme.colorScheme.error),
-                                ),
-                                onPressed: () => _confirmCancel(context),
-                                icon: const Icon(Icons.cancel_outlined),
-                                label: const Text('Cancel this walk'),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
+
 
                           // Join / leave button
                           SizedBox(
@@ -570,6 +548,28 @@ class EventDetailsScreen extends StatelessWidget {
                                 ),
                                 icon: const Icon(Icons.forum_outlined),
                                 label: const Text('Chat with participants'),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                                                    // Host-only cancel button
+                          if (event.isOwner && !event.cancelled) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(52),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  foregroundColor: theme.colorScheme.error,
+                                  side:
+                                      BorderSide(color: theme.colorScheme.error),
+                                ),
+                                onPressed: () => _confirmCancel(context),
+                                icon: const Icon(Icons.cancel_outlined),
+                                label: const Text('Cancel this walk'),
                               ),
                             ),
                             const SizedBox(height: 16),

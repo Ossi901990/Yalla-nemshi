@@ -412,22 +412,30 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             ),
           ),
 
-          // ===== MAIN AREA: solid background (no images), content sits on a Card =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(
-                        0xFF071B26,
-                      ) // match HomeScreen dark background
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-
-              child: SingleChildScrollView(
+// ===== MAIN AREA: Home-style gradient in dark mode =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null, // keep light mode exactly as-is (no gradient added here)
+        color: isDark ? null : const Color(0xFFF7F9F2), // same light background
+      ),
+      child: SingleChildScrollView(
+        
                 padding: EdgeInsets.fromLTRB(
                   kSpace2,
                   kSpace2,
@@ -824,6 +832,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   ),
                 ),
               ),
+             ),
             ),
           ),
         ],

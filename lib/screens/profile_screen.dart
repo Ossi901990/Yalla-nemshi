@@ -523,26 +523,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-          // ===== MAIN AREA =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF071B26)
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  kSpace2,
-                  kSpace2,
-                  kSpace2,
-                  kSpace3 + MediaQuery.of(context).padding.bottom,
-                ),
-                child: Card(
+// ===== MAIN AREA =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          kSpace2,
+          kSpace2,
+          kSpace2,
+          kSpace3 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Card(
+
                   color: isDark ? const Color(0xFF0C2430) : kLightSurface,
                   elevation: isDark ? kCardElevationDark : kCardElevationLight,
                   shape: RoundedRectangleBorder(
@@ -1000,6 +1011,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+),
         ],
       ),
     );

@@ -187,38 +187,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
 
-          // ===== MAIN AREA (Home-style background + card) =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF071B26)
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                image: DecorationImage(
-                  image: AssetImage(
-                    isDark
-                        ? 'assets/images/Dark_Grey_Background.png'
-                        : 'assets/images/Light_Beige_background.png',
-                  ),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.35)
-                      : Colors.transparent,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+// ===== MAIN AREA (Home-style background + card) =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+
+
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
                       : Card(

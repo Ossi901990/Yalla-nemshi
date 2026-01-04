@@ -121,26 +121,41 @@ class SafetyTipsScreen extends StatelessWidget {
               ),
             ),
 
-          // ===== MAIN AREA (Home/Profile style: rounded top + one main card) =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF071B26)
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusCard),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  kSpace2,
-                  kSpace2,
-                  kSpace2,
-                  kSpace2,
-                ),
-                child: Card(
+// ===== MAIN AREA (Home/Profile style: rounded top + one main card) =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(kRadiusCard),
+      ),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(kRadiusCard),
+        ),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top
+                  Color(0xFF041016), // bottom
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          kSpace2,
+          kSpace2,
+          kSpace2,
+          kSpace2,
+        ),
+        child: Card(
+
                   color: isDark ? const Color(0xFF0C2430) : kLightSurface,
                   elevation: isDark ? kCardElevationDark : kCardElevationLight,
                   shape: RoundedRectangleBorder(
@@ -275,6 +290,7 @@ class SafetyTipsScreen extends StatelessWidget {
               ),
             ),
           ),
+),
         ],
       ),
     );
