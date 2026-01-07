@@ -451,6 +451,25 @@ Expanded(
                                 color: isDark ? Colors.white70 : Colors.black87,
                               ),
                             )
+                          else if (event.startLat != null && event.startLng != null &&
+                              event.endLat != null && event.endLng != null)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Start: ${event.startLat!.toStringAsFixed(5)}, ${event.startLng!.toStringAsFixed(5)}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                                Text(
+                                  'End: ${event.endLat!.toStringAsFixed(5)}, ${event.endLng!.toStringAsFixed(5)}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            )
                           else
                             Text(
                               event.meetingLat != null && event.meetingLng != null

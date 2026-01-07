@@ -52,6 +52,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
   // Coordinates picked from the map
   LatLng? _meetingLatLng;
+  // New: start and end points picked on the map (start used as meeting point)
+  LatLng? _startLatLng;
+  LatLng? _endLatLng;
 
   String _description = '';
 
@@ -121,11 +124,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
           // These help some internal surfaces
           surface: dialogBg,
-          surfaceVariant: dialogBg,
-          background: dialogBg,
+          surfaceContainerHighest: dialogBg,
 
           onSurface: Colors.white,
-          onBackground: Colors.white,
 
           primary: accent,
           onPrimary: Colors.white,
@@ -143,14 +144,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         return Theme(
           data: theme.copyWith(
             colorScheme: cs,
-            dialogBackgroundColor: dialogBg,
 
             // This controls the date picker background/header
             datePickerTheme: const DatePickerThemeData(
               backgroundColor: dialogBg,
               headerBackgroundColor: dialogBg,
               headerForegroundColor: Colors.white,
-            ),
+            ), dialogTheme: DialogThemeData(backgroundColor: dialogBg),
           ),
           child: child!,
         );
@@ -175,10 +175,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         final cs = theme.colorScheme.copyWith(
           brightness: Brightness.dark,
           surface: dialogBg,
-          surfaceVariant: dialogBg,
-          background: dialogBg,
+          surfaceContainerHighest: dialogBg,
           onSurface: Colors.white,
-          onBackground: Colors.white,
           primary: accent,
           onPrimary: Colors.white,
           primaryContainer: accentContainer,
@@ -188,7 +186,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         return Theme(
           data: theme.copyWith(
             colorScheme: cs,
-            dialogBackgroundColor: dialogBg,
 
             // ✅ Forces time picker background + dial look
             timePickerTheme: TimePickerThemeData(
@@ -265,7 +262,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   vertical: 10,
                 ),
               ),
-            ),
+            ), dialogTheme: DialogThemeData(backgroundColor: dialogBg),
           ),
           child: child!,
         );
@@ -286,14 +283,17 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   }
 
   Future<void> _pickOnMap() async {
-    // Push the map screen and wait for the selected LatLng
-    final result = await Navigator.of(
-      context,
-    ).push<LatLng>(MaterialPageRoute(builder: (_) => const MapPickScreen()));
+    // Push the map screen and wait for selected start & end points
+    final result = await Navigator.of(context).push<List<LatLng>>(
+      MaterialPageRoute(builder: (_) => const MapPickScreen()),
+    );
 
-    if (result != null) {
+    if (result != null && result.length == 2) {
       setState(() {
-        _meetingLatLng = result;
+        _startLatLng = result[0];
+        _endLatLng = result[1];
+        // keep meetingLatLng for backwards compatibility (use start)
+        _meetingLatLng = _startLatLng;
       });
     }
   }
@@ -321,8 +321,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'hostUid': uid,
       'cancelled': false,
       'meetingPlaceName': _meetingPlace.isEmpty ? null : _meetingPlace,
+      // Keep meetingLat/meetingLng for legacy use (start point)
       'meetingLat': _meetingLatLng?.latitude,
       'meetingLng': _meetingLatLng?.longitude,
+      // New start/end coordinates
+      'startLat': _startLatLng?.latitude,
+      'startLng': _startLatLng?.longitude,
+      'endLat': _endLatLng?.latitude,
+      'endLng': _endLatLng?.longitude,
       'description': _description.isEmpty ? null : _description,
       'createdAt': FieldValue.serverTimestamp(),
     };
@@ -347,6 +353,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
         meetingLat: _meetingLatLng?.latitude,
         meetingLng: _meetingLatLng?.longitude,
+        startLat: _startLatLng?.latitude,
+        startLng: _startLatLng?.longitude,
+        endLat: _endLatLng?.latitude,
+        endLng: _endLatLng?.longitude,
         description: _description.isEmpty ? null : _description,
       );
 
@@ -561,12 +571,15 @@ Expanded(
                                   initialValue: _distanceKm.toStringAsFixed(1),
                                   validator: (val) {
                                     final d = double.tryParse(val ?? '');
-                                    if (d == null)
+                                    if (d == null) {
                                       return 'Please enter a number';
-                                    if (d <= 0)
+                                    }
+                                    if (d <= 0) {
                                       return 'Distance must be greater than 0';
-                                    if (d > 100)
+                                    }
+                                    if (d > 100) {
                                       return 'That’s a long walk! Try under 100 km';
+                                    }
                                     return null;
                                   },
                                   onSaved: (val) => _distanceKm =
@@ -684,32 +697,31 @@ Expanded(
 
                                 const SizedBox(height: 4),
 
-                                if (_meetingLatLng == null)
+                                if (_startLatLng == null)
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: Text(
-                                      'No location chosen yet',
+                                      'No start/end chosen yet',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: theme.textTheme.bodySmall,
                                     ),
                                   )
-                                else
+                                else if (_endLatLng == null)
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Location selected on map',
+                                        'Start selected',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall,
                                       ),
-
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Lat ${_meetingLatLng!.latitude.toStringAsFixed(5)}, '
-                                        'Lng ${_meetingLatLng!.longitude.toStringAsFixed(5)}',
+                                        'Lat ${_startLatLng!.latitude.toStringAsFixed(5)}, '
+                                        'Lng ${_startLatLng!.longitude.toStringAsFixed(5)}',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall
@@ -719,33 +731,138 @@ Expanded(
                                                   : Colors.grey.shade600,
                                             ),
                                       ),
-
                                       const SizedBox(height: 8),
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(12),
                                         child: SizedBox(
                                           height:
-                                              MediaQuery.of(
-                                                    context,
-                                                  ).size.height <
-                                                  700
-                                              ? 140
-                                              : 160,
+                                              MediaQuery.of(context).size.height <
+                                                      700
+                                                  ? 140
+                                                  : 160,
                                           width: double.infinity,
                                           child: AbsorbPointer(
                                             absorbing: true,
                                             child: GoogleMap(
                                               initialCameraPosition:
                                                   CameraPosition(
-                                                    target: _meetingLatLng!,
-                                                    zoom: 15,
-                                                  ),
+                                                target: _startLatLng!,
+                                                zoom: 15,
+                                              ),
                                               markers: {
                                                 Marker(
                                                   markerId: const MarkerId(
-                                                    'meeting_point',
+                                                    'start_point',
                                                   ),
-                                                  position: _meetingLatLng!,
+                                                  position: _startLatLng!,
+                                                ),
+                                              },
+                                              zoomControlsEnabled: false,
+                                              myLocationButtonEnabled: false,
+                                              compassEnabled: false,
+                                              scrollGesturesEnabled: false,
+                                              tiltGesturesEnabled: false,
+                                              rotateGesturesEnabled: false,
+                                              zoomGesturesEnabled: false,
+                                              liteModeEnabled: true,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      TextButton.icon(
+                                        onPressed: _pickOnMap,
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          foregroundColor: isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF294630),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.map_outlined,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Change location',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Start and end selected',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodySmall,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Start: ${_startLatLng!.latitude.toStringAsFixed(5)}, ${_startLatLng!.longitude.toStringAsFixed(5)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? Colors.white54
+                                                  : Colors.grey.shade600,
+                                            ),
+                                      ),
+                                      Text(
+                                        'End: ${_endLatLng!.latitude.toStringAsFixed(5)}, ${_endLatLng!.longitude.toStringAsFixed(5)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? Colors.white54
+                                                  : Colors.grey.shade600,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: SizedBox(
+                                          height:
+                                              MediaQuery.of(context).size.height <
+                                                      700
+                                                  ? 140
+                                                  : 160,
+                                          width: double.infinity,
+                                          child: AbsorbPointer(
+                                            absorbing: true,
+                                            child: GoogleMap(
+                                              initialCameraPosition:
+                                                  CameraPosition(
+                                                target: LatLng(
+                                                  (_startLatLng!.latitude +
+                                                          _endLatLng!.latitude) /
+                                                      2,
+                                                  (_startLatLng!.longitude +
+                                                          _endLatLng!.longitude) /
+                                                      2,
+                                                ),
+                                                zoom: 13,
+                                              ),
+                                              markers: {
+                                                Marker(
+                                                  markerId: const MarkerId(
+                                                    'start_point',
+                                                  ),
+                                                  position: _startLatLng!,
+                                                ),
+                                                Marker(
+                                                  markerId: const MarkerId(
+                                                    'end_point',
+                                                  ),
+                                                  position: _endLatLng!,
                                                 ),
                                               },
                                               zoomControlsEnabled: false,

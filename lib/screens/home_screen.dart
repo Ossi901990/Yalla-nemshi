@@ -8,7 +8,6 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
-import '../services/profile_storage.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
@@ -18,7 +17,6 @@ import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
 import '../services/app_preferences.dart';
 import 'dart:math' as math;
-import 'walk_chat_screen.dart';
 import 'package:flutter/services.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';

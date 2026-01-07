@@ -285,7 +285,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             const SizedBox(height: 12),
 
                             DropdownButtonFormField<String>(
-                              value: _gender,
+                              initialValue: _gender,
                               decoration: _fieldDecoration(
                                 context: context,
                                 isDark: isDark,

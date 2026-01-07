@@ -887,7 +887,11 @@ class _NearbyWalkCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${event.gender} • ${event.meetingPlaceName ?? 'Meeting point TBA'}',
+                      event.meetingPlaceName != null
+                          ? '${event.gender} • ${event.meetingPlaceName}'
+                          : (event.startLat != null && event.startLng != null
+                              ? '${event.gender} • Start ${event.startLat!.toStringAsFixed(2)},${event.startLng!.toStringAsFixed(2)}'
+                              : '${event.gender} • Meeting point TBA'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(

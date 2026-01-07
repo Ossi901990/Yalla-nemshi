@@ -61,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     // Shared slider styling (NO dots + framed container like dark mode)
-    SliderThemeData _sliderTheme() {
+    SliderThemeData sliderTheme() {
       return theme.sliderTheme.copyWith(
         trackHeight: 4,
         inactiveTrackColor: (isDark ? Colors.white : Colors.black).withOpacity(
@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
-    BoxDecoration _framedSliderBox() {
+    BoxDecoration framedSliderBox() {
       return BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
@@ -358,9 +358,9 @@ Expanded(
 
                               const SizedBox(height: 10),
                               Container(
-                                decoration: _framedSliderBox(),
+                                decoration: framedSliderBox(),
                                 child: SliderTheme(
-                                  data: _sliderTheme(),
+                                  data: sliderTheme(),
                                   child: Slider(
                                     min: 1.0,
                                     max: 10.0,
@@ -403,9 +403,9 @@ Expanded(
 
                               const SizedBox(height: 10),
                               Container(
-                                decoration: _framedSliderBox(),
+                                decoration: framedSliderBox(),
                                 child: SliderTheme(
-                                  data: _sliderTheme(),
+                                  data: sliderTheme(),
                                   child: Slider(
                                     min: 5.0,
                                     max: 60.0,
