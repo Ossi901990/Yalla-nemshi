@@ -462,8 +462,8 @@ Expanded(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(kRadiusCard),
                     side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black).withValues(
-                        alpha: kCardBorderAlpha,
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(
+                        kCardBorderAlpha,
                       ),
                     ),
                   ),
@@ -472,8 +472,8 @@ Expanded(
                       inputDecorationTheme: InputDecorationTheme(
                         filled: true,
                         fillColor: isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.white,
+                          ? Colors.white.withOpacity(0.06)
+                          : Colors.white,
 
                         labelStyle: TextStyle(
                           color: isDark ? Colors.white70 : Colors.black87,
@@ -487,7 +487,7 @@ Expanded(
                           borderRadius: BorderRadius.circular(kRadiusControl),
                           borderSide: BorderSide(
                             color: (isDark ? Colors.white : Colors.black)
-                                .withValues(alpha: 0.12),
+                              .withOpacity(0.12),
                           ),
                         ),
 
@@ -495,7 +495,7 @@ Expanded(
                           borderRadius: BorderRadius.circular(kRadiusControl),
                           borderSide: BorderSide(
                             color: (isDark ? Colors.white : Colors.black)
-                                .withValues(alpha: 0.12),
+                              .withOpacity(0.12),
                           ),
                         ),
 
@@ -503,7 +503,7 @@ Expanded(
                           borderRadius: BorderRadius.circular(kRadiusControl),
                           borderSide: BorderSide(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.35)
+                              ? Colors.white.withOpacity(0.35)
                                 : const Color(0xFF294630),
                             width: 1.2,
                           ),
@@ -676,11 +676,11 @@ Expanded(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       side: BorderSide(
-                                        color:
-                                            (isDark
-                                                    ? Colors.white
-                                                    : Colors.black)
-                                                .withValues(alpha: 0.18),
+                                      color:
+                                        (isDark
+                                            ? Colors.white
+                                            : Colors.black)
+                                          .withOpacity(0.18),
                                       ),
                                       foregroundColor: isDark
                                           ? Colors.white

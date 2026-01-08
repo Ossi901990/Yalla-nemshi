@@ -344,7 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: Colors.white.withOpacity(0.08),
                           ),
                           child: const Icon(
                             Icons.directions_walk,
@@ -372,9 +372,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Container(
                             width: 32,
                             height: 32,
-                            decoration: BoxDecoration(
+                              decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: Colors.white.withOpacity(0.08),
                             ),
                             child: const Icon(
                               Icons.notifications_none,
@@ -405,7 +405,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: Colors.white.withOpacity(0.08),
                             ),
                             child: const Icon(
                               Icons.settings,

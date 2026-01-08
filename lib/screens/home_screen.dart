@@ -8,7 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
-import '../services/profile_storage.dart';
+//import '../services/profile_storage.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
@@ -401,9 +401,9 @@ class _HomeScreenState extends State<HomeScreen> {
             // - if it's selected → keep selected clean (no extra border needed)
             border: (hasWalk && !isSelected)
                 ? Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.18)
-                        : const Color(0xFF2E7D32).withValues(alpha: 0.55),
+                color: isDark
+                  ? Colors.white.withOpacity(0.18)
+                  : const Color(0xFF2E7D32).withOpacity(0.55),
                     width: 1.4,
                   )
                 : Border.all(
@@ -956,7 +956,7 @@ Future<void> _refreshNotificationsCount() async {
                         height: 32,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: Colors.white.withOpacity(0.08),
                         ),
                         child: const Icon(
                           Icons.directions_walk,
@@ -989,7 +989,7 @@ Future<void> _refreshNotificationsCount() async {
                               height: 32,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.08),
+                                color: Colors.white.withOpacity(0.08),
                               ),
                               child: const Icon(
                                 Icons.notifications_none,
@@ -1030,7 +1030,7 @@ Future<void> _refreshNotificationsCount() async {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: Colors.white.withOpacity(0.08),
                           ),
                           child: const Icon(
                             Icons.person,
@@ -1220,7 +1220,7 @@ Future<void> _refreshNotificationsCount() async {
                               borderRadius: BorderRadius.circular(kRadiusCard),
                               side: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
-                                    .withValues(alpha: kCardBorderAlpha),
+                                    .withOpacity(kCardBorderAlpha),
                               ),
                             ),
                             child: Padding(
@@ -1447,9 +1447,7 @@ Row(
                                                     (isDark
                                                             ? Colors.white
                                                             : Colors.black)
-                                                        .withValues(
-                                                          alpha: 0.14,
-                                                        ),
+                                                        .withOpacity(0.14),
                                               ),
                                               foregroundColor: isDark
                                                   ? kTextPrimary
@@ -1485,9 +1483,7 @@ Row(
                                                     (isDark
                                                             ? Colors.white
                                                             : Colors.black)
-                                                        .withValues(
-                                                          alpha: 0.14,
-                                                        ),
+                                                        .withOpacity(0.14),
                                               ),
                                               foregroundColor: isDark
                                                   ? kTextPrimary
@@ -1687,8 +1683,8 @@ class _WeeklySummaryCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusCard),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withValues(
-            alpha: kCardBorderAlpha,
+          color: (isDark ? Colors.white : Colors.black).withOpacity(
+            kCardBorderAlpha,
           ),
         ),
       ),
@@ -1721,7 +1717,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isDark
                         ? kDarkSurface2
-                        : Colors.black.withValues(alpha: 0.06),
+                        : Colors.black.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(kRadiusPill),
                   ),
                   child: Text(
@@ -1838,8 +1834,8 @@ class _StatCard extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadiusControl),
           side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withValues(
-              alpha: kCardBorderAlpha,
+            color: (isDark ? Colors.white : Colors.black).withOpacity(
+              kCardBorderAlpha,
             ),
           ),
         ),
@@ -1899,11 +1895,11 @@ class _WalkCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusControl),
         side: BorderSide(
-          color:
+            color:
               (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black)
-                  .withValues(alpha: kCardBorderAlpha),
+                  ? Colors.white
+                  : Colors.black)
+                .withOpacity(kCardBorderAlpha),
         ),
       ),
       child: ListTile(
@@ -1978,7 +1974,7 @@ class _StepsRing extends StatelessWidget {
 
         // Very light color at 0 progress (so the start is almost white)
         final Color veryLight = isDark
-            ? Colors.white.withValues(alpha: 0.16)
+                    ? Colors.white.withOpacity(0.16)
             : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
 
         // End color gets darker as progress increases
@@ -1995,8 +1991,8 @@ class _StepsRing extends StatelessWidget {
                 painter: _GradientRingPainter(
                   progress: animatedProgress,
                   strokeWidth: stroke,
-                  trackColor: isDark
-                      ? Colors.white.withValues(alpha: 0.10)
+                    trackColor: isDark
+                      ? Colors.white.withOpacity(0.10)
                       : const Color(
                           0xFFD7E2D7,
                         ), // ✅ slightly darker track so ring feels consistent

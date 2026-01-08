@@ -236,7 +236,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: Colors.white.withOpacity(0.08),
                           ),
                           child: const Icon(
                             Icons.directions_walk,
@@ -266,7 +266,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: Colors.white.withOpacity(0.08),
                             ),
                             child: const Icon(
                               Icons.notifications_none,
@@ -283,7 +283,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: Colors.white.withOpacity(0.08),
                             ),
                             child: const Icon(
                               Icons.person,
@@ -429,8 +429,8 @@ Expanded(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(kRadiusCard),
                     side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black).withValues(
-                        alpha: kCardBorderAlpha,
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(
+                        kCardBorderAlpha,
                       ),
                     ),
                   ),
@@ -521,8 +521,8 @@ Expanded(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusCard),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withValues(
-            alpha: kCardBorderAlpha,
+          color: (isDark ? Colors.white : Colors.black).withOpacity(
+            kCardBorderAlpha,
           ),
         ),
       ),
@@ -780,8 +780,8 @@ class _NearbyWalkCard extends StatelessWidget {
     // ✅ Button tokens (match Home "round icon" feel)
     const btnSize = 38.0;
     final btnBg = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : const Color(0xFFEFF6EA);
+      ? Colors.white.withOpacity(0.08)
+      : const Color(0xFFEFF6EA);
 
     // star has special tint when selected
     final starIconColor = event.interested
@@ -800,8 +800,8 @@ class _NearbyWalkCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusControl),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withValues(
-            alpha: kCardBorderAlpha,
+          color: (isDark ? Colors.white : Colors.black).withOpacity(
+            kCardBorderAlpha,
           ),
         ),
       ),
@@ -858,7 +858,7 @@ class _NearbyWalkCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.15),
+                                color: Colors.amber.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(
                                   kRadiusPill,
                                 ),

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 
@@ -46,34 +47,32 @@ class _LoginScreenState extends State<LoginScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 Future<void> _signInWithGoogle() async {
   try {
-    if (!kIsWeb) {
-      // For now, only web is supported – emulator later
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Google sign-in is currently available on web preview only.'),
-        ),
-      );
+    if (kIsWeb) {
+      // Web: use Firebase popup (no google_sign_in plugin)
+      final googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+
+      await _auth.signInWithPopup(googleProvider);
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/home');
       return;
     }
 
-    // 🔹 Web: use Firebase popup directly (no google_sign_in plugin)
-    final googleProvider = GoogleAuthProvider();
-    googleProvider.addScope('email');
-
-await _auth.signInWithPopup(googleProvider);
-
-if (!mounted) return;
-
-// ✅ Success → go to home
-Navigator.of(context).pushReplacementNamed('/home');
-
-    } on FirebaseAuthException catch (e) {
+    // Non-web: Google sign-in disabled for now (keep mobile changes undone)
+    if (!kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google sign-in is available on web only for now.')),
+      );
+      return;
+    }
+  } on FirebaseAuthException catch (e) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Google sign-in failed: ${e.message ?? ''}')),
     );
-  }
- catch (e) {
+  } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Google sign-in failed. Please try again.'),
@@ -169,9 +168,9 @@ Navigator.of(context).pushReplacementNamed('/home');
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                   kBgTop.withValues(alpha: 0.7),
-kBgMid.withValues(alpha: 0.85),
-kBgBottom.withValues(alpha: 0.9),
+                   kBgTop.withOpacity(0.7),
+kBgMid.withOpacity(0.85),
+kBgBottom.withOpacity(0.9),
 
                   ],
                   begin: Alignment.topCenter,
@@ -194,9 +193,9 @@ kBgBottom.withValues(alpha: 0.9),
                   width: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: kCardOverlay.withValues(alpha: 0.35),
+                    color: kCardOverlay.withOpacity(0.35),
                     border: Border.all(
-                      color: kCardBorder.withValues(alpha: 0.2),
+                      color: kCardBorder.withOpacity(0.2),
                     ),
                   ),
                   child: const Icon(
@@ -221,13 +220,13 @@ kBgBottom.withValues(alpha: 0.9),
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                       decoration: BoxDecoration(
-                        color: kCardOverlay.withValues(alpha: 0.45),
+                        color: kCardOverlay.withOpacity(0.45),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(32),
                           topRight: Radius.circular(32),
                         ),
                         border: Border.all(
-                          color: kCardBorder.withValues(alpha: 0.15),
+                          color: kCardBorder.withOpacity(0.15),
                         ),
                       ),
                       child: SingleChildScrollView(
@@ -248,7 +247,7 @@ kBgBottom.withValues(alpha: 0.9),
                               'Log in to continue walking with Yalla Nemshi',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: kSecondaryText.withValues(alpha: 0.7),
+                                color: kSecondaryText.withOpacity(0.7),
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -280,7 +279,7 @@ kBgBottom.withValues(alpha: 0.9),
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   foregroundColor:
-                                      kSecondaryText.withValues(alpha: 0.8),
+                                      kSecondaryText.withOpacity(0.8),
                                   textStyle: const TextStyle(fontSize: 12),
                                 ),
                                 child: const Text('Forgot Password?'),
@@ -301,7 +300,7 @@ kBgBottom.withValues(alpha: 0.9),
                                 Expanded(
                                   child: Divider(
                                     color:
-                                        kSecondaryText.withValues(alpha: 0.2),
+                                        kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
                                 Padding(
@@ -311,7 +310,7 @@ kBgBottom.withValues(alpha: 0.9),
                                     'or continue with',
                                     style: TextStyle(
                                       color: kSecondaryText
-                                          .withValues(alpha: 0.7),
+                                          .withOpacity(0.7),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -319,7 +318,7 @@ kBgBottom.withValues(alpha: 0.9),
                                 Expanded(
                                   child: Divider(
                                     color:
-                                        kSecondaryText.withValues(alpha: 0.2),
+                                      kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
                               ],
@@ -362,8 +361,8 @@ kBgBottom.withValues(alpha: 0.9),
                                 Text(
                                   "Don’t have an account? ",
                                   style: TextStyle(
-                                    color: kSecondaryText
-                                        .withValues(alpha: 0.7),
+                                      color: kSecondaryText
+                                        .withOpacity(0.7),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -407,7 +406,7 @@ kBgBottom.withValues(alpha: 0.9),
         Text(
           label,
           style: TextStyle(
-            color: kSecondaryText.withValues(alpha: 0.8),
+            color: kSecondaryText.withOpacity(0.8),
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -421,25 +420,25 @@ kBgBottom.withValues(alpha: 0.9),
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(
-              color: kHintText.withValues(alpha: 0.5),
+              color: kHintText.withOpacity(0.5),
             ),
             prefixIcon: Icon(
               icon,
-              color: kIconColor.withValues(alpha: 0.9),
+              color: kIconColor.withOpacity(0.9),
             ),
             filled: true,
-            fillColor: kFieldFill.withValues(alpha: 0.06),
+            fillColor: kFieldFill.withOpacity(0.06),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: kFieldBorder.withValues(alpha: 0.15),
+                color: kFieldBorder.withOpacity(0.15),
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: kFieldBorder.withValues(alpha: 0.8),
+                color: kFieldBorder.withOpacity(0.8),
                 width: 1.3,
               ),
             ),
@@ -517,15 +516,15 @@ class _SocialIconButton extends StatelessWidget {
         child: Container(
           width: 44,
           height: 44,
-          decoration: BoxDecoration(
+            decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: kSocialGlassFill.withValues(alpha: 0.08),
+            color: kSocialGlassFill.withOpacity(0.08),
             border: Border.all(
-              color: kSocialGlassBorder.withValues(alpha: 0.2),
+              color: kSocialGlassBorder.withOpacity(0.2),
             ),
             boxShadow: [
               BoxShadow(
-                color: kSocialShadow.withValues(alpha: 0.4),
+                color: kSocialShadow.withOpacity(0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
