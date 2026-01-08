@@ -41,22 +41,34 @@ class CreateWalkScreen extends StatefulWidget {
 class _CreateWalkScreenState extends State<CreateWalkScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // ===== Walk type tabs =====
+  // 0 = Point to point (default), 1 = Loop, 2 = Free
+  int _walkTypeIndex = 0;
+
   String _title = '';
   double _distanceKm = 3.0;
   String _gender = 'Mixed';
 
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
-  // Text name for the meeting point (user can type it)
+  // Type A destination search text (name/label only for now)
+  String _destinationText = '';
+
+  // Legacy meeting point name (kept for backwards compatibility)
   String _meetingPlace = '';
 
   // Coordinates picked from the map
   LatLng? _meetingLatLng;
-  // New: start and end points picked on the map (start used as meeting point)
+
+  // Start/end points (if null, start defaults to "My current location")
   LatLng? _startLatLng;
   LatLng? _endLatLng;
 
+  // Type B (loop) simple duration preset in minutes
+  int _loopMinutes = 30;
+
   String _description = '';
+
 
   @override
   void initState() {
@@ -538,409 +550,496 @@ Expanded(
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // ===== FORM =====
-                          Form(
-                            key: _formKey,
-                            child: Column(
-                              children: [
-                                // Title
-                                TextFormField(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Title',
-                                  ),
-                                  onSaved: (val) => _title = val!.trim(),
-                                  validator: (val) =>
-                                      (val == null || val.trim().isEmpty)
-                                      ? 'Required'
-                                      : null,
-                                ),
-                                const SizedBox(height: 12),
+                          // ===== FORM + WALK TYPE TABS =====
+                          DefaultTabController(
+                            length: 3,
+                            initialIndex: 0, // Type A default
+                            child: Builder(
+                              builder: (context) {
+                                final tabController =
+                                    DefaultTabController.of(context);
 
-                                // Distance
-                                TextFormField(
-                                  key: ValueKey(
-                                    _distanceKm,
-                                  ), // so initialValue updates
-                                  decoration: const InputDecoration(
-                                    labelText: 'Distance (km)',
-                                  ),
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
+                                tabController.addListener(() {
+                                  if (!tabController.indexIsChanging) return;
+                                  setState(() => _walkTypeIndex = tabController.index);
+                                });
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Tabs (inside card)
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.06)
+                                            : Colors.black.withOpacity(0.04),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: (isDark ? Colors.white : Colors.black)
+                                              .withOpacity(0.08),
+                                        ),
                                       ),
-                                  initialValue: _distanceKm.toStringAsFixed(1),
-                                  validator: (val) {
-                                    final d = double.tryParse(val ?? '');
-                                    if (d == null) {
-                                      return 'Please enter a number';
-                                    }
-                                    if (d <= 0) {
-                                      return 'Distance must be greater than 0';
-                                    }
-                                    if (d > 100) {
-                                      return 'That’s a long walk! Try under 100 km';
-                                    }
-                                    return null;
-                                  },
-                                  onSaved: (val) => _distanceKm =
-                                      double.tryParse(val ?? '') ?? 3.0,
-                                ),
-                                const SizedBox(height: 12),
+                                      child: TabBar(
+                                        dividerColor: Colors.transparent,
+                                        indicatorSize: TabBarIndicatorSize.tab,
+                                        indicator: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.10)
+                                              : Colors.white,
+                                        ),
+                                        labelColor:
+                                            isDark ? Colors.white : const Color(0xFF294630),
+                                        unselectedLabelColor:
+                                            isDark ? Colors.white70 : Colors.black54,
+                                        tabs: const [
+                                          Tab(text: 'Point to point'),
+                                          Tab(text: 'Loop'),
+                                          Tab(text: 'Explore walk'),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
 
-                                // Gender filter
-                                DropdownButtonFormField<String>(
-                                  initialValue: _gender,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Who can join?',
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'Mixed',
-                                      child: Text('Mixed'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'Women only',
-                                      child: Text('Women only'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'Men only',
-                                      child: Text('Men only'),
+                                    Form(
+                                      key: _formKey,
+                                      child: Column(
+                                        children: [
+                                          // Title (still used for hosted walks)
+                                          TextFormField(
+                                            decoration: const InputDecoration(
+                                              labelText: 'Title',
+                                            ),
+                                            onSaved: (val) => _title = val!.trim(),
+                                            validator: (val) =>
+                                                (val == null || val.trim().isEmpty)
+                                                    ? 'Required'
+                                                    : null,
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // ===== TYPE-SPECIFIC SECTION =====
+                                          if (_walkTypeIndex == 0) ...[
+                                            // Type A: Point-to-point
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Route',
+                                                style: theme.textTheme.titleMedium,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            // Start (default: current location)
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 14,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? Colors.white.withOpacity(0.06)
+                                                    : Colors.white,
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: (isDark ? Colors.white : Colors.black)
+                                                      .withOpacity(0.12),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.my_location,
+                                                    size: 18,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : const Color(0xFF294630),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      _startLatLng == null
+                                                          ? 'Starting from: My current location'
+                                                          : 'Starting from: Custom location selected',
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : Colors.black87,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: _pickOnMap,
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor: isDark
+                                                          ? Colors.white70
+                                                          : const Color(0xFF294630),
+                                                    ),
+                                                    child: const Text('Change'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+
+                                            // Destination search (text only for now)
+                                            TextFormField(
+                                              decoration: const InputDecoration(
+                                                labelText: 'Destination (search)',
+                                                hintText: 'Search for a place name',
+                                                prefixIcon: Icon(Icons.search),
+                                              ),
+                                              onSaved: (val) => _destinationText = (val ?? '').trim(),
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            // Pick destination on map (uses end point)
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: OutlinedButton.icon(
+                                                onPressed: _pickOnMap,
+                                                style: OutlinedButton.styleFrom(
+                                                  minimumSize: const Size.fromHeight(52),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                  side: BorderSide(
+                                                    color: (isDark ? Colors.white : Colors.black)
+                                                        .withOpacity(0.18),
+                                                  ),
+                                                  foregroundColor:
+                                                      isDark ? Colors.white : Colors.black,
+                                                ),
+                                                icon: const Icon(Icons.map_outlined),
+                                                label: const Text(
+                                                  'Pick start & destination on map',
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 6),
+
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                _endLatLng == null
+                                                    ? 'Destination pin not selected yet (optional for now)'
+                                                    : 'Destination selected on map',
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: isDark ? Colors.white54 : Colors.black54,
+                                                ),
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 16),
+                                          ] else if (_walkTypeIndex == 1) ...[
+                                            // Type B: Loop
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Loop walk',
+                                                style: theme.textTheme.titleMedium,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 14,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? Colors.white.withOpacity(0.06)
+                                                    : Colors.white,
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: (isDark ? Colors.white : Colors.black)
+                                                      .withOpacity(0.12),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.my_location,
+                                                    size: 18,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : const Color(0xFF294630),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      _startLatLng == null
+                                                          ? 'Starting from: My current location'
+                                                          : 'Starting from: Custom location selected',
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: _pickOnMap,
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor: isDark
+                                                          ? Colors.white70
+                                                          : const Color(0xFF294630),
+                                                    ),
+                                                    child: const Text('Change'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+
+                                            // Simple duration preset
+                                            DropdownButtonFormField<int>(
+                                              value: _loopMinutes,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Duration',
+                                              ),
+                                              items: const [
+                                                DropdownMenuItem(value: 20, child: Text('20 min')),
+                                                DropdownMenuItem(value: 30, child: Text('30 min')),
+                                                DropdownMenuItem(value: 40, child: Text('40 min')),
+                                                DropdownMenuItem(value: 60, child: Text('60 min')),
+                                              ],
+                                              onChanged: (v) {
+                                                if (v == null) return;
+                                                setState(() => _loopMinutes = v);
+                                              },
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ] else ...[
+                                            // Type C: Free walk
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Free walk',
+                                                style: theme.textTheme.titleMedium,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            Container(
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 14,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? Colors.white.withOpacity(0.06)
+                                                    : Colors.white,
+                                                borderRadius: BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: (isDark ? Colors.white : Colors.black)
+                                                      .withOpacity(0.12),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.my_location,
+                                                    size: 18,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : const Color(0xFF294630),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      _startLatLng == null
+                                                          ? 'Starting from: My current location'
+                                                          : 'Starting from: Custom location selected',
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: _pickOnMap,
+                                                    style: TextButton.styleFrom(
+                                                      foregroundColor: isDark
+                                                          ? Colors.white70
+                                                          : const Color(0xFF294630),
+                                                    ),
+                                                    child: const Text('Change'),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'No destination. Walk freely and end whenever you want.',
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  color: isDark ? Colors.white70 : Colors.black54,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
+
+                                          // Distance
+                                          // - Hidden for Type A (point-to-point)
+                                          // - Required for Type B (loop)
+                                          // - Optional for Type C (free): only applies if user enters a value
+                                          if (_walkTypeIndex != 0) ...[
+                                            TextFormField(
+                                              key: ValueKey(_distanceKm),
+                                              decoration: InputDecoration(
+                                                labelText: 'Distance (km)',
+                                                hintText: _walkTypeIndex == 2
+                                                    ? 'Optional (leave empty to track freely)'
+                                                    : null,
+                                              ),
+                                              keyboardType:
+                                                  const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+
+                                              // For Free walk (Type C), start blank so it's truly optional
+                                              initialValue: _walkTypeIndex == 2
+                                                  ? ''
+                                                  : _distanceKm.toStringAsFixed(1),
+
+                                              validator: (val) {
+                                                final raw = (val ?? '').trim();
+
+                                                // Free walk: optional
+                                                if (_walkTypeIndex == 2) {
+                                                  if (raw.isEmpty) return null; // ✅ optional
+                                                  final d = double.tryParse(raw);
+                                                  if (d == null) return 'Please enter a number';
+                                                  if (d <= 0) return 'Distance must be greater than 0';
+                                                  if (d > 100) return 'That’s a long walk! Try under 100 km';
+                                                  return null;
+                                                }
+
+                                                // Loop walk: required
+                                                final d = double.tryParse(raw);
+                                                if (d == null) return 'Please enter a number';
+                                                if (d <= 0) return 'Distance must be greater than 0';
+                                                if (d > 100) return 'That’s a long walk! Try under 100 km';
+                                                return null;
+                                              },
+
+                                              onSaved: (val) {
+                                                final raw = (val ?? '').trim();
+
+                                                // Free walk: only apply if user entered something
+                                                if (_walkTypeIndex == 2) {
+                                                  if (raw.isEmpty) return; // ✅ keep existing _distanceKm
+                                                  _distanceKm =
+                                                      double.tryParse(raw) ?? _distanceKm;
+                                                  return;
+                                                }
+
+                                                // Loop: always save
+                                                _distanceKm = double.tryParse(raw) ?? _distanceKm;
+                                              },
+                                            ),
+                                            const SizedBox(height: 12),
+                                          ],
+
+
+
+                                          // Gender filter
+                                          DropdownButtonFormField<String>(
+                                            initialValue: _gender,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Who can join?',
+                                            ),
+                                            items: const [
+                                              DropdownMenuItem(value: 'Mixed', child: Text('Mixed')),
+                                              DropdownMenuItem(value: 'Women only', child: Text('Women only')),
+                                              DropdownMenuItem(value: 'Men only', child: Text('Men only')),
+                                            ],
+                                            onChanged: (val) {
+                                              if (val != null) setState(() => _gender = val);
+                                            },
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // Date & time
+                                          ListTile(
+                                            contentPadding: EdgeInsets.zero,
+                                            title: Text(
+                                              'Date & time',
+                                              style: theme.textTheme.titleMedium,
+                                            ),
+                                            subtitle: Text(
+                                              _formatDateTime(_dateTime),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: isDark ? Colors.white70 : Colors.black54,
+                                              ),
+                                            ),
+                                            trailing: IconButton(
+                                              icon: Icon(
+                                                Icons.calendar_today,
+                                                color: isDark ? Colors.white70 : Colors.white,
+                                              ),
+                                              onPressed: _pickDateTime,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+
+                                          // Description
+                                          TextFormField(
+                                            decoration: const InputDecoration(
+                                              labelText: 'Description (optional)',
+                                            ),
+                                            minLines: 3,
+                                            maxLines:
+                                                MediaQuery.of(context).size.height < 700 ? 3 : 5,
+                                            onSaved: (val) =>
+                                                _description = (val ?? '').trim(),
+                                          ),
+
+                                          const SizedBox(height: 24),
+
+                                          // Submit
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: FilledButton(
+                                              onPressed: _submit,
+                                              style: FilledButton.styleFrom(
+                                                minimumSize: const Size.fromHeight(52),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                backgroundColor: const Color(0xFF14532D),
+                                                foregroundColor: Colors.white,
+                                              ),
+                                              child: Text(
+                                                _walkTypeIndex == 0
+                                                    ? 'Create walk'
+                                                    : _walkTypeIndex == 1
+                                                        ? 'Create loop walk'
+                                                        : 'Start free walk',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setState(() => _gender = val);
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Date & time
-                                ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    'Date & time',
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                  subtitle: Text(
-                                    _formatDateTime(_dateTime),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                    ),
-                                  ),
-
-                                  trailing: IconButton(
-                                    icon: Icon(
-                                      Icons.calendar_today,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.white,
-                                    ),
-                                    onPressed: _pickDateTime,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                // Meeting point
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'Meeting point',
-                                    style: theme.textTheme.titleMedium,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-
-                                TextFormField(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Location name (optional)',
-                                    hintText: 'e.g. Rainbow St. entrance',
-                                  ),
-                                  onSaved: (val) =>
-                                      _meetingPlace = (val ?? '').trim(),
-                                ),
-                                const SizedBox(height: 8),
-
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: _pickOnMap,
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(52),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      side: BorderSide(
-                                      color:
-                                        (isDark
-                                            ? Colors.white
-                                            : Colors.black)
-                                          .withOpacity(0.18),
-                                      ),
-                                      foregroundColor: isDark
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
-                                    icon: const Icon(Icons.map_outlined),
-                                    label: const Text(
-                                      'Pick on map',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 4),
-
-                                if (_startLatLng == null)
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      'No start/end chosen yet',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  )
-                                else if (_endLatLng == null)
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Start selected',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Lat ${_startLatLng!.latitude.toStringAsFixed(5)}, '
-                                        'Lng ${_startLatLng!.longitude.toStringAsFixed(5)}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: isDark
-                                                  ? Colors.white54
-                                                  : Colors.grey.shade600,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: SizedBox(
-                                          height:
-                                              MediaQuery.of(context).size.height <
-                                                      700
-                                                  ? 140
-                                                  : 160,
-                                          width: double.infinity,
-                                          child: AbsorbPointer(
-                                            absorbing: true,
-                                            child: GoogleMap(
-                                              initialCameraPosition:
-                                                  CameraPosition(
-                                                target: _startLatLng!,
-                                                zoom: 15,
-                                              ),
-                                              markers: {
-                                                Marker(
-                                                  markerId: const MarkerId(
-                                                    'start_point',
-                                                  ),
-                                                  position: _startLatLng!,
-                                                ),
-                                              },
-                                              zoomControlsEnabled: false,
-                                              myLocationButtonEnabled: false,
-                                              compassEnabled: false,
-                                              scrollGesturesEnabled: false,
-                                              tiltGesturesEnabled: false,
-                                              rotateGesturesEnabled: false,
-                                              zoomGesturesEnabled: false,
-                                              liteModeEnabled: true,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      TextButton.icon(
-                                        onPressed: _pickOnMap,
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                          foregroundColor: isDark
-                                              ? Colors.white70
-                                              : const Color(0xFF294630),
-                                        ),
-                                        icon: const Icon(
-                                          Icons.map_outlined,
-                                          size: 16,
-                                        ),
-                                        label: const Text(
-                                          'Change location',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Start and end selected',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Start: ${_startLatLng!.latitude.toStringAsFixed(5)}, ${_startLatLng!.longitude.toStringAsFixed(5)}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: isDark
-                                                  ? Colors.white54
-                                                  : Colors.grey.shade600,
-                                            ),
-                                      ),
-                                      Text(
-                                        'End: ${_endLatLng!.latitude.toStringAsFixed(5)}, ${_endLatLng!.longitude.toStringAsFixed(5)}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: isDark
-                                                  ? Colors.white54
-                                                  : Colors.grey.shade600,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: SizedBox(
-                                          height:
-                                              MediaQuery.of(context).size.height <
-                                                      700
-                                                  ? 140
-                                                  : 160,
-                                          width: double.infinity,
-                                          child: AbsorbPointer(
-                                            absorbing: true,
-                                            child: GoogleMap(
-                                              initialCameraPosition:
-                                                  CameraPosition(
-                                                target: LatLng(
-                                                  (_startLatLng!.latitude +
-                                                          _endLatLng!.latitude) /
-                                                      2,
-                                                  (_startLatLng!.longitude +
-                                                          _endLatLng!.longitude) /
-                                                      2,
-                                                ),
-                                                zoom: 13,
-                                              ),
-                                              markers: {
-                                                Marker(
-                                                  markerId: const MarkerId(
-                                                    'start_point',
-                                                  ),
-                                                  position: _startLatLng!,
-                                                ),
-                                                Marker(
-                                                  markerId: const MarkerId(
-                                                    'end_point',
-                                                  ),
-                                                  position: _endLatLng!,
-                                                ),
-                                              },
-                                              zoomControlsEnabled: false,
-                                              myLocationButtonEnabled: false,
-                                              compassEnabled: false,
-                                              scrollGesturesEnabled: false,
-                                              tiltGesturesEnabled: false,
-                                              rotateGesturesEnabled: false,
-                                              zoomGesturesEnabled: false,
-                                              liteModeEnabled: true,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      TextButton.icon(
-                                        onPressed: _pickOnMap,
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                          foregroundColor: isDark
-                                              ? Colors.white70
-                                              : const Color(0xFF294630),
-                                        ),
-                                        icon: const Icon(
-                                          Icons.map_outlined,
-                                          size: 16,
-                                        ),
-                                        label: const Text(
-                                          'Change location',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                const SizedBox(height: 16),
-
-                                // Description
-                                TextFormField(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Description (optional)',
-                                  ),
-                                  minLines: 3,
-                                  maxLines:
-                                      MediaQuery.of(context).size.height < 700
-                                      ? 3
-                                      : 5,
-
-                                  onSaved: (val) =>
-                                      _description = (val ?? '').trim(),
-                                ),
-
-                                const SizedBox(height: 24),
-
-                                // Submit button (we’ll polish styles later)
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton(
-                                    onPressed: _submit,
-                                    style: FilledButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(52),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      backgroundColor: const Color(0xFF14532D),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    child: const Text(
-                                      'Create walk',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                );
+                              },
                             ),
                           ),
                         ],
