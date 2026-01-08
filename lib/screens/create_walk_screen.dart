@@ -46,7 +46,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   int _walkTypeIndex = 0;
 
   String _title = '';
-  double _distanceKm = 3.0;
+    double _distanceKm = 3.0;
+  bool _distanceEdited = false; // ✅ only apply distance if user actually changes it (Explore walk)
+
   String _gender = 'Mixed';
 
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
@@ -64,8 +66,18 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   LatLng? _startLatLng;
   LatLng? _endLatLng;
 
-  // Type B (loop) simple duration preset in minutes
+  // Type B (loop): Duration + Distance (kept in sync)
   int _loopMinutes = 30;
+  double _loopDistanceKm = 3.0;
+
+  final TextEditingController _loopMinutesCtrl = TextEditingController();
+  final TextEditingController _loopDistanceCtrl = TextEditingController();
+
+  bool _syncingLoop = false;
+
+  // Simple pace assumption: 12 minutes per km (≈ 5 km/h)
+  static const double _minutesPerKm = 12.0;
+
 
   String _description = '';
 
@@ -73,8 +85,55 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Loop defaults (initial text)
+    _loopMinutesCtrl.text = _loopMinutes.toString();
+    _loopDistanceCtrl.text = _loopDistanceKm.toStringAsFixed(1);
+
+    // Sync logic (two-way)
+    _loopMinutesCtrl.addListener(() {
+      if (_syncingLoop) return;
+      if (_walkTypeIndex != 1) return; // only react while on Loop tab
+
+      final raw = _loopMinutesCtrl.text.trim();
+      final mins = int.tryParse(raw);
+      if (mins == null || mins <= 0) return;
+
+      final km = mins / _minutesPerKm;
+
+      _syncingLoop = true;
+      _loopDistanceKm = km;
+      _loopDistanceCtrl.text = km.toStringAsFixed(1);
+      _syncingLoop = false;
+    });
+
+    _loopDistanceCtrl.addListener(() {
+      if (_syncingLoop) return;
+      if (_walkTypeIndex != 1) return; // only react while on Loop tab
+
+      final raw = _loopDistanceCtrl.text.trim();
+      final km = double.tryParse(raw);
+      if (km == null || km <= 0) return;
+
+      final mins = (km * _minutesPerKm).round();
+
+      _syncingLoop = true;
+      _loopMinutes = mins;
+      _loopMinutesCtrl.text = mins.toString();
+      _syncingLoop = false;
+    });
+
     _loadDefaultsFromPrefs(); // 👈 load saved defaults
   }
+
+    @override
+  void dispose() {
+    _loopMinutesCtrl.dispose();
+    _loopDistanceCtrl.dispose();
+    super.dispose();
+  }
+
+
 
   Future<void> _loadDefaultsFromPrefs() async {
     final distance = await AppPreferences.getDefaultDistanceKm();
@@ -325,25 +384,59 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
 
     // 1) Build the Firestore payload
+    final walkType = _walkTypeIndex == 0
+        ? 'point_to_point'
+        : _walkTypeIndex == 1
+            ? 'loop'
+            : 'free';
+
+    // Compute effective end point:
+    // - loop: end = start (if start picked)
+    // - free: no end
+    // - point_to_point: keep as selected
+    final LatLng? effectiveStart = _startLatLng;
+    final LatLng? effectiveEnd = walkType == 'loop'
+        ? (effectiveStart ?? _endLatLng)
+        : (walkType == 'free' ? null : _endLatLng);
+
+    // Keep meetingLatLng for backwards compatibility (start point)
+    final LatLng? effectiveMeeting = effectiveStart ?? _meetingLatLng;
+
     final payload = <String, dynamic>{
+      'walkType': walkType,
+
       'title': _title,
       'dateTime': _dateTime.toIso8601String(),
       'distanceKm': _distanceKm,
       'gender': _gender,
       'hostUid': uid,
       'cancelled': false,
+
+      // Type A: destination text (search)
+      'destinationText': (walkType == 'point_to_point' && _destinationText.trim().isNotEmpty)
+          ? _destinationText.trim()
+          : null,
+
+      // Type B: loop fields
+      'loopMinutes': walkType == 'loop' ? _loopMinutes : null,
+      'loopDistanceKm': walkType == 'loop' ? _loopDistanceKm : null,
+
       'meetingPlaceName': _meetingPlace.isEmpty ? null : _meetingPlace,
-      // Keep meetingLat/meetingLng for legacy use (start point)
-      'meetingLat': _meetingLatLng?.latitude,
-      'meetingLng': _meetingLatLng?.longitude,
-      // New start/end coordinates
-      'startLat': _startLatLng?.latitude,
-      'startLng': _startLatLng?.longitude,
-      'endLat': _endLatLng?.latitude,
-      'endLng': _endLatLng?.longitude,
+
+      // Legacy meeting lat/lng (start point)
+      'meetingLat': effectiveMeeting?.latitude,
+      'meetingLng': effectiveMeeting?.longitude,
+
+      // Start/end coordinates
+      'startLat': effectiveStart?.latitude,
+      'startLng': effectiveStart?.longitude,
+      'endLat': effectiveEnd?.latitude,
+      'endLng': effectiveEnd?.longitude,
+
       'description': _description.isEmpty ? null : _description,
       'createdAt': FieldValue.serverTimestamp(),
     };
+
 
     try {
       // 2) Create walk doc in Firestore
@@ -352,25 +445,31 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
           .add(payload);
 
       // 3) Build your local WalkEvent with the REAL firestoreId
+      final eventDistanceKm = walkType == 'loop' ? _loopDistanceKm : _distanceKm;
+
       final newEvent = WalkEvent(
         id: docRef.id,
         hostUid: uid,
         firestoreId: docRef.id, // ✅ this is what chat uses
         title: _title,
         dateTime: _dateTime,
-        distanceKm: _distanceKm,
+        distanceKm: eventDistanceKm,
         gender: _gender,
         isOwner: true,
         joined: false,
         meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
-        meetingLat: _meetingLatLng?.latitude,
-        meetingLng: _meetingLatLng?.longitude,
-        startLat: _startLatLng?.latitude,
-        startLng: _startLatLng?.longitude,
-        endLat: _endLatLng?.latitude,
-        endLng: _endLatLng?.longitude,
+
+        // ✅ Use the SAME effective points used in Firestore payload
+        meetingLat: effectiveMeeting?.latitude,
+        meetingLng: effectiveMeeting?.longitude,
+        startLat: effectiveStart?.latitude,
+        startLng: effectiveStart?.longitude,
+        endLat: effectiveEnd?.latitude,
+        endLng: effectiveEnd?.longitude,
+
         description: _description.isEmpty ? null : _description,
       );
+
 
       // 4) Notify HomeScreen + go back
       widget.onEventCreated(newEvent);
@@ -561,7 +660,11 @@ Expanded(
 
                                 tabController.addListener(() {
                                   if (!tabController.indexIsChanging) return;
-                                  setState(() => _walkTypeIndex = tabController.index);
+                                                                    setState(() {
+                                    _walkTypeIndex = tabController.index;
+                                    _distanceEdited = false; // ✅ Free walk distance becomes optional again
+                                  });
+
                                 });
 
                                 return Column(
@@ -618,6 +721,58 @@ Expanded(
                                                     : null,
                                           ),
                                           const SizedBox(height: 12),
+                                                                                    // Shared starting point (one place only)
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 14,
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.white.withOpacity(0.06)
+                                                  : Colors.white,
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: (isDark ? Colors.white : Colors.black)
+                                                    .withOpacity(0.12),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.my_location,
+                                                  size: 18,
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : const Color(0xFF294630),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    _startLatLng == null
+                                                        ? 'Starting from: My current location'
+                                                        : 'Starting from: Custom location selected',
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                                      color: isDark ? Colors.white : Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                                TextButton(
+                                                  onPressed: _pickOnMap,
+                                                  style: TextButton.styleFrom(
+                                                    foregroundColor: isDark
+                                                        ? Colors.white70
+                                                        : const Color(0xFF294630),
+                                                  ),
+                                                  child: const Text('Change'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
 
                                           // ===== TYPE-SPECIFIC SECTION =====
                                           if (_walkTypeIndex == 0) ...[
@@ -631,60 +786,6 @@ Expanded(
                                             ),
                                             const SizedBox(height: 8),
 
-                                            // Start (default: current location)
-                                            Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 14,
-                                                vertical: 12,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? Colors.white.withOpacity(0.06)
-                                                    : Colors.white,
-                                                borderRadius: BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: (isDark ? Colors.white : Colors.black)
-                                                      .withOpacity(0.12),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.my_location,
-                                                    size: 18,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : const Color(0xFF294630),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: Text(
-                                                      _startLatLng == null
-                                                          ? 'Starting from: My current location'
-                                                          : 'Starting from: Custom location selected',
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                                        color: isDark
-                                                            ? Colors.white
-                                                            : Colors.black87,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: _pickOnMap,
-                                                    style: TextButton.styleFrom(
-                                                      foregroundColor: isDark
-                                                          ? Colors.white70
-                                                          : const Color(0xFF294630),
-                                                    ),
-                                                    child: const Text('Change'),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 10),
 
                                             // Destination search (text only for now)
                                             TextFormField(
@@ -741,84 +842,72 @@ Expanded(
 
                                             const SizedBox(height: 16),
                                           ] else if (_walkTypeIndex == 1) ...[
-                                            // Type B: Loop
-                                            Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: Text(
-                                                'Loop walk',
-                                                style: theme.textTheme.titleMedium,
-                                              ),
+                                          // Type B: Loop (Duration + Distance, synced)
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              'Loop walk',
+                                              style: theme.textTheme.titleMedium,
                                             ),
-                                            const SizedBox(height: 8),
+                                          ),
+                                          const SizedBox(height: 8),
 
-                                            Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 14,
-                                                vertical: 12,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? Colors.white.withOpacity(0.06)
-                                                    : Colors.white,
-                                                borderRadius: BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: (isDark ? Colors.white : Colors.black)
-                                                      .withOpacity(0.12),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.my_location,
-                                                    size: 18,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : const Color(0xFF294630),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: Text(
-                                                      _startLatLng == null
-                                                          ? 'Starting from: My current location'
-                                                          : 'Starting from: Custom location selected',
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: _pickOnMap,
-                                                    style: TextButton.styleFrom(
-                                                      foregroundColor: isDark
-                                                          ? Colors.white70
-                                                          : const Color(0xFF294630),
-                                                    ),
-                                                    child: const Text('Change'),
-                                                  ),
-                                                ],
-                                              ),
+                                          // Duration + Distance (synced)
+                                          TextFormField(
+                                            controller: _loopMinutesCtrl,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Duration (minutes)',
+                                              hintText: 'e.g. 30',
                                             ),
-                                            const SizedBox(height: 12),
+                                            keyboardType: TextInputType.number,
+                                            validator: (val) {
+                                              final v = int.tryParse((val ?? '').trim());
+                                              if (v == null) return 'Enter minutes';
+                                              if (v <= 0) return 'Must be greater than 0';
+                                              if (v > 600) return 'Try under 600 minutes';
+                                              return null;
+                                            },
+                                            onSaved: (val) {
+                                              final v = int.tryParse((val ?? '').trim());
+                                              if (v != null) _loopMinutes = v;
+                                            },
+                                          ),
+                                          const SizedBox(height: 12),
 
-                                            // Simple duration preset
-                                            DropdownButtonFormField<int>(
-                                              value: _loopMinutes,
-                                              decoration: const InputDecoration(
-                                                labelText: 'Duration',
-                                              ),
-                                              items: const [
-                                                DropdownMenuItem(value: 20, child: Text('20 min')),
-                                                DropdownMenuItem(value: 30, child: Text('30 min')),
-                                                DropdownMenuItem(value: 40, child: Text('40 min')),
-                                                DropdownMenuItem(value: 60, child: Text('60 min')),
-                                              ],
-                                              onChanged: (v) {
-                                                if (v == null) return;
-                                                setState(() => _loopMinutes = v);
-                                              },
+                                          TextFormField(
+                                            controller: _loopDistanceCtrl,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Distance (km)',
+                                              hintText: 'e.g. 3.0',
                                             ),
-                                            const SizedBox(height: 16),
-                                          ] else ...[
+                                            keyboardType: const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                            validator: (val) {
+                                              final v = double.tryParse((val ?? '').trim());
+                                              if (v == null) return 'Enter distance';
+                                              if (v <= 0) return 'Must be greater than 0';
+                                              if (v > 100) return 'Try under 100 km';
+                                              return null;
+                                            },
+                                            onSaved: (val) {
+                                              final v = double.tryParse((val ?? '').trim());
+                                              if (v != null) _loopDistanceKm = v;
+                                            },
+                                          ),
+                                          const SizedBox(height: 6),
+
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              'Duration and distance update each other automatically.',
+                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                color: isDark ? Colors.white70 : Colors.black54,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+
                                             // Type C: Free walk
                                             Align(
                                               alignment: Alignment.centerLeft,
@@ -828,56 +917,7 @@ Expanded(
                                               ),
                                             ),
                                             const SizedBox(height: 8),
-
-                                            Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 14,
-                                                vertical: 12,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? Colors.white.withOpacity(0.06)
-                                                    : Colors.white,
-                                                borderRadius: BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: (isDark ? Colors.white : Colors.black)
-                                                      .withOpacity(0.12),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.my_location,
-                                                    size: 18,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : const Color(0xFF294630),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: Text(
-                                                      _startLatLng == null
-                                                          ? 'Starting from: My current location'
-                                                          : 'Starting from: Custom location selected',
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: _pickOnMap,
-                                                    style: TextButton.styleFrom(
-                                                      foregroundColor: isDark
-                                                          ? Colors.white70
-                                                          : const Color(0xFF294630),
-                                                    ),
-                                                    child: const Text('Change'),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 10),
-
+                                        
                                             Align(
                                               alignment: Alignment.centerLeft,
                                               child: Text(
@@ -893,32 +933,35 @@ Expanded(
                                           // Distance
                                           // - Hidden for Type A (point-to-point)
                                           // - Required for Type B (loop)
-                                          // - Optional for Type C (free): only applies if user enters a value
-                                          if (_walkTypeIndex != 0) ...[
+                                          // - Optional for Type C (free): only applies if user edits it
+                                          if (_walkTypeIndex == 2) ...[
                                             TextFormField(
-                                              key: ValueKey(_distanceKm),
+                                              key: ValueKey('distance_${_walkTypeIndex}_$_distanceKm'),
                                               decoration: InputDecoration(
                                                 labelText: 'Distance (km)',
-                                                hintText: _walkTypeIndex == 2
-                                                    ? 'Optional (leave empty to track freely)'
+                                                helperText: _walkTypeIndex == 2
+                                                    ? 'Optional: only used if you change it'
                                                     : null,
                                               ),
                                               keyboardType:
                                                   const TextInputType.numberWithOptions(
                                                 decimal: true,
                                               ),
+                                              initialValue: _distanceKm.toStringAsFixed(1),
 
-                                              // For Free walk (Type C), start blank so it's truly optional
-                                              initialValue: _walkTypeIndex == 2
-                                                  ? ''
-                                                  : _distanceKm.toStringAsFixed(1),
+                                              onChanged: (v) {
+                                                // Only matters for Free walk: detect user intention
+                                                if (_walkTypeIndex == 2) {
+                                                  setState(() => _distanceEdited = true);
+                                                }
+                                              },
 
                                               validator: (val) {
                                                 final raw = (val ?? '').trim();
 
-                                                // Free walk: optional
+                                                // Free walk: optional unless edited
                                                 if (_walkTypeIndex == 2) {
-                                                  if (raw.isEmpty) return null; // ✅ optional
+                                                  if (!_distanceEdited) return null; // ✅ ignore if untouched
                                                   final d = double.tryParse(raw);
                                                   if (d == null) return 'Please enter a number';
                                                   if (d <= 0) return 'Distance must be greater than 0';
@@ -937,20 +980,22 @@ Expanded(
                                               onSaved: (val) {
                                                 final raw = (val ?? '').trim();
 
-                                                // Free walk: only apply if user entered something
+                                                // Free walk: only save if user edited it
                                                 if (_walkTypeIndex == 2) {
-                                                  if (raw.isEmpty) return; // ✅ keep existing _distanceKm
-                                                  _distanceKm =
-                                                      double.tryParse(raw) ?? _distanceKm;
+                                                  if (!_distanceEdited) return; // ✅ keep existing _distanceKm
+                                                  final parsed = double.tryParse(raw);
+                                                  if (parsed != null) _distanceKm = parsed;
                                                   return;
                                                 }
 
-                                                // Loop: always save
-                                                _distanceKm = double.tryParse(raw) ?? _distanceKm;
+                                                // Loop walk: always save
+                                                final parsed = double.tryParse(raw);
+                                                if (parsed != null) _distanceKm = parsed;
                                               },
                                             ),
                                             const SizedBox(height: 12),
                                           ],
+
 
 
 
