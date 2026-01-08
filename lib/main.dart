@@ -28,7 +28,7 @@ Future<void> main() async {
     await Firebase.initializeApp();
   }
 
-  await NotificationService.instance.init();
+  await NotificationService.init();
   runApp(const MyApp());
 }
 

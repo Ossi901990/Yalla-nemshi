@@ -39,6 +39,12 @@ class NotificationStorage {
     await _save(list);
   }
 
+  // ✅ Backwards-compatible alias (in case other files call addNotification)
+  static Future<void> addNotification(AppNotification notification) async {
+    await add(notification);
+  }
+
+
   static Future<void> clearNotifications() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);

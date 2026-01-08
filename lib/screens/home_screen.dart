@@ -8,7 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
-import '../services/profile_storage.dart';
+//import '../services/profile_storage.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
@@ -394,13 +394,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _refreshNotificationsCount() async {
-    final notifications = await NotificationStorage.getNotifications();
-    final unread = notifications.where((n) => n.isRead == false).length;
+Future<void> _refreshNotificationsCount() async {
+  final unread = await NotificationStorage.getUnreadCount();
+  if (!mounted) return;
+  setState(() => _unreadNotifCount = unread);
+}
 
-    if (!mounted) return;
-    setState(() => _unreadNotifCount = unread);
-  }
 
   /// Called when user changes their weekly goal from the Profile settings panel.
   Future<void> _updateWeeklyGoal(double newKm) async {
