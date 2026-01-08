@@ -1,3 +1,4 @@
+// lib/screens/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
@@ -19,13 +20,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _bioController;
   String _gender = 'Not set';
 
+  static const _kDarkBase = Color(0xFF071B26);
+  static const _kDarkSurface = Color(0xFF0C2430);
+  static const _kLightBase = Color(0xFFF7F9F2);
+  static const _kLightHeaderTop = Color(0xFF294630);
+  static const _kLightHeaderBottom = Color(0xFF4F925C);
+
   @override
   void initState() {
     super.initState();
     final p = widget.profile;
     _nameController = TextEditingController(text: p?.name ?? '');
-    _ageController =
-        TextEditingController(text: p != null && p.age > 0 ? p.age.toString() : '');
+    _ageController = TextEditingController(
+      text: (p != null && p.age > 0) ? p.age.toString() : '',
+    );
     _bioController = TextEditingController(text: p?.bio ?? '');
     _gender = p?.gender ?? 'Not set';
   }
@@ -42,7 +50,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final age = int.tryParse(_ageController.text.trim()) ?? 0;
-
     final existing = widget.profile;
 
     final updatedProfile = UserProfile(
@@ -50,8 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       age: age,
       gender: _gender,
       bio: _bioController.text.trim(),
-      // VERY IMPORTANT: keep the existing photo if there is one
-      profileImagePath: existing?.profileImagePath,
+      profileImagePath: existing?.profileImagePath, // keep existing photo
     );
 
     await ProfileStorage.saveProfile(updatedProfile);
@@ -59,63 +65,151 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     Navigator.of(context).pop();
   }
 
-  @override
-Widget build(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  InputDecoration _fieldDecoration({
+    required BuildContext context,
+    required bool isDark,
+    required String label,
+  }) {
+    final theme = Theme.of(context);
+    final borderColor = (isDark ? Colors.white : Colors.black).withOpacity(
+      0.18,
+    );
 
-  return Scaffold(
-    // ✅ match rest of app
-    backgroundColor:
-        isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
-    appBar: AppBar(
-      title: const Text('Edit profile'),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? const [
-                    Color(0xFF020908), // darker top
-                    Color(0xFF0B1A13), // darker bottom
-                  ]
-                : const [
-                    Color(0xFF294630), // top
-                    Color(0xFF4F925C), // bottom
-                  ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+    return InputDecoration(
+      labelText: label,
+      filled: false, // ✅ prevent grey fill layer
+      labelStyle: theme.textTheme.bodySmall?.copyWith(
+        color: isDark ? Colors.white70 : Colors.black54,
+        fontWeight: FontWeight.w600,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: borderColor, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: (isDark ? Colors.white : Colors.black).withOpacity(0.28),
+          width: 1.2,
         ),
       ),
-    ),
-    body: SafeArea(
-      top: false, // AppBar already handles status bar
-      bottom: false,
-      child: Column(
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.withOpacity(0.7), width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.withOpacity(0.9), width: 1.2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? _kDarkBase : _kLightHeaderBottom,
+      body: Column(
         children: [
+          // ===== HEADER (match Home/Profile/Settings pattern) =====
+          if (isDark)
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      splashRadius: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Edit profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 64,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [_kLightHeaderTop, _kLightHeaderBottom],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        splashRadius: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Edit profile',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // ===== MAIN AREA =====
           Expanded(
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color.fromARGB(255, 9, 2, 7)
-                    : const Color(0xFFF7F9F2),
+                color: isDark ? _kDarkBase : _kLightBase,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
                 image: DecorationImage(
                   image: AssetImage(
                     isDark
-                        ? 'assets/images/bg_minimal_dark.png'
-                        : 'assets/images/bg_minimal_light.png',
+                        ? 'assets/images/Dark_Grey_Background.png'
+                        : 'assets/images/Light_Beige_background.png',
                   ),
                   fit: BoxFit.cover,
                   alignment: Alignment.topCenter,
                 ),
               ),
-              // overlay so fields stay readable in dark mode
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark
@@ -126,95 +220,143 @@ Widget build(BuildContext context) {
                   ),
                 ),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Optional title inside sheet (visually matches others)
-                        Text(
-                          'Your details',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF294630),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Name',
-                          ),
-                          validator: (value) {
-                            if (value == null ||
-                                value.trim().isEmpty) {
-                              return 'Please enter your name';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _ageController,
-                          decoration: const InputDecoration(
-                            labelText: 'Age',
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 12),
-
-                        DropdownButtonFormField<String>(
-                          initialValue: _gender,
-                          decoration: const InputDecoration(
-                            labelText: 'Gender',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                                value: 'Not set',
-                                child: Text('Not set')),
-                            DropdownMenuItem(
-                                value: 'Female',
-                                child: Text('Female')),
-                            DropdownMenuItem(
-                                value: 'Male',
-                                child: Text('Male')),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _gender = value;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _bioController,
-                          decoration: const InputDecoration(
-                            labelText: 'Bio',
-                          ),
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 24),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _save,
-                            style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  const Color(0xFF14532D),
-                              foregroundColor: Colors.white,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: Card(
+                    color: isDark ? _kDarkSurface : const Color(0xFFFBFEF8),
+                    elevation: isDark ? 0.0 : 0.6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withOpacity(0.06),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Your details',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF111827),
+                              ),
                             ),
-                            child: const Text('Save'),
-                          ),
+                            const SizedBox(height: 14),
+
+                            TextFormField(
+                              controller: _nameController,
+                              decoration: _fieldDecoration(
+                                context: context,
+                                isDark: isDark,
+                                label: 'Name',
+                              ),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter your name';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            TextFormField(
+                              controller: _ageController,
+                              decoration: _fieldDecoration(
+                                context: context,
+                                isDark: isDark,
+                                label: 'Age',
+                              ),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 12),
+
+                            DropdownButtonFormField<String>(
+                              initialValue: _gender,
+                              decoration: _fieldDecoration(
+                                context: context,
+                                isDark: isDark,
+                                label: 'Gender',
+                              ),
+                              dropdownColor: isDark
+                                  ? _kDarkSurface
+                                  : Colors.white,
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'Not set',
+                                  child: Text('Not set'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Female',
+                                  child: Text('Female'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Male',
+                                  child: Text('Male'),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _gender = value);
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            TextFormField(
+                              controller: _bioController,
+                              decoration: _fieldDecoration(
+                                context: context,
+                                isDark: isDark,
+                                label: 'Bio',
+                              ),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 3,
+                            ),
+
+                            const SizedBox(height: 18),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: _save,
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(52),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  backgroundColor: const Color(0xFF14532D),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Save'),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -223,7 +365,6 @@ Widget build(BuildContext context) {
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 }

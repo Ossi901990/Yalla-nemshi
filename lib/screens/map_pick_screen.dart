@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../services/routing_service.dart';
-import '../models/route_result.dart';
+// Routing/automatic route generation removed — this screen now only
+// allows picking a start and an end point and returns them to the caller.
 
 class MapPickScreen extends StatefulWidget {
   const MapPickScreen({super.key});
@@ -15,22 +15,17 @@ class MapPickScreen extends StatefulWidget {
 
 class _MapPickScreenState extends State<MapPickScreen> {
   GoogleMapController? _mapController;
-  LatLng? _selectedLatLng;
-
-  Polyline? _routePolyline;
-  RouteResult? _routeResult;
-
-  // IMPORTANT: Add your ORS API key
-  final routing = RoutingService(apiKey: "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjI3NjQyMjU0OTBjYjQ0M2E5MWRjYzBkZGIzNzVkZDVhIiwiaCI6Im11cm11cjY0In0=");
+  // We collect start and end points (two taps). The caller expects both
+  // points returned when confirming.
+  LatLng? _startLatLng;
+  LatLng? _endLatLng;
 
   static const LatLng _initialPosition = LatLng(31.9539, 35.9106);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pick meeting point'),
-      ),
+      appBar: AppBar(title: const Text('Pick start & end')),
       body: Stack(
         children: [
           GoogleMap(
@@ -47,50 +42,86 @@ class _MapPickScreenState extends State<MapPickScreen> {
 
             onTap: (LatLng tapped) async {
               setState(() {
-                _selectedLatLng = tapped;
+                // First tap sets start. Second tap sets end. Third tap resets
+                // and starts again from the new tap.
+                if (_startLatLng == null) {
+                  _startLatLng = tapped;
+                } else if (_endLatLng == null) {
+                  _endLatLng = tapped;
+                } else {
+                  _startLatLng = tapped;
+                  _endLatLng = null;
+                }
               });
 
-              _mapController?.animateCamera(
-                CameraUpdate.newLatLng(tapped),
-              );
-
-              await _fetchRouteTo(tapped);
+              _mapController?.animateCamera(CameraUpdate.newLatLng(tapped));
             },
 
             markers: {
-              if (_selectedLatLng != null)
+              if (_startLatLng != null)
                 Marker(
-                  markerId: const MarkerId('meeting_point'),
-                  position: _selectedLatLng!,
-                  infoWindow: const InfoWindow(title: 'Meeting point'),
+                  markerId: const MarkerId('start_point'),
+                  position: _startLatLng!,
+                  infoWindow: const InfoWindow(title: 'Start'),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueGreen),
+                ),
+              if (_endLatLng != null)
+                Marker(
+                  markerId: const MarkerId('end_point'),
+                  position: _endLatLng!,
+                  infoWindow: const InfoWindow(title: 'End'),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueAzure),
                 ),
             },
-
-            polylines: {
-              if (_routePolyline != null) _routePolyline!,
-            },
           ),
 
-          // Distance card
-          if (_routeResult != null)
+          // Simple helper hint when selecting points
+          if (_startLatLng == null)
             Positioned(
-              top: 20,
               left: 16,
               right: 16,
-              child: _buildDistanceCard(),
+              top: 16,
+              child: SafeArea(
+                bottom: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Tap on the map to set the START point',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else if (_endLatLng == null)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: 16,
+              child: SafeArea(
+                bottom: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Tap on the map to set the END point',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
             ),
-
-          // Loop generator button
-          Positioned(
-            right: 16,
-            top: 120,
-            child: FloatingActionButton(
-              heroTag: "loopPicker",
-              backgroundColor: Colors.green,
-              onPressed: _showLoopPicker,
-              child: const Icon(Icons.loop),
-            ),
-          ),
 
           // Confirm button
           Positioned(
@@ -101,7 +132,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_selectedLatLng == null)
+                    if (_startLatLng == null)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         vertical: 8,
@@ -111,21 +142,28 @@ class _MapPickScreenState extends State<MapPickScreen> {
                         color: Colors.black.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
-                        'Tap on the map to choose a meeting point',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                        child: const Text(
+                          'Tap on the map to choose start and end points',
+                          style: TextStyle(color: Colors.white),
+                        ),
                     ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: _selectedLatLng == null
+                        onPressed: (_startLatLng == null || _endLatLng == null)
                           ? null
                           : () {
-                              Navigator.of(context).pop(_selectedLatLng);
+                                Navigator.of(context).pop([
+                                  _startLatLng!,
+                                  _endLatLng!,
+                                ]);
                             },
-                      child: const Text('Confirm meeting point'),
+                        child: const Text(
+                          'Confirm start & end',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ),
                   ),
                 ],
@@ -137,154 +175,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
     );
   }
 
-  // ----------------------------------------------------------
-  // FETCH ROUTE TO SPECIFIC POINT
-  // ----------------------------------------------------------
-  Future<void> _fetchRouteTo(LatLng target) async {
-    LatLng start;
-
-    final cameraPos = await _mapController?.getLatLng(
-      const ScreenCoordinate(x: 10, y: 10),
-    );
-
-    start = cameraPos ?? _initialPosition;
-
-    final result = await routing.getWalkingRoute(
-      start: start,
-      end: target,
-    );
-
-    if (result == null) {
-      print("❌ Could not fetch route");
-      return;
-    }
-
-    setState(() {
-      _routeResult = result;
-      _routePolyline = Polyline(
-        polylineId: const PolylineId("route"),
-        points: result.points,
-        width: 6,
-        color: Colors.blue,
-      );
-    });
-
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        _boundsFromLatLngList(result.points),
-        50,
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------
-  // LOOP GENERATOR + PICKER
-  // ----------------------------------------------------------
-  void _showLoopPicker() {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => SizedBox(
-        height: 220,
-        child: Column(
-          children: [
-            const SizedBox(height: 18),
-            const Text(
-              "Select Loop Distance",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Divider(),
-
-            _loopOption(2000, "2 km"),
-            _loopOption(4000, "4 km"),
-            _loopOption(6000, "6 km"),
-            _loopOption(10000, "10 km"),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _loopOption(int meters, String label) {
-    return ListTile(
-      title: Text(label),
-      onTap: () {
-        Navigator.pop(context);
-        _generateLoop(meters);
-      },
-    );
-  }
-
-  Future<void> _generateLoop(int meters) async {
-    final start = await _mapController?.getLatLng(
-      const ScreenCoordinate(x: 200, y: 400),
-    );
-
-    if (start == null) {
-      print("❌ Cannot get start point for loop");
-      return;
-    }
-
-    final result = await routing.getWalkingLoop(
-      start: start,
-      lengthMeters: meters,
-      points: 3,
-    );
-
-    if (result == null) {
-      print("❌ Failed to generate loop");
-      return;
-    }
-
-    setState(() {
-      _routeResult = result;
-      _routePolyline = Polyline(
-        polylineId: const PolylineId("loop"),
-        points: result.points,
-        width: 6,
-        color: Colors.green,
-      );
-    });
-
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        _boundsFromLatLngList(result.points),
-        50,
-      ),
-    );
-  }
-
-  // ----------------------------------------------------------
-  // UI HELPERS
-  // ----------------------------------------------------------
-  Widget _buildDistanceCard() {
-    final km = (_routeResult!.distanceMeters / 1000).toStringAsFixed(2);
-    final min =
-        (_routeResult!.durationSeconds / 60).toStringAsFixed(0);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          "$km km  •  $min min walk",
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
+  // UI helpers kept minimal — distance/route generation removed.
 
   LatLngBounds _boundsFromLatLngList(List<LatLng> list) {
     double x0 = list.first.latitude;
@@ -299,9 +190,6 @@ class _MapPickScreenState extends State<MapPickScreen> {
       if (latLng.longitude < y0) y0 = latLng.longitude;
     }
 
-    return LatLngBounds(
-      southwest: LatLng(x0, y0),
-      northeast: LatLng(x1, y1),
-    );
+    return LatLngBounds(southwest: LatLng(x0, y0), northeast: LatLng(x1, y1));
   }
 }

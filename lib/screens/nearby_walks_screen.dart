@@ -4,7 +4,36 @@ import 'package:flutter/material.dart';
 import '../models/walk_event.dart';
 import 'profile_screen.dart';
 
+// ===== Design tokens (match HomeScreen) =====
+
+// Radius
+const double kRadiusCard = 24;
+const double kRadiusControl = 16;
+const double kRadiusPill = 999;
+
+// ===== Dark Theme (match HomeScreen) palette =====
+const kDarkBg = Color(0xFF071B26); // primary background
+const kDarkSurface = Color(0xFF0C2430); // cards / sheets
+const kDarkSurface2 = Color(0xFF0E242E); // secondary surfaces
+
+const kTextPrimary = Color(0xFFD9F5EA);
+const kTextSecondary = Color(0xFF9BB9B1);
+const kTextMuted = Color(0xFF6A8580);
+
+// Spacing
+const double kSpace1 = 8;
+const double kSpace2 = 16;
+const double kSpace3 = 24;
+const double kSpace4 = 32;
+
+// Cards
+const kLightSurface = Color(0xFFFBFEF8);
+const double kCardElevationLight = 0.6;
+const double kCardElevationDark = 0.0;
+const double kCardBorderAlpha = 0.06;
+
 enum _DateFilter { all, today, thisWeek }
+
 enum _DistanceFilter { all, short, medium, long }
 
 class NearbyWalksScreen extends StatefulWidget {
@@ -99,9 +128,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     }
   }
 
-  // ===== SHEETS (same behaviour as Home) =====
+  // ===== SHEETS =====
 
-     void _showNotificationsSheet() {
+  void _showNotificationsSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -145,250 +174,153 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     );
   }
 
-
-
   void _showProfileQuickSheet() {
-    final theme = Theme.of(context);
-
-    final totalWalks = widget.walksJoined + widget.eventsHosted;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: false,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFBFEF8),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Avatar
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: const Color(0xFFCDE9B7),
-                  child: const Icon(
-                    Icons.person,
-                    size: 32,
-                    color: Color(0xFF14532D),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.userName.isNotEmpty ? widget.userName : 'Walker',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Quick look at your progress',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Stats row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _quickStat(
-                      label: 'Walks',
-                      value: totalWalks.toString(),
-                    ),
-                    _quickStat(
-                      label: 'Total km',
-                      value: widget.totalKm.toStringAsFixed(1),
-                    ),
-                    _quickStat(
-                      label: 'Streak',
-                      value: '${widget.streakDays}d',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Buttons
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF14532D),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop(); // close sheet
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProfileScreen(
-                            walksJoined: widget.walksJoined,
-                            eventsHosted: widget.eventsHosted,
-                            totalKm: widget.totalKm,
-                            weeklyWalks: widget.weeklyWalks,
-                            weeklyKm: widget.weeklyKm,
-                            weeklyGoalKm: widget.weeklyGoalKm,
-                            streakDays: widget.streakDays,
-                            interestedCount: widget.interestedCount,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('View full profile'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ProfileScreen(
-                            walksJoined: widget.walksJoined,
-                            eventsHosted: widget.eventsHosted,
-                            totalKm: widget.totalKm,
-                            weeklyWalks: widget.weeklyWalks,
-                            weeklyKm: widget.weeklyKm,
-                            weeklyGoalKm: widget.weeklyGoalKm,
-                            streakDays: widget.streakDays,
-                            interestedCount: widget.interestedCount,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('Edit profile info'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _quickStat({required String label, required String value}) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(
+          walksJoined: widget.walksJoined,
+          eventsHosted: widget.eventsHosted,
+          totalKm: widget.totalKm,
+          weeklyWalks: widget.weeklyWalks,
+          weeklyKm: widget.weeklyKm,
+          weeklyGoalKm: widget.weeklyGoalKm,
+          streakDays: widget.streakDays,
+          interestedCount: widget.interestedCount,
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: Colors.black54,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   // ===== BUILD =====
 
   @override
-Widget build(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  final upcoming = widget.events
-      .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
-      .where(_matchDateFilter)
-      .where(_matchDistanceFilter)
-      .where((e) => !_interestedOnly || e.interested)
-      .toList()
-    ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming =
+        widget.events
+            .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
+            .where(_matchDateFilter)
+            .where(_matchDistanceFilter)
+            .where((e) => !_interestedOnly || e.interested)
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-  return Scaffold(
-    // same idea as HomeScreen
-    backgroundColor:
-        isDark ? const Color(0xFF0B1A13) : const Color(0xFF4F925C),
-    body: SafeArea(
-      bottom: false,
-      child: Column(
+    return Scaffold(
+      // ✅ Match HomeScreen background colors
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
+
+      body: Column(
         children: [
-          // ===== GREEN HEADER BAR (MATCH HOME) =====
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? const [
-                        Color(0xFF020908), // darker top
-                        Color(0xFF0B1A13), // darker bottom
-                      ]
-                    : const [
-                        Color(0xFF294630), // top
-                        Color(0xFF4F925C), // bottom
-                      ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Logo + app name
-                Row(
+          // ===== HEADER (match Home) =====
+          if (isDark)
+            // ✅ Dark: NO BAR, floating header
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white24,
-                      ),
-                      child: const Icon(
-                        Icons.directions_walk,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                    // Left: logo + title
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                          child: const Icon(
+                            Icons.directions_walk,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Yalla Nemshi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Yalla Nemshi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
+
+                    // Right: notif + profile
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _showNotificationsSheet,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: _showProfileQuickSheet,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.person,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-
-                // Notifications + profile (tappable)
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _showNotificationsSheet,
-                      child: Stack(
-                        clipBehavior: Clip.none,
+              ),
+            )
+          else
+            // ✅ Light: gradient bar (same as Home/Nearby style)
+            Container(
+              height: 64,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
                         children: [
                           Container(
                             width: 32,
@@ -398,190 +330,234 @@ Widget build(BuildContext context) {
                               color: Colors.white24,
                             ),
                             child: const Icon(
-                              Icons.notifications_none,
+                              Icons.directions_walk,
                               color: Colors.white,
                               size: 18,
                             ),
                           ),
-                          Positioned(
-                            right: -2,
-                            top: -2,
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Yalla Nemshi',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _showNotificationsSheet,
                             child: Container(
-                              padding: const EdgeInsets.all(2),
+                              width: 32,
+                              height: 32,
                               decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.red,
+                                color: Colors.white24,
                               ),
-                              child: const Text(
-                                '3',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.white,
-                                ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: _showProfileQuickSheet,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                size: 18,
+                                color: Colors.black87,
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _showProfileQuickSheet,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ===== MAIN SHEET WITH BG IMAGE (DARK + LIGHT) =====
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1A1A1A)
-                    : const Color(0xFFFAF7F0),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
-                ),
-
-
-              ),
-              // same overlay idea as Home so text stays readable
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.35)
-                      : Colors.white.withOpacity(0.65),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(28),
-                    topRight: Radius.circular(28),
+                    ],
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Nearby walks',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF111827),
-                        ),
+              ),
+            ),
+
+// ===== MAIN AREA (background) =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(kRadiusCard),
+      ),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(kRadiusCard),
+        ),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          kSpace2,
+          kSpace2,
+          kSpace2,
+          kSpace2,
+        ),
+        child: Card(
+
+                  color: isDark ? kDarkSurface : kLightSurface,
+                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(kRadiusCard),
+                    side: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withValues(
+                        alpha: kCardBorderAlpha,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Find walks happening around you and join with one tap.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      kSpace2,
+                      kSpace3,
+                      kSpace2,
+                      kSpace2,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Nearby walks',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF111827),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Filters card
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _buildFiltersCard(context),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Walk list
-                    Expanded(
-                      child: upcoming.isEmpty
-                          ? const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24.0),
-                                child: Text(
-                                  'No walks match your filters.\n'
-                                  'Try changing the date or distance filters.',
-                                  textAlign: TextAlign.center,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Find walks happening around you and join with one tap.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildFiltersCard(context),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: upcoming.isEmpty
+                              ? Center(
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(24.0),
+                                    child: Text(
+                                      'No walks match your filters.\n'
+                                      'Try changing the date or distance filters.',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    0,
+                                    6,
+                                    0,
+                                    8,
+                                  ),
+                                  itemCount: upcoming.length,
+                                  itemBuilder: (context, index) {
+                                    final e = upcoming[index];
+                                    return _NearbyWalkCard(
+                                      event: e,
+                                      onToggleJoin: widget.onToggleJoin,
+                                      onToggleInterested:
+                                          widget.onToggleInterested,
+                                      onTap: () => widget.onTapEvent(e),
+                                    );
+                                  },
                                 ),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(
-                                  12, 8, 12, 16),
-                              itemCount: upcoming.length,
-                              itemBuilder: (context, index) {
-                                final e = upcoming[index];
-                                return _NearbyWalkCard(
-                                  event: e,
-                                  onToggleJoin: widget.onToggleJoin,
-                                  onToggleInterested:
-                                      widget.onToggleInterested,
-                                  onTap: () => widget.onTapEvent(e),
-                                );
-                              },
-                            ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
+),
         ],
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   // ===== FILTER CARD =====
 
   Widget _buildFiltersCard(BuildContext context) {
-  final theme = Theme.of(context);
-  final isDark = theme.brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  return Card(
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-    ),
-    elevation: 0,
-    // light vs dark card background
-    color: isDark
-        ? theme.colorScheme.surface.withOpacity(0.9)
-        : const Color(0xFFF2F6EA),
-    child: Padding(
-  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
+    return Card(
+      color: isDark ? kDarkSurface : kLightSurface,
+
+      elevation: isDark ? kCardElevationDark : kCardElevationLight,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kRadiusCard),
+        side: BorderSide(
+          color: (isDark ? Colors.white : Colors.black).withValues(
+            alpha: kCardBorderAlpha,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             // Date row
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Date:',
-                  style: theme.textTheme.bodySmall,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 70,
+                    maxWidth: 100,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      'Date:',
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
+
                 Expanded(
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _buildFilterChip(
+                        context,
                         label: 'All',
                         selected: _dateFilter == _DateFilter.all,
                         onTap: () {
@@ -590,6 +566,7 @@ Widget build(BuildContext context) {
                         showCheck: true,
                       ),
                       _buildFilterChip(
+                        context,
                         label: 'Today',
                         selected: _dateFilter == _DateFilter.today,
                         onTap: () {
@@ -597,6 +574,7 @@ Widget build(BuildContext context) {
                         },
                       ),
                       _buildFilterChip(
+                        context,
                         label: 'This week',
                         selected: _dateFilter == _DateFilter.thisWeek,
                         onTap: () {
@@ -608,23 +586,35 @@ Widget build(BuildContext context) {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             // Distance row
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Distance:',
-                  style: theme.textTheme.bodySmall,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 70,
+                    maxWidth: 100,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      'Distance:',
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
+
                 Expanded(
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       _buildFilterChip(
+                        context,
                         label: 'All',
                         selected: _distanceFilter == _DistanceFilter.all,
                         onTap: () {
@@ -633,26 +623,33 @@ Widget build(BuildContext context) {
                         showCheck: true,
                       ),
                       _buildFilterChip(
+                        context,
                         label: '< 3 km',
                         selected: _distanceFilter == _DistanceFilter.short,
                         onTap: () {
                           setState(
-                              () => _distanceFilter = _DistanceFilter.short);
+                            () => _distanceFilter = _DistanceFilter.short,
+                          );
                         },
                       ),
                       _buildFilterChip(
+                        context,
                         label: '3–6 km',
                         selected: _distanceFilter == _DistanceFilter.medium,
                         onTap: () {
                           setState(
-                              () => _distanceFilter = _DistanceFilter.medium);
+                            () => _distanceFilter = _DistanceFilter.medium,
+                          );
                         },
                       ),
                       _buildFilterChip(
+                        context,
                         label: '> 6 km',
                         selected: _distanceFilter == _DistanceFilter.long,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.long);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.long,
+                          );
                         },
                       ),
                     ],
@@ -660,19 +657,24 @@ Widget build(BuildContext context) {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-            // Interested only
             Row(
               children: [
                 Checkbox(
                   value: _interestedOnly,
-                  onChanged: (val) {
-                    setState(() => _interestedOnly = val ?? false);
-                  },
+                  onChanged: (val) =>
+                      setState(() => _interestedOnly = val ?? false),
                   visualDensity: VisualDensity.compact,
                 ),
-                const Text('Interested only'),
+                const SizedBox(width: 4),
+                const Expanded(
+                  child: Text(
+                    'Interested only',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ],
@@ -681,48 +683,65 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildFilterChip({
+  Widget _buildFilterChip(
+    BuildContext context, {
     required String label,
     required bool selected,
     required VoidCallback onTap,
     bool showCheck = false,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bg = selected
+        ? (isDark ? const Color(0xFF123647) : const Color(0xFFCDE9B7))
+        : (isDark ? Colors.white.withOpacity(0.06) : Colors.white);
+
+    final border = selected
+        ? (isDark ? Colors.white.withOpacity(0.18) : const Color(0xFF4F925C))
+        : (isDark
+              ? Colors.white.withOpacity(0.12)
+              : Colors.grey.withOpacity(0.30));
+
+    final textColor = selected
+        ? (isDark ? Colors.white : const Color(0xFF1F2933))
+        : (isDark ? Colors.white70 : const Color(0xFF374151));
+
+    final iconColor = isDark ? Colors.white : const Color(0xFF1F2933);
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFCDE9B7) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? const Color(0xFF4F925C)
-                : Colors.grey.withOpacity(0.3),
-          ),
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: border),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (showCheck && selected) ...[
-              const Icon(
-                Icons.check,
-                size: 14,
-                color: Color(0xFF1F2933),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 140),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showCheck && selected) ...[
+                Icon(Icons.check, size: 14, color: iconColor),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
               ),
-              const SizedBox(width: 4),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: selected
-                    ? const Color(0xFF1F2933)
-                    : const Color(0xFF374151),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -756,21 +775,43 @@ class _NearbyWalkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // ✅ Button tokens (match Home "round icon" feel)
+    const btnSize = 38.0;
+    final btnBg = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : const Color(0xFFEFF6EA);
+
+    // star has special tint when selected
+    final starIconColor = event.interested
+        ? Colors.amber
+        : (isDark ? Colors.white70 : const Color(0xFF374151));
+
+    // join has special tint when joined
+    final joinIconColor = event.joined
+        ? const Color(0xFF2E7D32)
+        : (isDark ? Colors.white70 : const Color(0xFF374151));
 
     return Card(
+      color: isDark ? kDarkSurface : kLightSurface,
       margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: isDark ? kCardElevationDark : kCardElevationLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kRadiusControl),
+        side: BorderSide(
+          color: (isDark ? Colors.white : Colors.black).withValues(
+            alpha: kCardBorderAlpha,
+          ),
+        ),
       ),
-      elevation: 0.5,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kRadiusControl),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
           child: Row(
             children: [
-              // Small avatar / distance bubble
               Container(
                 width: 40,
                 height: 40,
@@ -791,7 +832,6 @@ class _NearbyWalkCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
 
-              // Title + subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -801,74 +841,108 @@ class _NearbyWalkCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             event.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        if (event.interested)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text(
-                              'Interested',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                        if (event.interested) ...[
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 110),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: kSpace1,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(
+                                  kRadiusPill,
+                                ),
+                              ),
+                              child: const Text(
+                                'Interested',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
+                        ],
                       ],
                     ),
+
                     const SizedBox(height: 4),
                     Text(
                       _formatDateTime(event.dateTime),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
+                        color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${event.gender} • '
-                      '${event.meetingPlaceName ?? 'Meeting point TBA'}',
+                      event.meetingPlaceName != null
+                          ? '${event.gender} • ${event.meetingPlaceName}'
+                          : (event.startLat != null && event.startLng != null
+                              ? '${event.gender} • Start ${event.startLat!.toStringAsFixed(2)},${event.startLng!.toStringAsFixed(2)}'
+                              : '${event.gender} • Meeting point TBA'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
+                        color: isDark ? Colors.white70 : Colors.black54,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
 
-              // Icons
+              // ✅ Action buttons (simple, clean; better dark-mode contrast)
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(
                       event.interested
                           ? Icons.star
                           : Icons.star_border_outlined,
-                      color: event.interested ? Colors.amber : null,
-                      size: 20,
+                      color: event.interested
+                          ? Colors.amber
+                          : (isDark ? Colors.white70 : const Color(0xFF374151)),
+                      size: 22,
                     ),
                     tooltip: 'Mark as interested',
                     onPressed: () => onToggleInterested(event),
                   ),
+                  const SizedBox(height: 6),
                   IconButton(
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(
                       event.joined
                           ? Icons.check_circle
                           : Icons.add_circle_outline,
-                      color: event.joined ? Colors.green : null,
-                      size: 20,
+                      color: event.joined
+                          ? const Color(0xFF2E7D32)
+                          : (isDark ? Colors.white70 : const Color(0xFF374151)),
+                      size: 22,
                     ),
                     tooltip: event.joined ? 'Leave walk' : 'Join walk',
                     onPressed: () => onToggleJoin(event),

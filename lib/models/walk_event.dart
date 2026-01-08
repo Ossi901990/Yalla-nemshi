@@ -17,6 +17,11 @@ final String title;
   final String? meetingPlaceName;
   final double? meetingLat;
   final double? meetingLng;
+  // Explicit start/end coordinates for the route (optional)
+  final double? startLat;
+  final double? startLng;
+  final double? endLat;
+  final double? endLng;
   final String? description;
 
   /// Whether the current user has joined this event.
@@ -54,6 +59,10 @@ final String title;
     this.meetingPlaceName,
     this.meetingLat,
     this.meetingLng,
+    this.startLat,
+    this.startLng,
+    this.endLat,
+    this.endLng,
     this.description,
     this.cancelled = false,
     List<String>? tags,
@@ -76,6 +85,10 @@ final String title;
     String? meetingPlaceName,
     double? meetingLat,
     double? meetingLng,
+    double? startLat,
+    double? startLng,
+    double? endLat,
+    double? endLng,
     String? description,
     bool? cancelled,
     List<String>? tags,
@@ -98,6 +111,10 @@ final String title;
       meetingPlaceName: meetingPlaceName ?? this.meetingPlaceName,
       meetingLat: meetingLat ?? this.meetingLat,
       meetingLng: meetingLng ?? this.meetingLng,
+      startLat: startLat ?? this.startLat,
+      startLng: startLng ?? this.startLng,
+      endLat: endLat ?? this.endLat,
+      endLng: endLng ?? this.endLng,
       description: description ?? this.description,
       cancelled: cancelled ?? this.cancelled,
       tags: tags ?? this.tags,
@@ -123,6 +140,10 @@ final String title;
       'meetingPlaceName': meetingPlaceName,
       'meetingLat': meetingLat,
       'meetingLng': meetingLng,
+      'startLat': startLat,
+      'startLng': startLng,
+      'endLat': endLat,
+      'endLng': endLng,
       'description': description,
       'cancelled': cancelled,
       'tags': tags,
@@ -178,6 +199,12 @@ final String title;
       map['meetingLat'] == null ? null : _toDouble(map['meetingLat']);
   final double? meetingLng =
       map['meetingLng'] == null ? null : _toDouble(map['meetingLng']);
+    final double? startLat =
+      map['startLat'] == null ? null : _toDouble(map['startLat']);
+    final double? startLng =
+      map['startLng'] == null ? null : _toDouble(map['startLng']);
+    final double? endLat = map['endLat'] == null ? null : _toDouble(map['endLat']);
+    final double? endLng = map['endLng'] == null ? null : _toDouble(map['endLng']);
 
   return WalkEvent(
     id: id,
@@ -194,6 +221,10 @@ final String title;
     meetingPlaceName: map['meetingPlaceName']?.toString(),
     meetingLat: meetingLat,
     meetingLng: meetingLng,
+    startLat: startLat,
+    startLng: startLng,
+    endLat: endLat,
+    endLng: endLng,
     description: map['description']?.toString(),
     cancelled: _toBool(map['cancelled']),
     tags: parsedTags,

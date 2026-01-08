@@ -15,6 +15,21 @@ import 'login_screen.dart'; // for routeName
 import 'settings_screen.dart';
 import '../services/app_preferences.dart';
 
+// ===== Design tokens (match HomeScreen) =====
+const double kRadiusCard = 24;
+const double kRadiusControl = 16;
+const double kRadiusPill = 999;
+
+const double kSpace1 = 8;
+const double kSpace2 = 16;
+const double kSpace3 = 24;
+const double kSpace4 = 32;
+
+const kLightSurface = Color(0xFFFBFEF8);
+const double kCardElevationLight = 0.6;
+const double kCardElevationDark = 0.0;
+const double kCardBorderAlpha = 0.06;
+
 class ProfileScreen extends StatefulWidget {
   final int walksJoined;
   final int eventsHosted;
@@ -146,6 +161,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
+  }
+
+  String _weeklyMotivationText({
+    required double progress,
+    required double weeklyKm,
+    required double weeklyGoalKm,
+    required int streakDays,
+  }) {
+    if (weeklyKm <= 0.0) return 'Let’s start small—join a short walk today.';
+    if (progress >= 1.0) return 'Goal achieved! Bonus walk? 💪';
+    if (progress >= 0.75) return 'Great pace—almost there!';
+    if (progress >= 0.50) return 'You’re building momentum—keep going!';
+    if (progress >= 0.25) return 'Nice start—stay consistent!';
+    return 'Good start—one more walk will help a lot.';
   }
 
   String get _walkerLevel {
@@ -289,35 +318,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: isDark
-          ? const Color(0xFF0B1A13)
+          ? const Color(0xFF071B26)
           : const Color(0xFF4F925C),
+
       body: Column(
         children: [
-          // ===== HEADER =====
-          Container(
-            height: 56,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? const [Color(0xFF020908), Color(0xFF0B1A13)]
-                    : const [Color(0xFF294630), Color(0xFF4F925C)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: SafeArea(
+          // ===== HEADER (match Home/Nearby) =====
+          if (isDark)
+            // ✅ Dark: NO BAR, floating header (same as Nearby/Home)
+            SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Left: logo + title
                     Row(
-                      children: const [
-                        _HeaderLogo(),
-                        SizedBox(width: 8),
-                        Text(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                          child: const Icon(
+                            Icons.directions_walk,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
                           'Yalla Nemshi',
                           style: TextStyle(
                             color: Colors.white,
@@ -327,11 +363,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
+
+                    // Right: notif + settings (NO profile icon)
                     Row(
                       children: [
-                        _HeaderNotifications(onTap: _showNotificationsSheet),
+                        GestureDetector(
+                          onTap: _showNotificationsSheet,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        _HeaderSettings(
+
+                        // ✅ Keep SAME settings functionality from Profile
+                        GestureDetector(
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(
@@ -343,85 +398,246 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             if (!mounted) return;
 
                             setState(() => _weeklyGoalKmLocal = wg);
-
                             widget.onWeeklyGoalChanged?.call(wg);
                           },
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                            child: const Icon(
+                              Icons.settings,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-
-          // ===== MAIN AREA =====
-          Expanded(
-            child: Container(
+            )
+          else
+            // ✅ Light: gradient bar (same as Nearby style)
+            Container(
+              height: 64,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color.fromARGB(255, 9, 2, 7)
-                    : const Color(0xFFF7F9F2),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-                image: DecorationImage(
-                  image: AssetImage(
-                    isDark
-                        ? 'assets/images/bg_minimal_dark.png'
-                        : 'assets/images/bg_minimal_light.png',
-                  ),
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withOpacity(0.35)
-                      : Colors.transparent,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white24,
+                            ),
+                            child: const Icon(
+                              Icons.directions_walk,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Yalla Nemshi',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _showNotificationsSheet,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white24,
+                              ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+
+                              final wg = await AppPreferences.getWeeklyGoalKm();
+                              if (!mounted) return;
+
+                              setState(() => _weeklyGoalKmLocal = wg);
+                              widget.onWeeklyGoalChanged?.call(wg);
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white24,
+                              ),
+                              child: const Icon(
+                                Icons.settings,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'My profile',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : _deepGreen,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Track your progress and edit your walking details.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isDark ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+              ),
+            ),
 
-                      // Avatar, name, level, bio
-                      Center(
-                        child: GestureDetector(
-                          onTap: _onAvatarTap,
+// ===== MAIN AREA =====
+Expanded(
+  child: Container(
+    width: double.infinity,
+    decoration: const BoxDecoration(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF071B26), // top (dark blue)
+                  Color(0xFF041016), // bottom (almost black)
+                ],
+              )
+            : null,
+        color: isDark ? null : const Color(0xFFF7F9F2),
+      ),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          kSpace2,
+          kSpace2,
+          kSpace2,
+          kSpace3 + MediaQuery.of(context).padding.bottom,
+        ),
+        child: Card(
+
+                  color: isDark ? const Color(0xFF0C2430) : kLightSurface,
+                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(kRadiusCard),
+                    side: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(
+                        kCardBorderAlpha,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      kSpace2,
+                      kSpace3,
+                      kSpace2,
+                      kSpace3,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'My profile',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : _deepGreen,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Track your progress and edit your walking details.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Avatar, name, level, bio
+                        Center(
                           child: Column(
                             children: [
-                              _buildAvatar(profile),
+                              Stack(
+                                alignment: Alignment.bottomRight,
+                                children: [
+                                  GestureDetector(
+                                    onTap: _onAvatarTap,
+                                    child: _buildAvatar(profile),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 8),
-                              Text(
-                                profile?.name.isNotEmpty == true
-                                    ? profile!.name
-                                    : 'Your name',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                              SizedBox(
+                                width: double.infinity,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // ✅ Name stays perfectly centered
+                                    Center(
+                                      child: Text(
+                                        profile?.name.isNotEmpty == true
+                                            ? profile!.name
+                                            : 'Your name',
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.textTheme.titleLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                    ),
+
+                                    // ✅ Pen icon on the right, does NOT shift the text
+                                    Positioned(
+                                      right: 0,
+                                      child: IconButton(
+                                        onPressed: _openEditProfile,
+                                        icon: const Icon(Icons.edit, size: 18),
+                                        tooltip: 'Edit profile',
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+
                               const SizedBox(height: 4),
                               Text(
                                 _walkerLevel,
@@ -443,219 +659,359 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
 
-                      if (profile != null)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Chip(label: Text('Age: ${profile.age}')),
-                            const SizedBox(width: 8),
-                            Chip(label: Text('Gender: ${profile.gender}')),
-                          ],
-                        ),
+                        const SizedBox(height: 16),
 
-                      const SizedBox(height: 24),
-
-                      // This week
-                      Text(
-                        'This week',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Card(
-                        elevation: 0.5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                                '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                        if (profile != null)
+                          ChipTheme(
+                            data: theme.chipTheme.copyWith(
+                              backgroundColor: isDark
+                                  ? const Color(
+                                      0xFF123647,
+                                    ) // 👈 bluish chip surface
+                                  : theme.colorScheme.surface,
+                              side: BorderSide(
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withOpacity(0.12),
+                              ),
+                              labelStyle: TextStyle(
+                                color: isDark ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Wrap(
+                                    alignment: WrapAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      Chip(label: Text('Age: ${profile.age}')),
+                                      Chip(
+                                        label: Text(
+                                          'Gender: ${profile.gender}',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: weeklyProgress,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.green.shade50,
+                              ],
+                            ),
+                          ),
+
+                        const SizedBox(height: 24),
+
+                        // This week
+                        Text(
+                          'This week',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          color: isDark
+                              ? const Color(0xFF0C2430)
+                              : theme.cardColor,
+                          elevation: isDark ? 0.0 : 0.5,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withOpacity(0.08),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
+                                        '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : null,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.08)
+                                            : const Color(0xFFE5F3D9),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${(weeklyProgress * 100).round()}%',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : null,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                widget.streakDays > 0
-                                    ? 'Streak: ${widget.streakDays} day${widget.streakDays == 1 ? '' : 's'} in a row'
-                                    : 'No streak yet. Join a walk today!',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                                const SizedBox(height: 10),
+                                LayoutBuilder(
+                                  builder: (context, c) {
+                                    final trackH = 10.0;
+                                    final fillW = (c.maxWidth * weeklyProgress)
+                                        .clamp(0.0, c.maxWidth);
 
-                      const SizedBox(height: 20),
-
-                      // Stats
-                      Text(
-                        'Your stats',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _statCard(
-                            label: 'Walks joined',
-                            value: widget.walksJoined.toString(),
-                            icon: Icons.directions_walk,
-                          ),
-                          _statCard(
-                            label: 'Hosted',
-                            value: widget.eventsHosted.toString(),
-                            icon: Icons.flag,
-                          ),
-                          _statCard(
-                            label: 'Total km',
-                            value: widget.totalKm.toStringAsFixed(1),
-                            icon: Icons.map,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: Text(
-                          'Marked as interested: ${widget.interestedCount}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Badges
-                      Text(
-                        'Badges',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Card(
-                        elevation: 0.5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (achievedBadges.isEmpty)
-                                Text(
-                                  'Badges will appear here as you walk more.',
-                                  style: theme.textTheme.bodySmall,
-                                )
-                              else
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: achievedBadges.take(6).map((b) {
-                                    return GestureDetector(
-                                      onTap: () => _showBadgeDetails(b),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 18,
-                                            backgroundColor:
-                                                theme.colorScheme.primary,
-                                            child: Icon(
-                                              b.icon,
-                                              size: 18,
-                                              color: Colors.white,
+                                    return Stack(
+                                      children: [
+                                        Container(
+                                          height: trackH,
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white.withOpacity(0.10)
+                                                : Colors.black.withOpacity(
+                                                    0.06,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                        Container(
+                                          height: trackH,
+                                          width: fillW,
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? const Color(0xFF9BD77A)
+                                                : const Color(0xFF4F925C),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     );
-                                  }).toList(),
+                                  },
                                 ),
-                              const SizedBox(height: 8),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () => _openBadgesPage(allBadges),
-                                  child: const Text('View all'),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _weeklyMotivationText(
+                                    progress: weeklyProgress,
+                                    weeklyKm: widget.weeklyKm,
+                                    weeklyGoalKm: _weeklyGoalKmLocal,
+                                    streakDays: widget.streakDays,
+                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Stats
+                        Text(
+                          'Your stats',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _statCard(
+                              label: 'Walks joined',
+                              value: widget.walksJoined.toString(),
+                              icon: Icons.directions_walk,
+                            ),
+                            _statCard(
+                              label: 'Hosted',
+                              value: widget.eventsHosted.toString(),
+                              icon: Icons.flag,
+                            ),
+                            _statCard(
+                              label: 'Total km',
+                              value: widget.totalKm.toStringAsFixed(1),
+                              icon: Icons.map,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: Text(
+                            'Marked as interested: ${widget.interestedCount}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Badges
+                        Text(
+                          'Badges',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Card(
+                          color: isDark
+                              ? const Color(0xFF0C2430)
+                              : theme.cardColor,
+                          elevation: isDark ? 0.0 : 0.5,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withOpacity(0.08),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (achievedBadges.isEmpty)
+                                  Text(
+                                    'Badges will appear here as you walk more.',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isDark ? Colors.white70 : null,
+                                    ),
+                                  )
+                                else ...[
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: achievedBadges.take(6).map((b) {
+                                      return GestureDetector(
+                                        onTap: () => _showBadgeDetails(b),
+                                        child: CircleAvatar(
+                                          radius: 18,
+                                          backgroundColor:
+                                              theme.colorScheme.primary,
+                                          child: Icon(
+                                            b.icon,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+
+                                  // ✅ Compact "View all" (doesn't inflate card height)
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: () =>
+                                          _openBadgesPage(allBadges),
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: const Text('View all'),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Actions
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _openSafetyTips,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                            ],
+                              side: BorderSide(
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withOpacity(0.18),
+                              ),
+                              foregroundColor: isDark
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                            icon: const Icon(Icons.shield_outlined),
+                            label: const Text(
+                              'Walking safety & community tips',
+                            ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 24),
-
-                      // Actions
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _openEditProfile,
-                          icon: const Icon(Icons.edit),
-                          label: const Text('Edit profile info'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _openSafetyTips,
-                          icon: const Icon(Icons.shield_outlined),
-                          label: const Text('Walking safety & community tips'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _signOut,
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Sign out'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _signOut,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: BorderSide(
+                                color: Colors.red.withOpacity(0.5),
+                              ),
+                              foregroundColor: Colors.red,
+                            ),
+                            icon: const Icon(Icons.logout),
+                            label: const Text('Sign out'),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: Text(
-                          'Tip: Tap on your photo to change it.',
-                          style: theme.textTheme.bodySmall,
+
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Text(
+                            'Tip: Tap on your photo to change it.',
+                            style: theme.textTheme.bodySmall,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+),
         ],
       ),
     );
@@ -684,24 +1040,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Expanded(
       child: Card(
-        elevation: 0.5,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+        elevation: isDark ? 0.0 : 0.5,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Column(
             children: [
-              Icon(icon),
+              Icon(icon, color: isDark ? Colors.white : null),
               const SizedBox(height: 4),
               Text(
                 value,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : null,
                 ),
               ),
               const SizedBox(height: 4),
-              Text(label, style: theme.textTheme.bodySmall),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? Colors.white70 : null,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
