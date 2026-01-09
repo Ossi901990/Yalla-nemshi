@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// ===== COLOR PALETTE =====
@@ -157,9 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    kBgTop.withOpacity(0.7),
-                    kBgMid.withOpacity(0.85),
-                    kBgBottom.withOpacity(0.9),
+                    kBgTop.withAlpha((0.7 * 255).round()),
+                    kBgMid.withAlpha((0.85 * 255).round()),
+                    kBgBottom.withAlpha((0.9 * 255).round()),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -181,8 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: kCardOverlay.withOpacity(0.35),
-                    border: Border.all(color: kCardBorder.withOpacity(0.2)),
+                    color: kCardOverlay.withAlpha((0.35 * 255).round()),
+                    border: Border.all(color: kCardBorder.withAlpha((0.2 * 255).round())),
                   ),
                   child: const Icon(
                     Icons.directions_walk,
@@ -206,13 +205,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                       decoration: BoxDecoration(
-                        color: kCardOverlay.withOpacity(0.45),
+                        color: kCardOverlay.withAlpha((0.45 * 255).round()),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(32),
                           topRight: Radius.circular(32),
                         ),
                         border: Border.all(
-                          color: kCardBorder.withOpacity(0.15),
+                          color: kCardBorder.withAlpha((0.15 * 255).round()),
                         ),
                       ),
                       child: SingleChildScrollView(
@@ -233,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               'Log in to continue walking with Yalla Nemshi',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: kSecondaryText.withOpacity(0.7),
+                                color: kSecondaryText.withAlpha((0.7 * 255).round()),
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -262,9 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: () {},
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
-                                  foregroundColor: kSecondaryText.withOpacity(
-                                    0.8,
-                                  ),
+                                  foregroundColor: kSecondaryText.withAlpha((0.8 * 255).round()),
                                   textStyle: const TextStyle(fontSize: 12),
                                 ),
                                 child: const Text('Forgot Password?'),
@@ -281,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color: kSecondaryText.withOpacity(0.2),
+                                    color: kSecondaryText.withAlpha((0.2 * 255).round()),
                                   ),
                                 ),
                                 Padding(
@@ -291,14 +288,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Text(
                                     'or continue with',
                                     style: TextStyle(
-                                      color: kSecondaryText.withOpacity(0.7),
+                                      color: kSecondaryText.withAlpha((0.7 * 255).round()),
                                       fontSize: 12,
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color: kSecondaryText.withOpacity(0.2),
+                                    color: kSecondaryText.withAlpha((0.2 * 255).round()),
                                   ),
                                 ),
                               ],
@@ -339,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Text(
                                   "Don’t have an account? ",
                                   style: TextStyle(
-                                    color: kSecondaryText.withOpacity(0.7),
+                                    color: kSecondaryText.withAlpha((0.7 * 255).round()),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -383,7 +380,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Text(
           label,
           style: TextStyle(
-            color: kSecondaryText.withOpacity(0.8),
+            color: kSecondaryText.withAlpha((0.8 * 255).round()),
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -396,21 +393,21 @@ class _LoginScreenState extends State<LoginScreen> {
           style: const TextStyle(color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: TextStyle(color: kHintText.withOpacity(0.5)),
-            prefixIcon: Icon(icon, color: kIconColor.withOpacity(0.9)),
+            hintStyle: TextStyle(color: kHintText.withAlpha((0.5 * 255).round())),
+            prefixIcon: Icon(icon, color: kIconColor.withAlpha((0.9 * 255).round())),
             filled: true,
-            fillColor: kFieldFill.withOpacity(0.06),
+            fillColor: kFieldFill.withAlpha((0.06 * 255).round()),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: kFieldBorder.withOpacity(0.15),
+                color: kFieldBorder.withAlpha((0.15 * 255).round()),
                 width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(
-                color: kFieldBorder.withOpacity(0.8),
+                color: kFieldBorder.withAlpha((0.8 * 255).round()),
                 width: 1.3,
               ),
             ),
@@ -484,11 +481,11 @@ class _SocialIconButton extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: kSocialGlassFill.withOpacity(0.08),
-            border: Border.all(color: kSocialGlassBorder.withOpacity(0.2)),
+            color: kSocialGlassFill.withAlpha((0.08 * 255).round()),
+            border: Border.all(color: kSocialGlassBorder.withAlpha((0.2 * 255).round())),
             boxShadow: [
               BoxShadow(
-                color: kSocialShadow.withOpacity(0.4),
+                color: kSocialShadow.withAlpha((0.4 * 255).round()),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -500,3 +497,5 @@ class _SocialIconButton extends StatelessWidget {
     );
   }
 }
+
+

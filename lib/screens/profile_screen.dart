@@ -344,7 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withAlpha((0.08 * 255).round()),
                           ),
                           child: const Icon(
                             Icons.directions_walk,
@@ -374,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withAlpha((0.08 * 255).round()),
                             ),
                             child: const Icon(
                               Icons.notifications_none,
@@ -405,7 +405,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withAlpha((0.08 * 255).round()),
                             ),
                             child: const Icon(
                               Icons.settings,
@@ -563,7 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
                         color: (isDark ? Colors.white : Colors.black)
-                            .withOpacity(kCardBorderAlpha),
+                            .withAlpha((kCardBorderAlpha * 255).round()),
                       ),
                     ),
                     child: Padding(
@@ -677,7 +677,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     : theme.colorScheme.surface,
                                 side: BorderSide(
                                   color: (isDark ? Colors.white : Colors.black)
-                                      .withOpacity(0.12),
+                                      .withAlpha((0.12 * 255).round()),
                                 ),
                                 labelStyle: TextStyle(
                                   color: isDark ? Colors.white : Colors.black87,
@@ -734,7 +734,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(18),
                               side: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
-                                    .withOpacity(0.08),
+                                    .withAlpha((0.08 * 255).round()),
                               ),
                             ),
                             child: Padding(
@@ -770,7 +770,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: isDark
-                                              ? Colors.white.withOpacity(0.08)
+                                              ? Colors.white.withAlpha((0.08 * 255).round())
                                               : const Color(0xFFE5F3D9),
                                           borderRadius: BorderRadius.circular(
                                             999,
@@ -805,12 +805,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             height: trackH,
                                             decoration: BoxDecoration(
                                               color: isDark
-                                                  ? Colors.white.withOpacity(
-                                                      0.10,
-                                                    )
-                                                  : Colors.black.withOpacity(
-                                                      0.06,
-                                                    ),
+                                                  ? Colors.white.withAlpha((0.10 * 255).round())
+                                                  : Colors.black.withAlpha((0.06 * 255).round()),
                                               borderRadius:
                                                   BorderRadius.circular(999),
                                             ),
@@ -907,7 +903,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(16),
                               side: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
-                                    .withOpacity(0.08),
+                                    .withAlpha((0.08 * 255).round()),
                               ),
                             ),
                             child: Padding(
@@ -987,7 +983,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 side: BorderSide(
                                   color: (isDark ? Colors.white : Colors.black)
-                                      .withOpacity(0.18),
+                                      .withAlpha((0.18 * 255).round()),
                                 ),
                                 foregroundColor: isDark
                                     ? Colors.white
@@ -1011,7 +1007,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 side: BorderSide(
-                                  color: Colors.red.withOpacity(0.5),
+                                  color: Colors.red.withAlpha((0.5 * 255).round()),
                                 ),
                                 foregroundColor: Colors.red,
                               ),
@@ -1072,7 +1068,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withOpacity(0.08),
+            color: (isDark ? Colors.white : Colors.black).withAlpha((0.08 * 255).round()),
           ),
         ),
         child: Padding(
@@ -1104,88 +1100,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Small reusable header pieces
-class _HeaderLogo extends StatelessWidget {
-  const _HeaderLogo();
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white24,
-      ),
-      child: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
-    );
-  }
-}
-
-class _HeaderNotifications extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _HeaderNotifications({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white24,
-            ),
-            child: const Icon(
-              Icons.notifications_none,
-              size: 18,
-              color: Colors.white,
-            ),
-          ),
-          Positioned(
-            right: -2,
-            top: -2,
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.red,
-              ),
-              child: const Text(
-                '3',
-                style: TextStyle(color: Colors.white, fontSize: 9),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderSettings extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _HeaderSettings({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white24,
-        ),
-        child: const Icon(Icons.settings, size: 18, color: Colors.white),
-      ),
-    );
-  }
-}

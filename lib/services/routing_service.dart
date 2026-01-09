@@ -1,6 +1,7 @@
 // lib/services/routing_service.dart
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -46,26 +47,26 @@ class RoutingService {
         body: jsonEncode(body),
       );
 
-      print("🔍 ORS Raw Response:");
-      print(response.body);
+      debugPrint("🔍 ORS Raw Response:");
+      debugPrint(response.body);
 
       if (response.statusCode != 200) {
-        print("❌ ORS Error Response (${response.statusCode}):");
-        print(response.body);
+        debugPrint("❌ ORS Error Response (${response.statusCode}):");
+        debugPrint(response.body);
         return null;
       }
 
-      print("🔍 Decoding JSON now...");
+      debugPrint("🔍 Decoding JSON now...");
       final json = jsonDecode(response.body);
 
       if (json["routes"] == null) {
-        print("❌ ERROR: json['routes'] is NULL — no route returned.");
+        debugPrint("❌ ERROR: json['routes'] is NULL — no route returned.");
         return null;
       }
 
       return RouteResult.fromJson(json);
     } catch (e) {
-      print("❌ Error during routing request: $e");
+      debugPrint("❌ Error during routing request: $e");
       return null;
     }
   }
@@ -96,25 +97,25 @@ class RoutingService {
         body: jsonEncode(body),
       );
 
-      print("🔍 ORS Loop Response:");
-      print(response.body);
+      debugPrint("🔍 ORS Loop Response:");
+      debugPrint(response.body);
 
       if (response.statusCode != 200) {
-        print("❌ ORS Loop Error (${response.statusCode})");
-        print(response.body);
+        debugPrint("❌ ORS Loop Error (${response.statusCode})");
+        debugPrint(response.body);
         return null;
       }
 
       final json = jsonDecode(response.body);
 
       if (json["routes"] == null) {
-        print("❌ No loop route returned");
+        debugPrint("❌ No loop route returned");
         return null;
       }
 
       return RouteResult.fromJson(json);
     } catch (e) {
-      print("❌ Error generating loop: $e");
+      debugPrint("❌ Error generating loop: $e");
       return null;
     }
   }

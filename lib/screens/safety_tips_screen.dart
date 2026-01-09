@@ -50,7 +50,7 @@ class SafetyTipsScreen extends StatelessWidget {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withAlpha((0.08 * 255).round()),
                             ),
                             child: const Icon(
                               Icons.arrow_back,
@@ -163,7 +163,7 @@ class SafetyTipsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
                         color: (isDark ? Colors.white : Colors.black)
-                            .withOpacity(kCardBorderAlpha),
+                            .withAlpha((kCardBorderAlpha * 255).round()),
                       ),
                     ),
                     child: Padding(
@@ -361,3 +361,4 @@ class _Bullet extends StatelessWidget {
     );
   }
 }
+

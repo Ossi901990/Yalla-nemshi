@@ -79,9 +79,11 @@ class _MapPickScreenState extends State<MapPickScreen> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Search error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Search error: $e')));
+      }
     } finally {
       if (mounted) setState(() => _searchLoading = false);
     }
@@ -210,7 +212,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
                   horizontal: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withAlpha((0.6 * 255).round()),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -241,7 +243,7 @@ class _MapPickScreenState extends State<MapPickScreen> {
                         horizontal: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withAlpha((0.6 * 255).round()),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: const Text(
@@ -276,3 +278,4 @@ class _MapPickScreenState extends State<MapPickScreen> {
     );
   }
 }
+

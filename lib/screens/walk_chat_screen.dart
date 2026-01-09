@@ -78,11 +78,11 @@ class WalkChatScreen extends StatelessWidget {
                           color: isMe
                               ? Theme.of(
                                   context,
-                                ).colorScheme.primary.withOpacity(0.12)
+                                ).colorScheme.primary.withAlpha((0.12 * 255).round())
                               : Theme.of(context)
                                     .colorScheme
                                     .surfaceContainerHighest
-                                    .withOpacity(0.6),
+                                    .withAlpha((0.6 * 255).round()),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
@@ -207,3 +207,4 @@ class _MessageComposerState extends State<_MessageComposer> {
     );
   }
 }
+

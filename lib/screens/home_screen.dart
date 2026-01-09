@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final currentUid = FirebaseAuth.instance.currentUser?.uid;
             debugPrint('WALKS SNAP: docs=${snap.docs.length} uid=$currentUid');
 
-            final loaded = snap.docs.map((doc) {
+            final List<WalkEvent> loaded = snap.docs.map((doc) {
               final data = Map<String, dynamic>.from(doc.data());
               data['firestoreId'] = doc.id;
               data['id'] ??= doc.id;
@@ -98,6 +98,28 @@ class _HomeScreenState extends State<HomeScreen> {
             }).toList();
 
             if (!mounted) return;
+            
+            // 🔔 Check for newly added walks and trigger notifications
+            for (var change in snap.docChanges) {
+              if (change.type == DocumentChangeType.added) {
+                final data = Map<String, dynamic>.from(change.doc.data() as Map);
+                data['firestoreId'] = change.doc.id;
+                data['id'] ??= change.doc.id;
+                
+                final hostUid = data['hostUid'] as String?;
+                data['isOwner'] = (currentUid != null && hostUid != null && hostUid == currentUid);
+                
+                final joinedUids = (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
+                data['joined'] = (currentUid != null && joinedUids.contains(currentUid));
+                
+                final newWalk = WalkEvent.fromMap(data);
+                // Only notify if it's not the current user's walk
+                if (newWalk.hostUid != currentUid) {
+                  _onNewNearbyWalk(newWalk);
+                }
+              }
+            }
+            
             setState(() {
               _events
                 ..clear()
@@ -159,9 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int get _eventsHosted =>
       _events.where((e) => e.isOwner && !e.cancelled).length;
 
-  double get _totalKmJoined => _events
+    double get _totalKmJoined => _events
       .where((e) => e.joined && !e.cancelled)
-      .fold<double>(0.0, (sum, e) => sum + e.distanceKm);
+      .fold<double>(0.0, (acc, e) => acc + e.distanceKm);
 
   int get _interestedCount =>
       _events.where((e) => e.interested && !e.cancelled).length;
@@ -196,8 +218,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int get _weeklyWalkCount => _myWalksThisWeek.length;
 
-  double get _weeklyKm =>
-      _myWalksThisWeek.fold(0.0, (sum, e) => sum + e.distanceKm);
+    double get _weeklyKm =>
+      _myWalksThisWeek.fold(0.0, (acc, e) => acc + e.distanceKm);
 
   // Simple streak: how many consecutive days up to today with >=1 of my walks
   int get _streakDays {
@@ -282,48 +304,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return '$dd/$mm2/$yyyy • $timePart';
   }
 
-  Widget _buildDayPill(
-    String label,
-    int dayNumber,
-    bool isSelected, {
-    required bool isDark,
-  }) {
-    final labelColor = isDark
-        ? (isSelected ? Colors.white : Colors.white70)
-        : (isSelected ? Colors.black87 : Colors.black54);
-
-    final numberColor = isDark
-        ? (isSelected ? Colors.black87 : Colors.white)
-        : Colors.black87;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 10,
-            color: labelColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-
-        Text(
-          '$dayNumber',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: numberColor,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildCalendarDayCell(
     DateTime day,
     bool isDark, {
@@ -364,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isSelected) {
       bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
       border = Colors.transparent;
-      labelColor = Colors.white.withOpacity(0.9);
+      labelColor = Colors.white.withAlpha((0.9 * 255).round());
       numberColor = Colors.white;
     } else if (hasWalk) {
       bg = isDark ? const Color(0xFF9BD77A) : const Color(0xFF9BD77A);
@@ -402,8 +382,8 @@ class _HomeScreenState extends State<HomeScreen> {
             border: (hasWalk && !isSelected)
                 ? Border.all(
                     color: isDark
-                        ? Colors.white.withOpacity(0.18)
-                        : const Color(0xFF2E7D32).withOpacity(0.55),
+                        ? Colors.white.withAlpha((0.18 * 255).round())
+                        : const Color(0xFF2E7D32).withAlpha((0.55 * 255).round()),
                     width: 1.4,
                   )
                 : Border.all(
@@ -547,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _onStepError(error) {
+  void _onStepError(Object? error) {
     // You could log this or show a SnackBar if needed
   }
 
@@ -625,9 +605,11 @@ class _HomeScreenState extends State<HomeScreen> {
         _events[index] = _events[index].copyWith(joined: wasJoined);
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update join status: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update join status: $e')),
+        );
+      }
     }
   }
 
@@ -767,6 +749,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     TextButton(
                       onPressed: () async {
                         await NotificationStorage.clearNotifications();
+                        if (!mounted) return;
                         Navigator.of(context).pop(); // close sheet
                         _openNotificationsSheet(); // reopen with updated list
                       },
@@ -954,7 +937,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 32,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.08),
+                          color: Colors.white.withAlpha((0.08 * 255).round()),
                         ),
                         child: const Icon(
                           Icons.directions_walk,
@@ -987,7 +970,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: 32,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.08),
+                                color: Colors.white.withAlpha((0.08 * 255).round()),
                               ),
                               child: const Icon(
                                 Icons.notifications_none,
@@ -1028,7 +1011,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withAlpha((0.08 * 255).round()),
                           ),
                           child: const Icon(
                             Icons.person,
@@ -1218,7 +1201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(kRadiusCard),
                               side: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
-                                    .withOpacity(kCardBorderAlpha),
+                                    .withAlpha((kCardBorderAlpha * 255).round()),
                               ),
                             ),
                             child: Padding(
@@ -1310,7 +1293,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     rowHeight:
                                         (MediaQuery.of(
                                               context,
-                                            ).textScaleFactor >
+                                            ).textScaler.scale(1.0) >
                                             1.15)
                                         ? 72
                                         : 60,
@@ -1458,7 +1441,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     (isDark
                                                             ? Colors.white
                                                             : Colors.black)
-                                                        .withOpacity(0.14),
+                                                        .withAlpha((0.14 * 255).round()),
                                               ),
                                               foregroundColor: isDark
                                                   ? kTextPrimary
@@ -1494,7 +1477,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     (isDark
                                                             ? Colors.white
                                                             : Colors.black)
-                                                        .withOpacity(0.14),
+                                                        .withAlpha((0.14 * 255).round()),
                                               ),
                                               foregroundColor: isDark
                                                   ? kTextPrimary
@@ -1695,9 +1678,7 @@ class _WeeklySummaryCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusCard),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(
-            kCardBorderAlpha,
-          ),
+          color: (isDark ? Colors.white : Colors.black).withAlpha((kCardBorderAlpha * 255).round()),
         ),
       ),
       child: Padding(
@@ -1728,7 +1709,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isDark
                         ? kDarkSurface2
-                        : Colors.black.withOpacity(0.06),
+                        : Colors.black.withAlpha((0.06 * 255).round()),
                     borderRadius: BorderRadius.circular(kRadiusPill),
                   ),
                   child: Text(
@@ -1844,9 +1825,7 @@ class _StatCard extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadiusControl),
           side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withOpacity(
-              kCardBorderAlpha,
-            ),
+            color: (isDark ? Colors.white : Colors.black).withAlpha((kCardBorderAlpha * 255).round()),
           ),
         ),
         child: Padding(
@@ -1909,7 +1888,7 @@ class _WalkCard extends StatelessWidget {
               (Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
                       : Colors.black)
-                  .withOpacity(kCardBorderAlpha),
+                  .withAlpha((kCardBorderAlpha * 255).round()),
         ),
       ),
       child: ListTile(
@@ -1923,30 +1902,6 @@ class _WalkCard extends StatelessWidget {
         subtitle: Text(_formatDateTime(event.dateTime)),
         trailing: const Icon(Icons.chevron_right),
       ),
-    );
-  }
-}
-
-class _MiniStat extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MiniStat({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-        ),
-      ],
     );
   }
 }
@@ -1984,7 +1939,7 @@ class _StepsRing extends StatelessWidget {
 
         // Very light color at 0 progress (so the start is almost white)
         final Color veryLight = isDark
-            ? Colors.white.withOpacity(0.16)
+            ? Colors.white.withAlpha((0.16 * 255).round())
             : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
 
         // End color gets darker as progress increases
@@ -2002,7 +1957,7 @@ class _StepsRing extends StatelessWidget {
                   progress: animatedProgress,
                   strokeWidth: stroke,
                   trackColor: isDark
-                      ? Colors.white.withOpacity(0.10)
+                      ? Colors.white.withAlpha((0.10 * 255).round())
                       : const Color(
                           0xFFD7E2D7,
                         ), // ✅ slightly darker track so ring feels consistent
@@ -2115,3 +2070,5 @@ class _GradientRingPainter extends CustomPainter {
         oldDelegate.endColor != endColor;
   }
 }
+
+

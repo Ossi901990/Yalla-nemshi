@@ -71,9 +71,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required String label,
   }) {
     final theme = Theme.of(context);
-    final borderColor = (isDark ? Colors.white : Colors.black).withOpacity(
-      0.18,
-    );
+    final borderColor = (isDark ? Colors.white : Colors.black).withAlpha((0.18 * 255).round());
 
     return InputDecoration(
       labelText: label,
@@ -89,17 +87,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(0.28),
+          color: (isDark ? Colors.white : Colors.black).withAlpha((0.28 * 255).round()),
           width: 1.2,
         ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.red.withOpacity(0.7), width: 1),
+        borderSide: BorderSide(color: Colors.red.withAlpha((0.7 * 255).round()), width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.red.withOpacity(0.9), width: 1.2),
+        borderSide: BorderSide(color: Colors.red.withAlpha((0.9 * 255).round()), width: 1.2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
@@ -213,7 +211,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.black.withOpacity(0.35)
+                      ? Colors.black.withAlpha((0.35 * 255).round())
                       : Colors.transparent,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
@@ -228,7 +226,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       borderRadius: BorderRadius.circular(24),
                       side: BorderSide(
                         color: (isDark ? Colors.white : Colors.black)
-                            .withOpacity(0.06),
+                            .withAlpha((0.06 * 255).round()),
                       ),
                     ),
                     child: Padding(
@@ -368,3 +366,5 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
+
+

@@ -41,7 +41,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // ===== Walk type tabs =====
-  // 0 = Point to point (default), 1 = Loop, 2 = Free
+  // 0 = Point to point (default), 1 = Loop
   int _walkTypeIndex = 0;
 
   String _title = '';
@@ -54,7 +54,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
   // Legacy meeting point name (kept for backwards compatibility)
-  String _meetingPlace = '';
+  final String _meetingPlace = '';
 
   // Coordinates picked from the map
   LatLng? _meetingLatLng;
@@ -217,6 +217,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
     if (date == null) return;
 
+    if (!mounted) return;
+
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_dateTime),
@@ -312,6 +314,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
     if (time == null) return;
 
+    if (!mounted) return;
+
     setState(() {
       _dateTime = DateTime(
         date.year,
@@ -362,9 +366,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
     final walkType = _walkTypeIndex == 0
         ? 'point_to_point'
-        : _walkTypeIndex == 1
-        ? 'loop'
-        : 'free';
+        : 'loop';
 
     // Ensure share code exists if private point-to-point
     if (walkType == 'point_to_point' && _isPrivatePointToPoint) {
@@ -453,6 +455,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       widget.onEventCreated(newEvent);
       widget.onCreatedNavigateHome();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to create walk: $e')));
@@ -540,7 +543,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
                         color: (isDark ? Colors.white : Colors.black)
-                            .withOpacity(kCardBorderAlpha),
+                            .withAlpha((kCardBorderAlpha * 255).round()),
                       ),
                     ),
                     child: Theme(
@@ -548,7 +551,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         inputDecorationTheme: InputDecorationTheme(
                           filled: true,
                           fillColor: isDark
-                              ? Colors.white.withOpacity(0.06)
+                              ? Colors.white.withAlpha((0.06 * 255).round())
                               : Colors.white,
                           labelStyle: TextStyle(
                             color: isDark ? Colors.white70 : Colors.black87,
@@ -560,21 +563,21 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             borderRadius: BorderRadius.circular(kRadiusControl),
                             borderSide: BorderSide(
                               color: (isDark ? Colors.white : Colors.black)
-                                  .withOpacity(0.12),
+                                  .withAlpha((0.12 * 255).round()),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(kRadiusControl),
                             borderSide: BorderSide(
                               color: (isDark ? Colors.white : Colors.black)
-                                  .withOpacity(0.12),
+                                  .withAlpha((0.12 * 255).round()),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(kRadiusControl),
                             borderSide: BorderSide(
                               color: isDark
-                                  ? Colors.white.withOpacity(0.35)
+                                  ? Colors.white.withAlpha((0.35 * 255).round())
                                   : const Color(0xFF294630),
                               width: 1.2,
                             ),
@@ -635,10 +638,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
                                             color: isDark
-                                                ? Colors.white.withOpacity(0.06)
-                                                : Colors.black.withOpacity(
-                                                    0.04,
-                                                  ),
+                                                ? Colors.white.withAlpha((0.06 * 255).round())
+                                                : Colors.black.withAlpha((0.04 * 255).round()),
                                             borderRadius: BorderRadius.circular(
                                               16,
                                             ),
@@ -647,7 +648,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   (isDark
                                                           ? Colors.white
                                                           : Colors.black)
-                                                      .withOpacity(0.08),
+                                                      .withAlpha((0.08 * 255).round()),
                                             ),
                                           ),
                                           child: TabBar(
@@ -658,9 +659,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               color: isDark
-                                                  ? Colors.white.withOpacity(
-                                                      0.10,
-                                                    )
+                                                  ? Colors.white.withAlpha((0.10 * 255).round())
                                                   : Colors.white,
                                             ),
                                             labelColor: isDark
@@ -672,7 +671,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             tabs: const [
                                               Tab(text: 'Point to point'),
                                               Tab(text: 'Loop'),
-                                              Tab(text: 'Explore walk'),
                                             ],
                                           ),
                                         ),
@@ -702,7 +700,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: isDark
-                                                ? Colors.white.withOpacity(0.06)
+                                                ? Colors.white.withAlpha((0.06 * 255).round())
                                                 : Colors.white,
                                             borderRadius: BorderRadius.circular(
                                               16,
@@ -712,7 +710,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   (isDark
                                                           ? Colors.white
                                                           : Colors.black)
-                                                      .withOpacity(0.12),
+                                                      .withAlpha((0.12 * 255).round()),
                                             ),
                                           ),
                                           child: Row(
@@ -872,12 +870,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               final v = int.tryParse(
                                                 (val ?? '').trim(),
                                               );
-                                              if (v == null)
+                                              if (v == null) {
                                                 return 'Enter minutes';
-                                              if (v <= 0)
+                                              }
+                                              if (v <= 0) {
                                                 return 'Must be greater than 0';
-                                              if (v > 600)
+                                              }
+                                              if (v > 600) {
                                                 return 'Try under 600 minutes';
+                                              }
                                               return null;
                                             },
                                             onSaved: (val) {
@@ -903,20 +904,24 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               final v = double.tryParse(
                                                 (val ?? '').trim(),
                                               );
-                                              if (v == null)
+                                              if (v == null) {
                                                 return 'Enter distance';
-                                              if (v <= 0)
+                                              }
+                                              if (v <= 0) {
                                                 return 'Must be greater than 0';
-                                              if (v > 100)
+                                              }
+                                              if (v > 100) {
                                                 return 'Try under 100 km';
+                                              }
                                               return null;
                                             },
                                             onSaved: (val) {
                                               final v = double.tryParse(
                                                 (val ?? '').trim(),
                                               );
-                                              if (v != null)
+                                              if (v != null) {
                                                 _loopDistanceKm = v;
+                                              }
                                             },
                                           ),
                                           const SizedBox(height: 6),
@@ -986,12 +991,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               final d = double.tryParse(
                                                 (val ?? '').trim(),
                                               );
-                                              if (d == null)
+                                              if (d == null) {
                                                 return 'Please enter a number';
-                                              if (d <= 0)
+                                              }
+                                              if (d <= 0) {
                                                 return 'Distance must be greater than 0';
-                                              if (d > 100)
+                                              }
+                                              if (d > 100) {
                                                 return 'That’s a long walk! Try under 100 km';
+                                              }
                                               return null;
                                             },
                                             onSaved: (val) {
@@ -999,8 +1007,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               final parsed = double.tryParse(
                                                 (val ?? '').trim(),
                                               );
-                                              if (parsed != null)
+                                              if (parsed != null) {
                                                 _distanceKm = parsed;
+                                              }
                                             },
                                           ),
                                           const SizedBox(height: 12),
@@ -1102,9 +1111,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             child: Text(
                                               _walkTypeIndex == 0
                                                   ? 'Create walk'
-                                                  : _walkTypeIndex == 1
-                                                  ? 'Create loop walk'
-                                                  : 'Start free walk',
+                                                  : 'Create loop walk',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -1148,3 +1155,6 @@ class _HeaderLogo extends StatelessWidget {
     );
   }
 }
+
+
+

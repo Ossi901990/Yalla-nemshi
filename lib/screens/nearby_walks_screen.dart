@@ -236,7 +236,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                           height: 32,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withAlpha((0.08 * 255).round()),
                           ),
                           child: const Icon(
                             Icons.directions_walk,
@@ -266,7 +266,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withAlpha((0.08 * 255).round()),
                             ),
                             child: const Icon(
                               Icons.notifications_none,
@@ -283,7 +283,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                             height: 32,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.08),
+                              color: Colors.white.withAlpha((0.08 * 255).round()),
                             ),
                             child: const Icon(
                               Icons.person,
@@ -431,7 +431,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
                         color: (isDark ? Colors.white : Colors.black)
-                            .withOpacity(kCardBorderAlpha),
+                            .withAlpha((kCardBorderAlpha * 255).round()),
                       ),
                     ),
                     child: Padding(
@@ -521,9 +521,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusCard),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(
-            kCardBorderAlpha,
-          ),
+          color: (isDark ? Colors.white : Colors.black).withAlpha((kCardBorderAlpha * 255).round()),
         ),
       ),
       child: Padding(
@@ -695,13 +693,13 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
     final bg = selected
         ? (isDark ? const Color(0xFF123647) : const Color(0xFFCDE9B7))
-        : (isDark ? Colors.white.withOpacity(0.06) : Colors.white);
+        : (isDark ? Colors.white.withAlpha((0.06 * 255).round()) : Colors.white);
 
     final border = selected
-        ? (isDark ? Colors.white.withOpacity(0.18) : const Color(0xFF4F925C))
+        ? (isDark ? Colors.white.withAlpha((0.18 * 255).round()) : const Color(0xFF4F925C))
         : (isDark
-              ? Colors.white.withOpacity(0.12)
-              : Colors.grey.withOpacity(0.30));
+              ? Colors.white.withAlpha((0.12 * 255).round())
+              : Colors.grey.withAlpha((0.30 * 255).round()));
 
     final textColor = selected
         ? (isDark ? Colors.white : const Color(0xFF1F2933))
@@ -777,22 +775,6 @@ class _NearbyWalkCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // ✅ Button tokens (match Home "round icon" feel)
-    const btnSize = 38.0;
-    final btnBg = isDark
-        ? Colors.white.withOpacity(0.08)
-        : const Color(0xFFEFF6EA);
-
-    // star has special tint when selected
-    final starIconColor = event.interested
-        ? Colors.amber
-        : (isDark ? Colors.white70 : const Color(0xFF374151));
-
-    // join has special tint when joined
-    final joinIconColor = event.joined
-        ? const Color(0xFF2E7D32)
-        : (isDark ? Colors.white70 : const Color(0xFF374151));
-
     return Card(
       color: isDark ? kDarkSurface : kLightSurface,
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -800,9 +782,7 @@ class _NearbyWalkCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusControl),
         side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(
-            kCardBorderAlpha,
-          ),
+          color: (isDark ? Colors.white : Colors.black).withAlpha((kCardBorderAlpha * 255).round()),
         ),
       ),
       child: InkWell(
@@ -858,7 +838,7 @@ class _NearbyWalkCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.15),
+                                color: Colors.amber.withAlpha((0.15 * 255).round()),
                                 borderRadius: BorderRadius.circular(
                                   kRadiusPill,
                                 ),
@@ -956,3 +936,5 @@ class _NearbyWalkCard extends StatelessWidget {
     );
   }
 }
+
+

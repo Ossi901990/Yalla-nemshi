@@ -64,9 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SliderThemeData sliderTheme() {
       return theme.sliderTheme.copyWith(
         trackHeight: 4,
-        inactiveTrackColor: (isDark ? Colors.white : Colors.black).withOpacity(
-          0.14,
-        ),
+        inactiveTrackColor: (isDark ? Colors.white : Colors.black).withAlpha((0.14 * 255).round()),
         activeTrackColor: const Color(0xFF9BD77A),
         thumbColor: const Color(0xFF9BD77A),
         overlayColor: Colors.transparent,
@@ -82,12 +80,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withOpacity(0.10),
+          color: (isDark ? Colors.white : Colors.black).withAlpha((0.10 * 255).round()),
           width: 1,
         ),
         color: isDark
-            ? Colors.white.withOpacity(0.03)
-            : Colors.black.withOpacity(0.03),
+          ? Colors.white.withAlpha((0.03 * 255).round())
+          : Colors.black.withAlpha((0.03 * 255).round()),
       );
     }
 
@@ -223,9 +221,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           elevation: isDark ? 0.0 : 0.6,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
-                            side: BorderSide(
+                              side: BorderSide(
                               color: (isDark ? Colors.white : Colors.black)
-                                  .withOpacity(0.06),
+                                  .withAlpha((0.06 * 255).round()),
                             ),
                           ),
                           child: ListView(
@@ -450,8 +448,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color:
-                                        (isDark ? Colors.white : Colors.black)
-                                            .withOpacity(0.28),
+                                      (isDark ? Colors.white : Colors.black)
+                                        .withAlpha((0.28 * 255).round()),
                                     width: 1,
                                   ),
                                   color: Colors.transparent,
@@ -586,3 +584,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+
+

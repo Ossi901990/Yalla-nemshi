@@ -36,14 +36,14 @@ class EventDetailsScreen extends StatelessWidget {
     Color? iconColorOverride,
   }) {
     final bg = danger
-        ? theme.colorScheme.error.withOpacity(isDark ? 0.14 : 0.10)
-        : (isDark ? Colors.white.withOpacity(0.06) : theme.colorScheme.surface);
+        ? theme.colorScheme.error.withAlpha((isDark ? 0.14 : 0.10 * 255).round())
+        : (isDark ? Colors.white.withAlpha((0.06 * 255).round()) : theme.colorScheme.surface);
 
     final border = danger
-        ? theme.colorScheme.error.withOpacity(isDark ? 0.45 : 0.35)
+        ? theme.colorScheme.error.withAlpha((isDark ? 0.45 : 0.35 * 255).round())
         : (isDark
-              ? Colors.white.withOpacity(0.18)
-              : Colors.black.withOpacity(0.12));
+              ? Colors.white.withAlpha((0.18 * 255).round())
+              : Colors.black.withAlpha((0.12 * 255).round()));
 
     final fg = danger
         ? theme.colorScheme.error
@@ -100,6 +100,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
 
     if (ok == true) {
+      if (!context.mounted) return;
       onCancelHosted(event);
       Navigator.pop(context); // close details
       ScaffoldMessenger.of(
@@ -133,11 +134,12 @@ class EventDetailsScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ...reasons.map(
-                      (reason) => RadioListTile<String>(
+                      (reason) => // ignore: deprecated_member_use
+                          RadioListTile<String>(
                         title: Text(reason),
                         value: reason,
-                        groupValue: selectedReason,
-                        onChanged: (val) {
+                        groupValue: selectedReason, // ignore: deprecated_member_use
+                        onChanged: (val) { // ignore: deprecated_member_use
                           if (val == null) return;
                           setState(() {
                             selectedReason = val;
@@ -174,6 +176,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
 
     if (ok == true) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -324,7 +327,7 @@ class EventDetailsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       side: BorderSide(
                         color: (isDark ? Colors.white : Colors.black)
-                            .withOpacity(0.06),
+                            .withAlpha((0.06 * 255).round()),
                       ),
                     ),
                     child: Padding(
@@ -355,10 +358,10 @@ class EventDetailsScreen extends StatelessWidget {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(0.15),
+                                    color: Colors.amber.withAlpha((0.15 * 255).round()),
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
-                                      color: Colors.amber.withOpacity(0.35),
+                                      color: Colors.amber.withAlpha((0.35 * 255).round()),
                                       width: 1,
                                     ),
                                   ),
@@ -667,3 +670,4 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 }
+
