@@ -1,14 +1,14 @@
 // lib/models/walk_event.dart
 
 class WalkEvent {
-   final String id;
-// ✅ Firestore document ID in /walks (THIS is what we use for chat ids)
-final String firestoreId;
+  final String id;
+  // ✅ Firestore document ID in /walks (THIS is what we use for chat ids)
+  final String firestoreId;
 
-// ✅ Needed so we can notify the host when someone joins
-final String hostUid;
+  // ✅ Needed so we can notify the host when someone joins
+  final String hostUid;
 
-final String title;
+  final String title;
 
   final DateTime dateTime;
   final double distanceKm;
@@ -46,10 +46,10 @@ final String title;
   final String? userNotes;
 
   WalkEvent({
-  required this.id,
-  required this.firestoreId,
-  required this.hostUid,
-  required this.title,
+    required this.id,
+    required this.firestoreId,
+    required this.hostUid,
+    required this.title,
     required this.dateTime,
     required this.distanceKm,
     required this.gender,
@@ -74,7 +74,7 @@ final String title;
   WalkEvent copyWith({
     String? id,
     String? firestoreId,
-     String? hostUid,
+    String? hostUid,
     String? title,
     DateTime? dateTime,
     double? distanceKm,
@@ -180,58 +180,65 @@ final String title;
   }
 
   factory WalkEvent.fromMap(Map<String, dynamic> map) {
-  final parsedTags = (map['tags'] is List)
-      ? (map['tags'] as List).whereType<String>().toList()
-      : <String>[];
+    final parsedTags = (map['tags'] is List)
+        ? (map['tags'] as List).whereType<String>().toList()
+        : <String>[];
 
-  final String id = _toStringSafe(map['id']);
-  final String firestoreId = _toStringSafe(map['firestoreId'], fallback: id);
+    final String id = _toStringSafe(map['id']);
+    final String firestoreId = _toStringSafe(map['firestoreId'], fallback: id);
 
-  // dateTime can be ISO string. If invalid/missing -> now.
-  final String dtStr = _toStringSafe(map['dateTime']);
-  final DateTime dateTime = DateTime.tryParse(dtStr) ?? DateTime.now();
+    // dateTime can be ISO string. If invalid/missing -> now.
+    final String dtStr = _toStringSafe(map['dateTime']);
+    final DateTime dateTime = DateTime.tryParse(dtStr) ?? DateTime.now();
 
-  // ✅ distanceKm might be null/int/double/string -> safe
-  final double distanceKm = _toDouble(map['distanceKm'], fallback: 0.0);
+    // ✅ distanceKm might be null/int/double/string -> safe
+    final double distanceKm = _toDouble(map['distanceKm'], fallback: 0.0);
 
-  // ✅ meetingLat/Lng might be null -> keep null
-  final double? meetingLat =
-      map['meetingLat'] == null ? null : _toDouble(map['meetingLat']);
-  final double? meetingLng =
-      map['meetingLng'] == null ? null : _toDouble(map['meetingLng']);
-    final double? startLat =
-      map['startLat'] == null ? null : _toDouble(map['startLat']);
-    final double? startLng =
-      map['startLng'] == null ? null : _toDouble(map['startLng']);
-    final double? endLat = map['endLat'] == null ? null : _toDouble(map['endLat']);
-    final double? endLng = map['endLng'] == null ? null : _toDouble(map['endLng']);
+    // ✅ meetingLat/Lng might be null -> keep null
+    final double? meetingLat = map['meetingLat'] == null
+        ? null
+        : _toDouble(map['meetingLat']);
+    final double? meetingLng = map['meetingLng'] == null
+        ? null
+        : _toDouble(map['meetingLng']);
+    final double? startLat = map['startLat'] == null
+        ? null
+        : _toDouble(map['startLat']);
+    final double? startLng = map['startLng'] == null
+        ? null
+        : _toDouble(map['startLng']);
+    final double? endLat = map['endLat'] == null
+        ? null
+        : _toDouble(map['endLat']);
+    final double? endLng = map['endLng'] == null
+        ? null
+        : _toDouble(map['endLng']);
 
-  return WalkEvent(
-    id: id,
-    hostUid: (map['hostUid'] ?? '').toString(),
+    return WalkEvent(
+      id: id,
+      hostUid: (map['hostUid'] ?? '').toString(),
 
-    firestoreId: firestoreId,
-    title: _toStringSafe(map['title']),
-    dateTime: dateTime,
-    distanceKm: distanceKm,
-    gender: _toStringSafe(map['gender'], fallback: 'Mixed'),
-    isOwner: _toBool(map['isOwner']),
-    joined: _toBool(map['joined']),
-    interested: _toBool(map['interested']),
-    meetingPlaceName: map['meetingPlaceName']?.toString(),
-    meetingLat: meetingLat,
-    meetingLng: meetingLng,
-    startLat: startLat,
-    startLng: startLng,
-    endLat: endLat,
-    endLng: endLng,
-    description: map['description']?.toString(),
-    cancelled: _toBool(map['cancelled']),
-    tags: parsedTags,
-    comfortLevel: map['comfortLevel']?.toString(),
-    recurringRule: map['recurringRule']?.toString(),
-    userNotes: map['userNotes']?.toString(),
-  );
-}
-
+      firestoreId: firestoreId,
+      title: _toStringSafe(map['title']),
+      dateTime: dateTime,
+      distanceKm: distanceKm,
+      gender: _toStringSafe(map['gender'], fallback: 'Mixed'),
+      isOwner: _toBool(map['isOwner']),
+      joined: _toBool(map['joined']),
+      interested: _toBool(map['interested']),
+      meetingPlaceName: map['meetingPlaceName']?.toString(),
+      meetingLat: meetingLat,
+      meetingLng: meetingLng,
+      startLat: startLat,
+      startLng: startLng,
+      endLat: endLat,
+      endLng: endLng,
+      description: map['description']?.toString(),
+      cancelled: _toBool(map['cancelled']),
+      tags: parsedTags,
+      comfortLevel: map['comfortLevel']?.toString(),
+      recurringRule: map['recurringRule']?.toString(),
+      userNotes: map['userNotes']?.toString(),
+    );
+  }
 }

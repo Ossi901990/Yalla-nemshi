@@ -27,7 +27,11 @@ class MapViewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasRoute = startLat != null && startLng != null && endLat != null && endLng != null;
+    final bool hasRoute =
+        startLat != null &&
+        startLng != null &&
+        endLat != null &&
+        endLng != null;
 
     // Determine center/zoom
     final LatLng center = hasRoute
@@ -37,20 +41,27 @@ class MapViewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(hasRoute ? 'Route' : 'Meeting point')),
       body: GoogleMap(
-        initialCameraPosition: CameraPosition(target: center, zoom: hasRoute ? 13 : 15),
+        initialCameraPosition: CameraPosition(
+          target: center,
+          zoom: hasRoute ? 13 : 15,
+        ),
         markers: {
           if (hasRoute) ...[
             Marker(
               markerId: const MarkerId('start_point'),
               position: LatLng(startLat!, startLng!),
               infoWindow: const InfoWindow(title: 'Start'),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueGreen,
+              ),
             ),
             Marker(
               markerId: const MarkerId('end_point'),
               position: LatLng(endLat!, endLng!),
               infoWindow: const InfoWindow(title: 'End'),
-              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueAzure,
+              ),
             ),
           ] else ...[
             Marker(
@@ -58,7 +69,7 @@ class MapViewScreen extends StatelessWidget {
               position: LatLng(lat, lng),
               infoWindow: InfoWindow(title: placeName ?? 'Meeting point'),
             ),
-          ]
+          ],
         },
         myLocationEnabled: false,
         myLocationButtonEnabled: false,

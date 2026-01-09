@@ -4,9 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-
-
-
 /// ===== COLOR PALETTE =====
 const kBgTop = Color(0xFF04120B);
 const kBgMid = Color(0xFF062219);
@@ -21,7 +18,7 @@ const kHintText = Colors.white;
 const kIconColor = Colors.white;
 
 const kButtonGradientStart = Color(0xFFFD5E77); // pink
-const kButtonGradientEnd = Color(0xFFFD7F5E);   // orange
+const kButtonGradientEnd = Color(0xFFFD7F5E); // orange
 
 const kSignUpAccent = Color(0xFFF86C81);
 
@@ -45,42 +42,43 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-Future<void> _signInWithGoogle() async {
-  try {
-    if (kIsWeb) {
-      // Web: use Firebase popup (no google_sign_in plugin)
-      final googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
+  Future<void> _signInWithGoogle() async {
+    try {
+      if (kIsWeb) {
+        // Web: use Firebase popup (no google_sign_in plugin)
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
 
-      await _auth.signInWithPopup(googleProvider);
+        await _auth.signInWithPopup(googleProvider);
 
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/home');
-      return;
-    }
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/home');
+        return;
+      }
 
-    // Non-web: Google sign-in disabled for now (keep mobile changes undone)
-    if (!kIsWeb) {
+      // Non-web: Google sign-in disabled for now (keep mobile changes undone)
+      if (!kIsWeb) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google sign-in is available on web only for now.'),
+          ),
+        );
+        return;
+      }
+    } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Google sign-in is available on web only for now.')),
+        SnackBar(content: Text('Google sign-in failed: ${e.message ?? ''}')),
       );
-      return;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google sign-in failed. Please try again.'),
+        ),
+      );
     }
-  } on FirebaseAuthException catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Google sign-in failed: ${e.message ?? ''}')),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Google sign-in failed. Please try again.'),
-      ),
-    );
   }
-}
-
 
   @override
   void dispose() {
@@ -89,64 +87,55 @@ Future<void> _signInWithGoogle() async {
     super.dispose();
   }
 
-Future<void> _login() async {
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-  if (email.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please enter both email and password.'),
-      ),
-    );
-    return;
-  }
-
-  try {
-await _auth.signInWithEmailAndPassword(
-  email: email,
-  password: password,
-);
-
-if (!mounted) return;
-
-// ✅ Success → go to home
-Navigator.of(context).pushReplacementNamed('/home');
-
-
-  } on FirebaseAuthException catch (e) {
-    String message = 'Login failed. Please try again.';
-
-    if (e.code == 'user-not-found') {
-      message = 'No user found with that email.';
-    } else if (e.code == 'wrong-password') {
-      message = 'Incorrect password. Please try again.';
-    } else if (e.code == 'invalid-email') {
-      message = 'Please enter a valid email address.';
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both email and password.')),
+      );
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('An unexpected error occurred. Please try again.'),
-      ),
-    );
-  }
-}
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
 
+      if (!mounted) return;
+
+      // ✅ Success → go to home
+      Navigator.of(context).pushReplacementNamed('/home');
+    } on FirebaseAuthException catch (e) {
+      String message = 'Login failed. Please try again.';
+
+      if (e.code == 'user-not-found') {
+        message = 'No user found with that email.';
+      } else if (e.code == 'wrong-password') {
+        message = 'Incorrect password. Please try again.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Please enter a valid email address.';
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred. Please try again.'),
+        ),
+      );
+    }
+  }
 
   void _goToSignup() {
     Navigator.of(context).pushNamed('/signup');
   }
 
   void _onSocialTap(String provider) {
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider sign-in coming soon ✨')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$provider sign-in coming soon ✨')));
   }
 
   @override
@@ -168,10 +157,9 @@ Navigator.of(context).pushReplacementNamed('/home');
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                   kBgTop.withOpacity(0.7),
-kBgMid.withOpacity(0.85),
-kBgBottom.withOpacity(0.9),
-
+                    kBgTop.withOpacity(0.7),
+                    kBgMid.withOpacity(0.85),
+                    kBgBottom.withOpacity(0.9),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -194,9 +182,7 @@ kBgBottom.withOpacity(0.9),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: kCardOverlay.withOpacity(0.35),
-                    border: Border.all(
-                      color: kCardBorder.withOpacity(0.2),
-                    ),
+                    border: Border.all(color: kCardBorder.withOpacity(0.2)),
                   ),
                   child: const Icon(
                     Icons.directions_walk,
@@ -273,13 +259,12 @@ kBgBottom.withOpacity(0.9),
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
-                                onPressed: () {
-                                  
-                                },
+                                onPressed: () {},
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
-                                  foregroundColor:
-                                      kSecondaryText.withOpacity(0.8),
+                                  foregroundColor: kSecondaryText.withOpacity(
+                                    0.8,
+                                  ),
                                   textStyle: const TextStyle(fontSize: 12),
                                 ),
                                 child: const Text('Forgot Password?'),
@@ -288,10 +273,7 @@ kBgBottom.withOpacity(0.9),
 
                             const SizedBox(height: 8),
 
-                            _GradientButton(
-                              text: 'Sign in',
-                              onPressed: _login,
-                            ),
+                            _GradientButton(text: 'Sign in', onPressed: _login),
 
                             const SizedBox(height: 16),
 
@@ -299,26 +281,24 @@ kBgBottom.withOpacity(0.9),
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color:
-                                        kSecondaryText.withOpacity(0.2),
+                                    color: kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0),
+                                    horizontal: 8.0,
+                                  ),
                                   child: Text(
                                     'or continue with',
                                     style: TextStyle(
-                                      color: kSecondaryText
-                                          .withOpacity(0.7),
+                                      color: kSecondaryText.withOpacity(0.7),
                                       fontSize: 12,
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color:
-                                      kSecondaryText.withOpacity(0.2),
+                                    color: kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
                               ],
@@ -326,13 +306,12 @@ kBgBottom.withOpacity(0.9),
                             const SizedBox(height: 12),
 
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceEvenly,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 _SocialIconButton(
                                   icon: Icons.g_mobiledata,
                                   tooltip: 'Sign in with Google',
-                                  onTap: _signInWithGoogle, 
+                                  onTap: _signInWithGoogle,
                                 ),
                                 _SocialIconButton(
                                   icon: Icons.mail_outline,
@@ -355,14 +334,12 @@ kBgBottom.withOpacity(0.9),
                             const SizedBox(height: 16),
 
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   "Don’t have an account? ",
                                   style: TextStyle(
-                                      color: kSecondaryText
-                                        .withOpacity(0.7),
+                                    color: kSecondaryText.withOpacity(0.7),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -419,13 +396,8 @@ kBgBottom.withOpacity(0.9),
           style: const TextStyle(color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: TextStyle(
-              color: kHintText.withOpacity(0.5),
-            ),
-            prefixIcon: Icon(
-              icon,
-              color: kIconColor.withOpacity(0.9),
-            ),
+            hintStyle: TextStyle(color: kHintText.withOpacity(0.5)),
+            prefixIcon: Icon(icon, color: kIconColor.withOpacity(0.9)),
             filled: true,
             fillColor: kFieldFill.withOpacity(0.06),
             enabledBorder: OutlineInputBorder(
@@ -461,10 +433,7 @@ class _GradientButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            kButtonGradientStart,
-            kButtonGradientEnd,
-          ],
+          colors: [kButtonGradientStart, kButtonGradientEnd],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -483,10 +452,7 @@ class _GradientButton extends StatelessWidget {
           ),
           child: Text(
             text,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
       ),
@@ -516,12 +482,10 @@ class _SocialIconButton extends StatelessWidget {
         child: Container(
           width: 44,
           height: 44,
-            decoration: BoxDecoration(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             color: kSocialGlassFill.withOpacity(0.08),
-            border: Border.all(
-              color: kSocialGlassBorder.withOpacity(0.2),
-            ),
+            border: Border.all(color: kSocialGlassBorder.withOpacity(0.2)),
             boxShadow: [
               BoxShadow(
                 color: kSocialShadow.withOpacity(0.4),
@@ -530,11 +494,7 @@ class _SocialIconButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            color: kPrimaryText,
-            size: 22,
-          ),
+          child: Icon(icon, color: kPrimaryText, size: 22),
         ),
       ),
     );

@@ -389,120 +389,120 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
               ),
             ),
 
-// ===== MAIN AREA (background) =====
-Expanded(
-  child: Container(
-    width: double.infinity,
-    decoration: const BoxDecoration(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(kRadiusCard),
-      ),
-    ),
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(kRadiusCard),
-        ),
-        gradient: isDark
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF071B26), // top (dark blue)
-                  Color(0xFF041016), // bottom (almost black)
-                ],
-              )
-            : null,
-        color: isDark ? null : const Color(0xFFF7F9F2),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          kSpace2,
-          kSpace2,
-          kSpace2,
-          kSpace2,
-        ),
-        child: Card(
-
-                  color: isDark ? kDarkSurface : kLightSurface,
-                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(kRadiusCard),
-                    side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black).withOpacity(
-                        kCardBorderAlpha,
+          // ===== MAIN AREA (background) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(kRadiusCard),
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(kRadiusCard),
+                  ),
+                  gradient: isDark
+                      ? const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF071B26), // top (dark blue)
+                            Color(0xFF041016), // bottom (almost black)
+                          ],
+                        )
+                      : null,
+                  color: isDark ? null : const Color(0xFFF7F9F2),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    kSpace2,
+                    kSpace2,
+                    kSpace2,
+                    kSpace2,
+                  ),
+                  child: Card(
+                    color: isDark ? kDarkSurface : kLightSurface,
+                    elevation: isDark
+                        ? kCardElevationDark
+                        : kCardElevationLight,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(kRadiusCard),
+                      side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withOpacity(kCardBorderAlpha),
                       ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      kSpace2,
-                      kSpace3,
-                      kSpace2,
-                      kSpace2,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Nearby walks',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF111827),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        kSpace2,
+                        kSpace3,
+                        kSpace2,
+                        kSpace2,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nearby walks',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Find walks happening around you and join with one tap.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isDark ? Colors.white70 : Colors.black54,
+                          const SizedBox(height: 4),
+                          Text(
+                            'Find walks happening around you and join with one tap.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildFiltersCard(context),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: upcoming.isEmpty
-                              ? Center(
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.all(24.0),
-                                    child: Text(
-                                      'No walks match your filters.\n'
-                                      'Try changing the date or distance filters.',
-                                      textAlign: TextAlign.center,
+                          const SizedBox(height: 12),
+                          _buildFiltersCard(context),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: upcoming.isEmpty
+                                ? Center(
+                                    child: SingleChildScrollView(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Text(
+                                        'No walks match your filters.\n'
+                                        'Try changing the date or distance filters.',
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      0,
+                                      6,
+                                      0,
+                                      8,
+                                    ),
+                                    itemCount: upcoming.length,
+                                    itemBuilder: (context, index) {
+                                      final e = upcoming[index];
+                                      return _NearbyWalkCard(
+                                        event: e,
+                                        onToggleJoin: widget.onToggleJoin,
+                                        onToggleInterested:
+                                            widget.onToggleInterested,
+                                        onTap: () => widget.onTapEvent(e),
+                                      );
+                                    },
                                   ),
-                                )
-                              : ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    0,
-                                    6,
-                                    0,
-                                    8,
-                                  ),
-                                  itemCount: upcoming.length,
-                                  itemBuilder: (context, index) {
-                                    final e = upcoming[index];
-                                    return _NearbyWalkCard(
-                                      event: e,
-                                      onToggleJoin: widget.onToggleJoin,
-                                      onToggleInterested:
-                                          widget.onToggleInterested,
-                                      onTap: () => widget.onTapEvent(e),
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-),
         ],
       ),
     );
@@ -780,8 +780,8 @@ class _NearbyWalkCard extends StatelessWidget {
     // ✅ Button tokens (match Home "round icon" feel)
     const btnSize = 38.0;
     final btnBg = isDark
-      ? Colors.white.withOpacity(0.08)
-      : const Color(0xFFEFF6EA);
+        ? Colors.white.withOpacity(0.08)
+        : const Color(0xFFEFF6EA);
 
     // star has special tint when selected
     final starIconColor = event.interested
@@ -890,8 +890,8 @@ class _NearbyWalkCard extends StatelessWidget {
                       event.meetingPlaceName != null
                           ? '${event.gender} • ${event.meetingPlaceName}'
                           : (event.startLat != null && event.startLng != null
-                              ? '${event.gender} • Start ${event.startLat!.toStringAsFixed(2)},${event.startLng!.toStringAsFixed(2)}'
-                              : '${event.gender} • Meeting point TBA'),
+                                ? '${event.gender} • Start ${event.startLat!.toStringAsFixed(2)},${event.startLng!.toStringAsFixed(2)}'
+                                : '${event.gender} • Meeting point TBA'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(

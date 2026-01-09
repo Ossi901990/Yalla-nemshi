@@ -121,176 +121,185 @@ class SafetyTipsScreen extends StatelessWidget {
               ),
             ),
 
-// ===== MAIN AREA (Home/Profile style: rounded top + one main card) =====
-Expanded(
-  child: Container(
-    width: double.infinity,
-    decoration: const BoxDecoration(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(kRadiusCard),
-      ),
-    ),
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(kRadiusCard),
-        ),
-        gradient: isDark
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF071B26), // top
-                  Color(0xFF041016), // bottom
-                ],
-              )
-            : null,
-        color: isDark ? null : const Color(0xFFF7F9F2),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          kSpace2,
-          kSpace2,
-          kSpace2,
-          kSpace2,
-        ),
-        child: Card(
-
-                  color: isDark ? const Color(0xFF0C2430) : kLightSurface,
-                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(kRadiusCard),
-                    side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black).withOpacity(
-                        kCardBorderAlpha,
+          // ===== MAIN AREA (Home/Profile style: rounded top + one main card) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(kRadiusCard),
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(kRadiusCard),
+                  ),
+                  gradient: isDark
+                      ? const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF071B26), // top
+                            Color(0xFF041016), // bottom
+                          ],
+                        )
+                      : null,
+                  color: isDark ? null : const Color(0xFFF7F9F2),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    kSpace2,
+                    kSpace2,
+                    kSpace2,
+                    kSpace2,
+                  ),
+                  child: Card(
+                    color: isDark ? const Color(0xFF0C2430) : kLightSurface,
+                    elevation: isDark
+                        ? kCardElevationDark
+                        : kCardElevationLight,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(kRadiusCard),
+                      side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withOpacity(kCardBorderAlpha),
                       ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      kSpace2,
-                      kSpace3,
-                      kSpace2,
-                      kSpace3,
-                    ),
-                    child: ListView(
-                      children: [
-                        Text(
-                          'Walking safely together',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF111827),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        kSpace2,
+                        kSpace3,
+                        kSpace2,
+                        kSpace3,
+                      ),
+                      child: ListView(
+                        children: [
+                          Text(
+                            'Walking safely together',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Yalla Nemshi is about feeling safe, welcome, and comfortable while walking with others. '
-                          'Please read these tips before joining or hosting a walk.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isDark ? Colors.white70 : Colors.black87,
+                          const SizedBox(height: 8),
+                          Text(
+                            'Yalla Nemshi is about feeling safe, welcome, and comfortable while walking with others. '
+                            'Please read these tips before joining or hosting a walk.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        _SectionTitle(title: 'Before the walk', isDark: isDark),
-                        const SizedBox(height: 8),
-                        const _Bullet(
-                          text:
-                              'Choose meeting points in public, well-lit areas (parks, main entrances, etc.).',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Share your plans with a friend or family member if you are meeting people for the first time.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Wear comfortable shoes and bring water, especially for longer walks.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Check the weather and adapt your clothing (hat, jacket, etc.).',
-                        ),
-                        const SizedBox(height: 24),
-
-                        _SectionTitle(title: 'During the walk', isDark: isDark),
-                        const SizedBox(height: 8),
-                        const _Bullet(
-                          text:
-                              'Respect everyone’s pace and personal space. Ask before changing the route.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Stay on sidewalks or safe walking paths whenever possible.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Avoid sharing sensitive personal information with people you just met.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'If you ever feel unsafe or uncomfortable, you can leave the walk at any time.',
-                        ),
-                        const SizedBox(height: 24),
-
-                        _SectionTitle(title: 'Hosting a walk', isDark: isDark),
-                        const SizedBox(height: 8),
-                        const _Bullet(
-                          text:
-                              'Be clear in your event description: pace, distance, and who the walk is suitable for.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Arrive a bit early to welcome participants at the meeting point.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Communicate any changes (time, location) as early as possible.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'If someone seems uncomfortable or left behind, check in kindly.',
-                        ),
-                        const SizedBox(height: 24),
-
-                        _SectionTitle(
-                          title: 'Community guidelines',
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 8),
-                        const _Bullet(
-                          text:
-                              'Be kind and respectful in your language and behaviour at all times.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Discrimination, harassment, or hateful behaviour is not welcome.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'Only create real events you plan to attend. Don’t share fake or misleading information.',
-                        ),
-                        const _Bullet(
-                          text:
-                              'If you notice something unsafe or inappropriate, use the Report button on the event.',
-                        ),
-                        const SizedBox(height: 24),
-
-                        Text(
-                          'Thank you for helping make Yalla Nemshi a safe and friendly space for everyone 💚',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isDark ? Colors.white70 : Colors.black87,
+                          _SectionTitle(
+                            title: 'Before the walk',
+                            isDark: isDark,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          const _Bullet(
+                            text:
+                                'Choose meeting points in public, well-lit areas (parks, main entrances, etc.).',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Share your plans with a friend or family member if you are meeting people for the first time.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Wear comfortable shoes and bring water, especially for longer walks.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Check the weather and adapt your clothing (hat, jacket, etc.).',
+                          ),
+                          const SizedBox(height: 24),
+
+                          _SectionTitle(
+                            title: 'During the walk',
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 8),
+                          const _Bullet(
+                            text:
+                                'Respect everyone’s pace and personal space. Ask before changing the route.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Stay on sidewalks or safe walking paths whenever possible.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Avoid sharing sensitive personal information with people you just met.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'If you ever feel unsafe or uncomfortable, you can leave the walk at any time.',
+                          ),
+                          const SizedBox(height: 24),
+
+                          _SectionTitle(
+                            title: 'Hosting a walk',
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 8),
+                          const _Bullet(
+                            text:
+                                'Be clear in your event description: pace, distance, and who the walk is suitable for.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Arrive a bit early to welcome participants at the meeting point.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Communicate any changes (time, location) as early as possible.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'If someone seems uncomfortable or left behind, check in kindly.',
+                          ),
+                          const SizedBox(height: 24),
+
+                          _SectionTitle(
+                            title: 'Community guidelines',
+                            isDark: isDark,
+                          ),
+                          const SizedBox(height: 8),
+                          const _Bullet(
+                            text:
+                                'Be kind and respectful in your language and behaviour at all times.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Discrimination, harassment, or hateful behaviour is not welcome.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'Only create real events you plan to attend. Don’t share fake or misleading information.',
+                          ),
+                          const _Bullet(
+                            text:
+                                'If you notice something unsafe or inappropriate, use the Report button on the event.',
+                          ),
+                          const SizedBox(height: 24),
+
+                          Text(
+                            'Thank you for helping make Yalla Nemshi a safe and friendly space for everyone 💚',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-),
         ],
       ),
     );

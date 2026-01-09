@@ -19,8 +19,7 @@ class AppPreferences {
   // ===== Distance =====
   static Future<double> getDefaultDistanceKm() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_keyDefaultDistanceKm) ??
-        defaultDistanceKmFallback;
+    return prefs.getDouble(_keyDefaultDistanceKm) ?? defaultDistanceKmFallback;
   }
 
   static Future<void> setDefaultDistanceKm(double value) async {
@@ -31,8 +30,7 @@ class AppPreferences {
   // ===== Gender preference =====
   static Future<String> getDefaultGender() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyDefaultGender) ??
-        defaultGenderFallback;
+    return prefs.getString(_keyDefaultGender) ?? defaultGenderFallback;
   }
 
   static Future<void> setDefaultGender(String gender) async {
@@ -43,8 +41,7 @@ class AppPreferences {
   // ===== Notifications: walk reminders =====
   static Future<bool> getWalkRemindersEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyWalkReminders) ??
-        walkRemindersFallback;
+    return prefs.getBool(_keyWalkReminders) ?? walkRemindersFallback;
   }
 
   static Future<void> setWalkRemindersEnabled(bool enabled) async {
@@ -55,8 +52,7 @@ class AppPreferences {
   // ===== Notifications: nearby alerts =====
   static Future<bool> getNearbyAlertsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyNearbyAlerts) ??
-        nearbyAlertsFallback;
+    return prefs.getBool(_keyNearbyAlerts) ?? nearbyAlertsFallback;
   }
 
   static Future<void> setNearbyAlertsEnabled(bool enabled) async {
@@ -67,8 +63,7 @@ class AppPreferences {
   // ===== Weekly goal (km) =====
   static Future<double> getWeeklyGoalKm() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_keyWeeklyGoalKm) ??
-        weeklyGoalKmFallback;
+    return prefs.getDouble(_keyWeeklyGoalKm) ?? weeklyGoalKmFallback;
   }
 
   static Future<void> setWeeklyGoalKm(double km) async {

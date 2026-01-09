@@ -372,7 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Container(
                             width: 32,
                             height: 32,
-                              decoration: BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.white.withOpacity(0.08),
                             ),
@@ -523,495 +523,518 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-// ===== MAIN AREA =====
-Expanded(
-  child: Container(
-    width: double.infinity,
-    decoration: const BoxDecoration(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        gradient: isDark
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF071B26), // top (dark blue)
-                  Color(0xFF041016), // bottom (almost black)
-                ],
-              )
-            : null,
-        color: isDark ? null : const Color(0xFFF7F9F2),
-      ),
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          kSpace2,
-          kSpace2,
-          kSpace2,
-          kSpace3 + MediaQuery.of(context).padding.bottom,
-        ),
-        child: Card(
-
-                  color: isDark ? const Color(0xFF0C2430) : kLightSurface,
-                  elevation: isDark ? kCardElevationDark : kCardElevationLight,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(kRadiusCard),
-                    side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black).withOpacity(
-                        kCardBorderAlpha,
+          // ===== MAIN AREA =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  gradient: isDark
+                      ? const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF071B26), // top (dark blue)
+                            Color(0xFF041016), // bottom (almost black)
+                          ],
+                        )
+                      : null,
+                  color: isDark ? null : const Color(0xFFF7F9F2),
+                ),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    kSpace2,
+                    kSpace2,
+                    kSpace2,
+                    kSpace3 + MediaQuery.of(context).padding.bottom,
+                  ),
+                  child: Card(
+                    color: isDark ? const Color(0xFF0C2430) : kLightSurface,
+                    elevation: isDark
+                        ? kCardElevationDark
+                        : kCardElevationLight,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(kRadiusCard),
+                      side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withOpacity(kCardBorderAlpha),
                       ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      kSpace2,
-                      kSpace3,
-                      kSpace2,
-                      kSpace3,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'My profile',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : _deepGreen,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        kSpace2,
+                        kSpace3,
+                        kSpace2,
+                        kSpace3,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'My profile',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : _deepGreen,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Track your progress and edit your walking details.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark ? Colors.white70 : Colors.black54,
+                          const SizedBox(height: 4),
+                          Text(
+                            'Track your progress and edit your walking details.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        // Avatar, name, level, bio
-                        Center(
-                          child: Column(
-                            children: [
-                              Stack(
-                                alignment: Alignment.bottomRight,
-                                children: [
-                                  GestureDetector(
-                                    onTap: _onAvatarTap,
-                                    child: _buildAvatar(profile),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                child: Stack(
-                                  alignment: Alignment.center,
+                          // Avatar, name, level, bio
+                          Center(
+                            child: Column(
+                              children: [
+                                Stack(
+                                  alignment: Alignment.bottomRight,
                                   children: [
-                                    // ✅ Name stays perfectly centered
-                                    Center(
-                                      child: Text(
-                                        profile?.name.isNotEmpty == true
-                                            ? profile!.name
-                                            : 'Your name',
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                    ),
-
-                                    // ✅ Pen icon on the right, does NOT shift the text
-                                    Positioned(
-                                      right: 0,
-                                      child: IconButton(
-                                        onPressed: _openEditProfile,
-                                        icon: const Icon(Icons.edit, size: 18),
-                                        tooltip: 'Edit profile',
-                                      ),
+                                    GestureDetector(
+                                      onTap: _onAvatarTap,
+                                      child: _buildAvatar(profile),
                                     ),
                                   ],
                                 ),
-                              ),
-
-                              const SizedBox(height: 4),
-                              Text(
-                                _walkerLevel,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF4F925C),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                profile?.bio.isNotEmpty == true
-                                    ? profile!.bio
-                                    : 'Add a short bio about you',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.textTheme.bodySmall?.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        if (profile != null)
-                          ChipTheme(
-                            data: theme.chipTheme.copyWith(
-                              backgroundColor: isDark
-                                  ? const Color(
-                                      0xFF123647,
-                                    ) // 👈 bluish chip surface
-                                  : theme.colorScheme.surface,
-                              side: BorderSide(
-                                color: (isDark ? Colors.white : Colors.black)
-                                    .withOpacity(0.12),
-                              ),
-                              labelStyle: TextStyle(
-                                color: isDark ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Flexible(
-                                  child: Wrap(
-                                    alignment: WrapAlignment.center,
-                                    spacing: 8,
-                                    runSpacing: 8,
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Stack(
+                                    alignment: Alignment.center,
                                     children: [
-                                      Chip(label: Text('Age: ${profile.age}')),
-                                      Chip(
-                                        label: Text(
-                                          'Gender: ${profile.gender}',
+                                      // ✅ Name stays perfectly centered
+                                      Center(
+                                        child: Text(
+                                          profile?.name.isNotEmpty == true
+                                              ? profile!.name
+                                              : 'Your name',
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ),
+
+                                      // ✅ Pen icon on the right, does NOT shift the text
+                                      Positioned(
+                                        right: 0,
+                                        child: IconButton(
+                                          onPressed: _openEditProfile,
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            size: 18,
+                                          ),
+                                          tooltip: 'Edit profile',
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
 
-                        const SizedBox(height: 24),
-
-                        // This week
-                        Text(
-                          'This week',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Card(
-                          color: isDark
-                              ? const Color(0xFF0C2430)
-                              : theme.cardColor,
-                          elevation: isDark ? 0.0 : 0.5,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            side: BorderSide(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withOpacity(0.08),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                                        '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : null,
-                                            ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isDark
-                                            ? Colors.white.withOpacity(0.08)
-                                            : const Color(0xFFE5F3D9),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        '${(weeklyProgress * 100).round()}%',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : null,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                LayoutBuilder(
-                                  builder: (context, c) {
-                                    final trackH = 10.0;
-                                    final fillW = (c.maxWidth * weeklyProgress)
-                                        .clamp(0.0, c.maxWidth);
-
-                                    return Stack(
-                                      children: [
-                                        Container(
-                                          height: trackH,
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? Colors.white.withOpacity(0.10)
-                                                : Colors.black.withOpacity(
-                                                    0.06,
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              999,
-                                            ),
-                                          ),
-                                        ),
-                                        Container(
-                                          height: trackH,
-                                          width: fillW,
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? const Color(0xFF9BD77A)
-                                                : const Color(0xFF4F925C),
-                                            borderRadius: BorderRadius.circular(
-                                              999,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 4),
                                 Text(
-                                  _weeklyMotivationText(
-                                    progress: weeklyProgress,
-                                    weeklyKm: widget.weeklyKm,
-                                    weeklyGoalKm: _weeklyGoalKmLocal,
-                                    streakDays: widget.streakDays,
-                                  ),
+                                  _walkerLevel,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.black54,
+                                    color: const Color(0xFF4F925C),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  profile?.bio.isNotEmpty == true
+                                      ? profile!.bio
+                                      : 'Add a short bio about you',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.textTheme.bodySmall?.color,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        ),
 
-                        const SizedBox(height: 20),
+                          const SizedBox(height: 16),
 
-                        // Stats
-                        Text(
-                          'Your stats',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _statCard(
-                              label: 'Walks joined',
-                              value: widget.walksJoined.toString(),
-                              icon: Icons.directions_walk,
-                            ),
-                            _statCard(
-                              label: 'Hosted',
-                              value: widget.eventsHosted.toString(),
-                              icon: Icons.flag,
-                            ),
-                            _statCard(
-                              label: 'Total km',
-                              value: widget.totalKm.toStringAsFixed(1),
-                              icon: Icons.map,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Center(
-                          child: Text(
-                            'Marked as interested: ${widget.interestedCount}',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Badges
-                        Text(
-                          'Badges',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Card(
-                          color: isDark
-                              ? const Color(0xFF0C2430)
-                              : theme.cardColor,
-                          elevation: isDark ? 0.0 : 0.5,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withOpacity(0.08),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (achievedBadges.isEmpty)
-                                  Text(
-                                    'Badges will appear here as you walk more.',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: isDark ? Colors.white70 : null,
-                                    ),
-                                  )
-                                else ...[
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 10,
-                                    children: achievedBadges.take(6).map((b) {
-                                      return GestureDetector(
-                                        onTap: () => _showBadgeDetails(b),
-                                        child: CircleAvatar(
-                                          radius: 18,
-                                          backgroundColor:
-                                              theme.colorScheme.primary,
-                                          child: Icon(
-                                            b.icon,
-                                            size: 18,
-                                            color: Colors.white,
+                          if (profile != null)
+                            ChipTheme(
+                              data: theme.chipTheme.copyWith(
+                                backgroundColor: isDark
+                                    ? const Color(
+                                        0xFF123647,
+                                      ) // 👈 bluish chip surface
+                                    : theme.colorScheme.surface,
+                                side: BorderSide(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withOpacity(0.12),
+                                ),
+                                labelStyle: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: Wrap(
+                                      alignment: WrapAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        Chip(
+                                          label: Text('Age: ${profile.age}'),
+                                        ),
+                                        Chip(
+                                          label: Text(
+                                            'Gender: ${profile.gender}',
                                           ),
                                         ),
-                                      );
-                                    }).toList(),
-                                  ),
-
-                                  // ✅ Compact "View all" (doesn't inflate card height)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: () =>
-                                          _openBadgesPage(allBadges),
-                                      style: TextButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: const Text('View all'),
+                                      ],
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
+                            ),
+
+                          const SizedBox(height: 24),
+
+                          // This week
+                          Text(
+                            'This week',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Actions
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _openSafetyTips,
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                          const SizedBox(height: 8),
+                          Card(
+                            color: isDark
+                                ? const Color(0xFF0C2430)
+                                : theme.cardColor,
+                            elevation: isDark ? 0.0 : 0.5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
                               side: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
-                                    .withOpacity(0.18),
+                                    .withOpacity(0.08),
                               ),
-                              foregroundColor: isDark
-                                  ? Colors.white
-                                  : Colors.black,
                             ),
-                            icon: const Icon(Icons.shield_outlined),
-                            label: const Text(
-                              'Walking safety & community tips',
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                14,
+                                12,
+                                14,
+                                12,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
+                                          '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : null,
+                                              ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.08)
+                                              : const Color(0xFFE5F3D9),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${(weeklyProgress * 100).round()}%',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : null,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  LayoutBuilder(
+                                    builder: (context, c) {
+                                      final trackH = 10.0;
+                                      final fillW =
+                                          (c.maxWidth * weeklyProgress).clamp(
+                                            0.0,
+                                            c.maxWidth,
+                                          );
+
+                                      return Stack(
+                                        children: [
+                                          Container(
+                                            height: trackH,
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? Colors.white.withOpacity(
+                                                      0.10,
+                                                    )
+                                                  : Colors.black.withOpacity(
+                                                      0.06,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                          ),
+                                          Container(
+                                            height: trackH,
+                                            width: fillW,
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? const Color(0xFF9BD77A)
+                                                  : const Color(0xFF4F925C),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    _weeklyMotivationText(
+                                      progress: weeklyProgress,
+                                      weeklyKm: widget.weeklyKm,
+                                      weeklyGoalKm: _weeklyGoalKmLocal,
+                                      streakDays: widget.streakDays,
+                                    ),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
 
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _signOut,
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                          const SizedBox(height: 20),
+
+                          // Stats
+                          Text(
+                            'Your stats',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _statCard(
+                                label: 'Walks joined',
+                                value: widget.walksJoined.toString(),
+                                icon: Icons.directions_walk,
                               ),
+                              _statCard(
+                                label: 'Hosted',
+                                value: widget.eventsHosted.toString(),
+                                icon: Icons.flag,
+                              ),
+                              _statCard(
+                                label: 'Total km',
+                                value: widget.totalKm.toStringAsFixed(1),
+                                icon: Icons.map,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Text(
+                              'Marked as interested: ${widget.interestedCount}',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Badges
+                          Text(
+                            'Badges',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Card(
+                            color: isDark
+                                ? const Color(0xFF0C2430)
+                                : theme.cardColor,
+                            elevation: isDark ? 0.0 : 0.5,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                               side: BorderSide(
-                                color: Colors.red.withOpacity(0.5),
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withOpacity(0.08),
                               ),
-                              foregroundColor: Colors.red,
                             ),
-                            icon: const Icon(Icons.logout),
-                            label: const Text('Sign out'),
-                          ),
-                        ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                12,
+                                10,
+                                12,
+                                10,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (achievedBadges.isEmpty)
+                                    Text(
+                                      'Badges will appear here as you walk more.',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: isDark
+                                                ? Colors.white70
+                                                : null,
+                                          ),
+                                    )
+                                  else ...[
+                                    Wrap(
+                                      spacing: 10,
+                                      runSpacing: 10,
+                                      children: achievedBadges.take(6).map((b) {
+                                        return GestureDetector(
+                                          onTap: () => _showBadgeDetails(b),
+                                          child: CircleAvatar(
+                                            radius: 18,
+                                            backgroundColor:
+                                                theme.colorScheme.primary,
+                                            child: Icon(
+                                              b.icon,
+                                              size: 18,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
 
-                        const SizedBox(height: 12),
-                        Center(
-                          child: Text(
-                            'Tip: Tap on your photo to change it.',
-                            style: theme.textTheme.bodySmall,
+                                    // ✅ Compact "View all" (doesn't inflate card height)
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: () =>
+                                            _openBadgesPage(allBadges),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        child: const Text('View all'),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 24),
+
+                          // Actions
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _openSafetyTips,
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                side: BorderSide(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withOpacity(0.18),
+                                ),
+                                foregroundColor: isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                              icon: const Icon(Icons.shield_outlined),
+                              label: const Text(
+                                'Walking safety & community tips',
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _signOut,
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                side: BorderSide(
+                                  color: Colors.red.withOpacity(0.5),
+                                ),
+                                foregroundColor: Colors.red,
+                              ),
+                              icon: const Icon(Icons.logout),
+                              label: const Text('Sign out'),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Text(
+                              'Tip: Tap on your photo to change it.',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-),
         ],
       ),
     );

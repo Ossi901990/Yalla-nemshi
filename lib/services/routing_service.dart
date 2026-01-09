@@ -19,10 +19,9 @@ class RoutingService {
     required LatLng end,
     List<List<List<double>>>? avoidPolygons,
   }) async {
-   final url = Uri.parse(
-  "https://api.openrouteservice.org/v2/directions/foot-walking",
-);
-
+    final url = Uri.parse(
+      "https://api.openrouteservice.org/v2/directions/foot-walking",
+    );
 
     final Map<String, dynamic> body = {
       "coordinates": [
@@ -36,17 +35,14 @@ class RoutingService {
         "avoid_polygons": {
           "type": "MultiPolygon",
           "coordinates": avoidPolygons,
-        }
+        },
       };
     }
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          "Authorization": apiKey,
-          "Content-Type": "application/json",
-        },
+        headers: {"Authorization": apiKey, "Content-Type": "application/json"},
         body: jsonEncode(body),
       );
 
@@ -88,21 +84,15 @@ class RoutingService {
 
     final Map<String, dynamic> body = {
       "coordinates": [
-        [start.longitude, start.latitude]
+        [start.longitude, start.latitude],
       ],
-      "round_trip": {
-        "length": lengthMeters,
-        "points": points,
-      }
+      "round_trip": {"length": lengthMeters, "points": points},
     };
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          "Authorization": apiKey,
-          "Content-Type": "application/json",
-        },
+        headers: {"Authorization": apiKey, "Content-Type": "application/json"},
         body: jsonEncode(body),
       );
 

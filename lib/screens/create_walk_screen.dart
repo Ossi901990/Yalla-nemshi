@@ -209,7 +209,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               headerForegroundColor: Colors.white,
             ),
             dialogTheme: const DialogThemeData(backgroundColor: dialogBg),
-
           ),
           child: child!,
         );
@@ -287,7 +286,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
               ),
               confirmButtonStyle: TextButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -295,11 +297,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
               ),
             ),
             dialogTheme: const DialogThemeData(backgroundColor: dialogBg),
-
           ),
           child: child!,
         );
@@ -336,7 +340,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   String _generateShareCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final seed = DateTime.now().millisecondsSinceEpoch;
-    return List.generate(6, (i) => chars[(seed + i * 13) % chars.length]).join();
+    return List.generate(
+      6,
+      (i) => chars[(seed + i * 13) % chars.length],
+    ).join();
   }
 
   Future<void> _submit() async {
@@ -346,7 +353,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to create a walk.')),
+        const SnackBar(
+          content: Text('You must be logged in to create a walk.'),
+        ),
       );
       return;
     }
@@ -354,8 +363,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final walkType = _walkTypeIndex == 0
         ? 'point_to_point'
         : _walkTypeIndex == 1
-            ? 'loop'
-            : 'free';
+        ? 'loop'
+        : 'free';
 
     // Ensure share code exists if private point-to-point
     if (walkType == 'point_to_point' && _isPrivatePointToPoint) {
@@ -376,9 +385,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     // - free: null unless edited
     final double? effectiveDistanceKm = walkType == 'loop'
         ? _loopDistanceKm
-        : (walkType == 'free'
-            ? (_distanceEdited ? _distanceKm : null)
-            : null);
+        : (walkType == 'free' ? (_distanceEdited ? _distanceKm : null) : null);
 
     final payload = <String, dynamic>{
       'walkType': walkType,
@@ -419,8 +426,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     };
 
     try {
-      final docRef =
-          await FirebaseFirestore.instance.collection('walks').add(payload);
+      final docRef = await FirebaseFirestore.instance
+          .collection('walks')
+          .add(payload);
 
       final newEvent = WalkEvent(
         id: docRef.id,
@@ -445,9 +453,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       widget.onEventCreated(newEvent);
       widget.onCreatedNavigateHome();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create walk: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to create walk: $e')));
     }
   }
 
@@ -458,8 +466,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor:
-          isDark ? const Color(0xFF071B26) : const Color(0xFF4F925C),
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
       body: Column(
         children: [
           // ===== HOME-STYLE HEADER (no bar) =====
@@ -501,16 +510,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                   gradient: isDark
                       ? const LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF071B26),
-                            Color(0xFF041016),
-                          ],
+                          colors: [Color(0xFF071B26), Color(0xFF041016)],
                         )
                       : null,
                   color: isDark ? null : const Color(0xFFF7F9F2),
@@ -526,8 +533,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   ),
                   child: Card(
                     color: isDark ? const Color(0xFF0C2430) : kLightSurface,
-                    elevation:
-                        isDark ? kCardElevationDark : kCardElevationLight,
+                    elevation: isDark
+                        ? kCardElevationDark
+                        : kCardElevationLight,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
@@ -549,24 +557,21 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             color: isDark ? Colors.white54 : Colors.black54,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(kRadiusControl),
+                            borderRadius: BorderRadius.circular(kRadiusControl),
                             borderSide: BorderSide(
                               color: (isDark ? Colors.white : Colors.black)
                                   .withOpacity(0.12),
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(kRadiusControl),
+                            borderRadius: BorderRadius.circular(kRadiusControl),
                             borderSide: BorderSide(
                               color: (isDark ? Colors.white : Colors.black)
                                   .withOpacity(0.12),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(kRadiusControl),
+                            borderRadius: BorderRadius.circular(kRadiusControl),
                             borderSide: BorderSide(
                               color: isDark
                                   ? Colors.white.withOpacity(0.35)
@@ -577,8 +582,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         ),
                       ),
                       child: Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(kSpace2, kSpace3, kSpace2, kSpace3),
+                        padding: const EdgeInsets.fromLTRB(
+                          kSpace2,
+                          kSpace3,
+                          kSpace2,
+                          kSpace3,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -595,8 +604,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             Text(
                               'Set your walk details and invite others to join.',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color:
-                                    isDark ? Colors.white70 : Colors.black54,
+                                color: isDark ? Colors.white70 : Colors.black54,
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -606,8 +614,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                               initialIndex: 0,
                               child: Builder(
                                 builder: (context) {
-                                  final tabController =
-                                      DefaultTabController.of(context);
+                                  final tabController = DefaultTabController.of(
+                                    context,
+                                  );
 
                                   tabController.addListener(() {
                                     if (!tabController.indexIsChanging) return;
@@ -627,14 +636,18 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           decoration: BoxDecoration(
                                             color: isDark
                                                 ? Colors.white.withOpacity(0.06)
-                                                : Colors.black.withOpacity(0.04),
-                                            borderRadius:
-                                                BorderRadius.circular(16),
+                                                : Colors.black.withOpacity(
+                                                    0.04,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
                                             border: Border.all(
-                                              color: (isDark
-                                                      ? Colors.white
-                                                      : Colors.black)
-                                                  .withOpacity(0.08),
+                                              color:
+                                                  (isDark
+                                                          ? Colors.white
+                                                          : Colors.black)
+                                                      .withOpacity(0.08),
                                             ),
                                           ),
                                           child: TabBar(
@@ -645,8 +658,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               color: isDark
-                                                  ? Colors.white
-                                                      .withOpacity(0.10)
+                                                  ? Colors.white.withOpacity(
+                                                      0.10,
+                                                    )
                                                   : Colors.white,
                                             ),
                                             labelColor: isDark
@@ -672,9 +686,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           onSaved: (val) =>
                                               _title = (val ?? '').trim(),
                                           validator: (val) =>
-                                              (val == null || val.trim().isEmpty)
-                                                  ? 'Required'
-                                                  : null,
+                                              (val == null ||
+                                                  val.trim().isEmpty)
+                                              ? 'Required'
+                                              : null,
                                         ),
                                         const SizedBox(height: 12),
 
@@ -689,13 +704,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             color: isDark
                                                 ? Colors.white.withOpacity(0.06)
                                                 : Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(16),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
                                             border: Border.all(
-                                              color: (isDark
-                                                      ? Colors.white
-                                                      : Colors.black)
-                                                  .withOpacity(0.12),
+                                              color:
+                                                  (isDark
+                                                          ? Colors.white
+                                                          : Colors.black)
+                                                      .withOpacity(0.12),
                                             ),
                                           ),
                                           child: Row(
@@ -717,12 +734,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                   style: theme
-                                                      .textTheme.bodyMedium
+                                                      .textTheme
+                                                      .bodyMedium
                                                       ?.copyWith(
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : Colors.black87,
-                                                  ),
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : Colors.black87,
+                                                      ),
                                                 ),
                                               ),
                                               TextButton(
@@ -746,7 +764,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Route',
-                                              style: theme.textTheme.titleMedium,
+                                              style:
+                                                  theme.textTheme.titleMedium,
                                             ),
                                           ),
                                           const SizedBox(height: 12),
@@ -804,16 +823,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   : 'Visible in Nearby walks. Others can request to join.',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : Colors.black54,
-                                              ),
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(height: 16),
 
                                           // Map picker handled by the top 'Change' button
-
                                           Align(
                                             alignment: Alignment.centerLeft,
                                             child: Text(
@@ -824,10 +842,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               overflow: TextOverflow.ellipsis,
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.white54
-                                                    : Colors.black54,
-                                              ),
+                                                    color: isDark
+                                                        ? Colors.white54
+                                                        : Colors.black54,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(height: 16),
@@ -837,7 +855,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Loop walk',
-                                              style: theme.textTheme.titleMedium,
+                                              style:
+                                                  theme.textTheme.titleMedium,
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -851,15 +870,20 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             keyboardType: TextInputType.number,
                                             validator: (val) {
                                               final v = int.tryParse(
-                                                  (val ?? '').trim());
-                                              if (v == null) return 'Enter minutes';
-                                              if (v <= 0) return 'Must be greater than 0';
-                                              if (v > 600) return 'Try under 600 minutes';
+                                                (val ?? '').trim(),
+                                              );
+                                              if (v == null)
+                                                return 'Enter minutes';
+                                              if (v <= 0)
+                                                return 'Must be greater than 0';
+                                              if (v > 600)
+                                                return 'Try under 600 minutes';
                                               return null;
                                             },
                                             onSaved: (val) {
                                               final v = int.tryParse(
-                                                  (val ?? '').trim());
+                                                (val ?? '').trim(),
+                                              );
                                               if (v != null) _loopMinutes = v;
                                             },
                                           ),
@@ -872,19 +896,27 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               hintText: 'e.g. 3.0',
                                             ),
                                             keyboardType:
-                                                const TextInputType.numberWithOptions(decimal: true),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
                                             validator: (val) {
                                               final v = double.tryParse(
-                                                  (val ?? '').trim());
-                                              if (v == null) return 'Enter distance';
-                                              if (v <= 0) return 'Must be greater than 0';
-                                              if (v > 100) return 'Try under 100 km';
+                                                (val ?? '').trim(),
+                                              );
+                                              if (v == null)
+                                                return 'Enter distance';
+                                              if (v <= 0)
+                                                return 'Must be greater than 0';
+                                              if (v > 100)
+                                                return 'Try under 100 km';
                                               return null;
                                             },
                                             onSaved: (val) {
                                               final v = double.tryParse(
-                                                  (val ?? '').trim());
-                                              if (v != null) _loopDistanceKm = v;
+                                                (val ?? '').trim(),
+                                              );
+                                              if (v != null)
+                                                _loopDistanceKm = v;
                                             },
                                           ),
                                           const SizedBox(height: 6),
@@ -894,10 +926,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               'Duration and distance update each other automatically.',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : Colors.black54,
-                                              ),
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(height: 16),
@@ -907,7 +939,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Free walk',
-                                              style: theme.textTheme.titleMedium,
+                                              style:
+                                                  theme.textTheme.titleMedium,
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -915,9 +948,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'No destination. Walk freely and end whenever you want.',
-                                              style: theme.textTheme.bodySmall?.copyWith(
-                                                color: isDark ? Colors.white70 : Colors.black54,
-                                              ),
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(height: 16),
@@ -927,31 +963,44 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                         if (_walkTypeIndex == 2) ...[
                                           TextFormField(
                                             key: ValueKey(
-                                                'distance_${_walkTypeIndex}_$_distanceKm'),
+                                              'distance_${_walkTypeIndex}_$_distanceKm',
+                                            ),
                                             decoration: const InputDecoration(
                                               labelText: 'Distance (km)',
                                               helperText:
                                                   'Optional: only used if you change it',
                                             ),
                                             keyboardType:
-                                                const TextInputType.numberWithOptions(decimal: true),
-                                            initialValue: _distanceKm.toStringAsFixed(1),
+                                                const TextInputType.numberWithOptions(
+                                                  decimal: true,
+                                                ),
+                                            initialValue: _distanceKm
+                                                .toStringAsFixed(1),
                                             onChanged: (_) {
-                                              setState(() => _distanceEdited = true);
+                                              setState(
+                                                () => _distanceEdited = true,
+                                              );
                                             },
                                             validator: (val) {
                                               if (!_distanceEdited) return null;
-                                              final d = double.tryParse((val ?? '').trim());
-                                              if (d == null) return 'Please enter a number';
-                                              if (d <= 0) return 'Distance must be greater than 0';
-                                              if (d > 100) return 'That’s a long walk! Try under 100 km';
+                                              final d = double.tryParse(
+                                                (val ?? '').trim(),
+                                              );
+                                              if (d == null)
+                                                return 'Please enter a number';
+                                              if (d <= 0)
+                                                return 'Distance must be greater than 0';
+                                              if (d > 100)
+                                                return 'That’s a long walk! Try under 100 km';
                                               return null;
                                             },
                                             onSaved: (val) {
                                               if (!_distanceEdited) return;
-                                              final parsed =
-                                                  double.tryParse((val ?? '').trim());
-                                              if (parsed != null) _distanceKm = parsed;
+                                              final parsed = double.tryParse(
+                                                (val ?? '').trim(),
+                                              );
+                                              if (parsed != null)
+                                                _distanceKm = parsed;
                                             },
                                           ),
                                           const SizedBox(height: 12),
@@ -965,14 +1014,17 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           ),
                                           items: const [
                                             DropdownMenuItem(
-                                                value: 'Mixed',
-                                                child: Text('Mixed')),
+                                              value: 'Mixed',
+                                              child: Text('Mixed'),
+                                            ),
                                             DropdownMenuItem(
-                                                value: 'Women only',
-                                                child: Text('Women only')),
+                                              value: 'Women only',
+                                              child: Text('Women only'),
+                                            ),
                                             DropdownMenuItem(
-                                                value: 'Men only',
-                                                child: Text('Men only')),
+                                              value: 'Men only',
+                                              child: Text('Men only'),
+                                            ),
                                           ],
                                           onChanged: (val) {
                                             if (val != null) {
@@ -993,14 +1045,19 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             _formatDateTime(_dateTime),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodySmall?.copyWith(
-                                              color: isDark ? Colors.white70 : Colors.black54,
-                                            ),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : Colors.black54,
+                                                ),
                                           ),
                                           trailing: IconButton(
                                             icon: Icon(
                                               Icons.calendar_today,
-                                              color: isDark ? Colors.white70 : Colors.white,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : Colors.white,
                                             ),
                                             onPressed: _pickDateTime,
                                           ),
@@ -1013,7 +1070,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             labelText: 'Description (optional)',
                                           ),
                                           minLines: 3,
-                                          maxLines: MediaQuery.of(context).size.height < 700 ? 3 : 5,
+                                          maxLines:
+                                              MediaQuery.of(
+                                                    context,
+                                                  ).size.height <
+                                                  700
+                                              ? 3
+                                              : 5,
                                           onSaved: (val) =>
                                               _description = (val ?? '').trim(),
                                         ),
@@ -1025,19 +1088,23 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           child: FilledButton(
                                             onPressed: _submit,
                                             style: FilledButton.styleFrom(
-                                              minimumSize: const Size.fromHeight(52),
+                                              minimumSize:
+                                                  const Size.fromHeight(52),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(16),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
                                               ),
-                                              backgroundColor: const Color(0xFF14532D),
+                                              backgroundColor: const Color(
+                                                0xFF14532D,
+                                              ),
                                               foregroundColor: Colors.white,
                                             ),
                                             child: Text(
                                               _walkTypeIndex == 0
                                                   ? 'Create walk'
                                                   : _walkTypeIndex == 1
-                                                      ? 'Create loop walk'
-                                                      : 'Start free walk',
+                                                  ? 'Create loop walk'
+                                                  : 'Start free walk',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),

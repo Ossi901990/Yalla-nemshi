@@ -6,10 +6,7 @@ class PolylineDecoder {
   // ORS coordinate format: [lng, lat]
   static List<LatLng> decodeORS(List<dynamic> coords) {
     return coords
-        .map((c) => LatLng(
-              (c[1] as num).toDouble(),
-              (c[0] as num).toDouble(),
-            ))
+        .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
         .toList();
   }
 

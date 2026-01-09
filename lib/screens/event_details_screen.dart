@@ -42,8 +42,8 @@ class EventDetailsScreen extends StatelessWidget {
     final border = danger
         ? theme.colorScheme.error.withOpacity(isDark ? 0.45 : 0.35)
         : (isDark
-            ? Colors.white.withOpacity(0.18)
-            : Colors.black.withOpacity(0.12));
+              ? Colors.white.withOpacity(0.18)
+              : Colors.black.withOpacity(0.12));
 
     final fg = danger
         ? theme.colorScheme.error
@@ -102,8 +102,9 @@ class EventDetailsScreen extends StatelessWidget {
     if (ok == true) {
       onCancelHosted(event);
       Navigator.pop(context); // close details
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Walk cancelled')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Walk cancelled')));
     }
   }
 
@@ -192,11 +193,14 @@ class EventDetailsScreen extends StatelessWidget {
     final joinText = event.joined ? 'Leave walk' : 'Join walk';
 
     final canInterested = !event.isOwner && !event.cancelled;
-    final interestedText =
-        event.interested ? 'Remove from interested' : 'Mark as interested';
+    final interestedText = event.interested
+        ? 'Remove from interested'
+        : 'Mark as interested';
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF4F925C),
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
       body: Column(
         children: [
           // ===== HEADER (match Home/Nearby sizing) =====
@@ -204,7 +208,10 @@ class EventDetailsScreen extends StatelessWidget {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     IconButton(
@@ -247,8 +254,10 @@ class EventDetailsScreen extends StatelessWidget {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
@@ -279,30 +288,32 @@ class EventDetailsScreen extends StatelessWidget {
               ),
             ),
 
-// ===== MAIN AREA (same structure as other screens) =====
-Expanded(
-  child: Container(
-    width: double.infinity,
-    decoration: const BoxDecoration(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        gradient: isDark
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF071B26), // top (dark blue)
-                  Color(0xFF041016), // bottom (almost black)
-                ],
-              )
-            : null,
-        color: isDark ? null : const Color(0xFFF7F9F2),
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          // ===== MAIN AREA (same structure as other screens) =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  gradient: isDark
+                      ? const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFF071B26), // top (dark blue)
+                            Color(0xFF041016), // bottom (almost black)
+                          ],
+                        )
+                      : null,
+                  color: isDark ? null : const Color(0xFFF7F9F2),
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
 
                   child: Card(
                     color: isDark
@@ -328,18 +339,21 @@ Expanded(
                               Expanded(
                                 child: Text(
                                   event.title,
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF111827),
-                                  ),
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF111827),
+                                      ),
                                 ),
                               ),
                               if (event.interested)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 6),
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.amber.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(999),
@@ -351,8 +365,11 @@ Expanded(
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: const [
-                                      Icon(Icons.star,
-                                          size: 14, color: Colors.amber),
+                                      Icon(
+                                        Icons.star,
+                                        size: 14,
+                                        color: Colors.amber,
+                                      ),
                                       SizedBox(width: 6),
                                       Text(
                                         'Interested',
@@ -381,8 +398,9 @@ Expanded(
                               Text(
                                 _formatDateTime(event.dateTime),
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color:
-                                      isDark ? Colors.white70 : Colors.black87,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
                                 ),
                               ),
                             ],
@@ -400,16 +418,18 @@ Expanded(
                                 icon: Icons.straighten,
                                 label:
                                     '${event.distanceKm.toStringAsFixed(1)} km',
-                                iconColorOverride:
-                                    isDark ? Colors.white70 : Colors.black54,
+                                iconColorOverride: isDark
+                                    ? Colors.white70
+                                    : Colors.black54,
                               ),
                               _eventPill(
                                 isDark: isDark,
                                 theme: theme,
                                 icon: Icons.person,
                                 label: event.gender,
-                                iconColorOverride:
-                                    isDark ? Colors.white70 : Colors.black54,
+                                iconColorOverride: isDark
+                                    ? Colors.white70
+                                    : Colors.black54,
                               ),
                               if (event.isOwner)
                                 _eventPill(
@@ -417,8 +437,9 @@ Expanded(
                                   theme: theme,
                                   icon: Icons.star,
                                   label: 'You are hosting',
-                                  iconColorOverride:
-                                      isDark ? Colors.white70 : Colors.black54,
+                                  iconColorOverride: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
                                 ),
                               if (event.cancelled)
                                 _eventPill(
@@ -438,8 +459,9 @@ Expanded(
                             'Meeting point',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color:
-                                  isDark ? Colors.white : const Color(0xFF111827),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -451,30 +473,37 @@ Expanded(
                                 color: isDark ? Colors.white70 : Colors.black87,
                               ),
                             )
-                          else if (event.startLat != null && event.startLng != null &&
-                              event.endLat != null && event.endLng != null)
+                          else if (event.startLat != null &&
+                              event.startLng != null &&
+                              event.endLat != null &&
+                              event.endLng != null)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Start: ${event.startLat!.toStringAsFixed(5)}, ${event.startLng!.toStringAsFixed(5)}',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark ? Colors.white70 : Colors.black87,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black87,
                                   ),
                                 ),
                                 Text(
                                   'End: ${event.endLat!.toStringAsFixed(5)}, ${event.endLng!.toStringAsFixed(5)}',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark ? Colors.white70 : Colors.black87,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black87,
                                   ),
                                 ),
                               ],
                             )
                           else
                             Text(
-                              event.meetingLat != null && event.meetingLng != null
+                              event.meetingLat != null &&
+                                      event.meetingLng != null
                                   ? 'Lat: ${event.meetingLat!.toStringAsFixed(5)}, '
-                                      'Lng: ${event.meetingLng!.toStringAsFixed(5)}'
+                                        'Lng: ${event.meetingLng!.toStringAsFixed(5)}'
                                   : 'Custom location (no coordinates)',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: isDark ? Colors.white70 : Colors.black87,
@@ -505,8 +534,6 @@ Expanded(
                             const SizedBox(height: 16),
                           ],
 
-
-
                           // Join / leave button
                           SizedBox(
                             width: double.infinity,
@@ -534,8 +561,8 @@ Expanded(
                                 event.isOwner
                                     ? "You're the host"
                                     : (event.cancelled
-                                        ? 'Walk cancelled'
-                                        : joinText),
+                                          ? 'Walk cancelled'
+                                          : joinText),
                               ),
                             ),
                           ),
@@ -548,7 +575,9 @@ Expanded(
                               width: double.infinity,
                               child: OutlinedButton.icon(
                                 onPressed: () {
-                                  debugPrint('OPEN WALK CHAT: walk_${event.id}');
+                                  debugPrint(
+                                    'OPEN WALK CHAT: walk_${event.id}',
+                                  );
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -572,7 +601,7 @@ Expanded(
                             const SizedBox(height: 16),
                           ],
 
-                                                    // Host-only cancel button
+                          // Host-only cancel button
                           if (event.isOwner && !event.cancelled) ...[
                             SizedBox(
                               width: double.infinity,
@@ -583,8 +612,9 @@ Expanded(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   foregroundColor: theme.colorScheme.error,
-                                  side:
-                                      BorderSide(color: theme.colorScheme.error),
+                                  side: BorderSide(
+                                    color: theme.colorScheme.error,
+                                  ),
                                 ),
                                 onPressed: () => _confirmCancel(context),
                                 icon: const Icon(Icons.cancel_outlined),

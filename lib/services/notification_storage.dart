@@ -44,7 +44,6 @@ class NotificationStorage {
     await add(notification);
   }
 
-
   static Future<void> clearNotifications() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
@@ -59,7 +58,7 @@ class NotificationStorage {
     await _save(list);
   }
 
-    /// Mark all notifications as read (so badge becomes 0)
+  /// Mark all notifications as read (so badge becomes 0)
   static Future<void> markAllRead() async {
     final list = await getNotifications();
     final updated = list
@@ -68,11 +67,9 @@ class NotificationStorage {
     await _save(updated);
   }
 
-    // ✅ Count only unread notifications
+  // ✅ Count only unread notifications
   static Future<int> getUnreadCount() async {
     final list = await getNotifications();
     return list.where((n) => !n.isRead).length;
   }
-
-
 }

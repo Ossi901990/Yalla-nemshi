@@ -44,8 +44,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       final index = _friends.indexWhere((f) => f.id == friend.id);
       if (index == -1) return;
       final current = _friends[index];
-      _friends[index] =
-          current.copyWith(isFavorite: !current.isFavorite);
+      _friends[index] = current.copyWith(isFavorite: !current.isFavorite);
     });
   }
 
@@ -61,17 +60,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final favorites =
-        _friends.where((f) => f.isFavorite).toList(growable: false);
-    final others =
-        _friends.where((f) => !f.isFavorite).toList(growable: false);
+    final favorites = _friends
+        .where((f) => f.isFavorite)
+        .toList(growable: false);
+    final others = _friends.where((f) => !f.isFavorite).toList(growable: false);
 
     final ordered = [...favorites, ...others];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Friends'),
-      ),
+      appBar: AppBar(title: const Text('Friends')),
       body: ordered.isEmpty
           ? const Center(
               child: Text(
@@ -89,9 +86,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     vertical: 6,
                   ),
                   child: ListTile(
-                    leading: CircleAvatar(
-                      child: Text(f.name.substring(0, 1)),
-                    ),
+                    leading: CircleAvatar(child: Text(f.name.substring(0, 1))),
                     title: Text(f.name),
                     subtitle: Text(
                       '${f.bio}\nWalked together ${f.walksTogether} time${f.walksTogether == 1 ? '' : 's'}.',
@@ -108,8 +103,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             f.isFavorite
                                 ? Icons.star
                                 : Icons.star_border_outlined,
-                            color:
-                                f.isFavorite ? Colors.amber : null,
+                            color: f.isFavorite ? Colors.amber : null,
                           ),
                           onPressed: () => _toggleFavorite(f),
                         ),

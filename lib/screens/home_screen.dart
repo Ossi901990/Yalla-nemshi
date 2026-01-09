@@ -301,16 +301,16 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-  label,
-  maxLines: 1,
-  overflow: TextOverflow.ellipsis,
-  textAlign: TextAlign.center,
-  style: TextStyle(
-    fontSize: 10,
-    color: labelColor,
-    fontWeight: FontWeight.w500,
-  ),
-),
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            color: labelColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
 
         Text(
           '$dayNumber',
@@ -401,9 +401,9 @@ class _HomeScreenState extends State<HomeScreen> {
             // - if it's selected → keep selected clean (no extra border needed)
             border: (hasWalk && !isSelected)
                 ? Border.all(
-                color: isDark
-                  ? Colors.white.withOpacity(0.18)
-                  : const Color(0xFF2E7D32).withOpacity(0.55),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.18)
+                        : const Color(0xFF2E7D32).withOpacity(0.55),
                     width: 1.4,
                   )
                 : Border.all(
@@ -485,12 +485,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-Future<void> _refreshNotificationsCount() async {
-  final unread = await NotificationStorage.getUnreadCount();
-  if (!mounted) return;
-  setState(() => _unreadNotifCount = unread);
-}
-
+  Future<void> _refreshNotificationsCount() async {
+    final unread = await NotificationStorage.getUnreadCount();
+    if (!mounted) return;
+    setState(() => _unreadNotifCount = unread);
+  }
 
   /// Called when user changes their weekly goal from the Profile settings panel.
   Future<void> _updateWeeklyGoal(double newKm) async {
@@ -743,47 +742,46 @@ Future<void> _refreshNotificationsCount() async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-  children: [
-    Expanded(
-      child: Row(
-        children: const [
-          Icon(Icons.notifications, size: 20),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Notifications',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: const [
+                          Icon(Icons.notifications, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Notifications',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
-    // 🔹 Clear button (top-right)
-    TextButton(
-      onPressed: () async {
-        await NotificationStorage.clearNotifications();
-        Navigator.of(context).pop(); // close sheet
-        _openNotificationsSheet(); // reopen with updated list
-      },
-      child: const Text(
-        'Clear',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: Colors.red,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
-  ],
-),
-
+                    // 🔹 Clear button (top-right)
+                    TextButton(
+                      onPressed: () async {
+                        await NotificationStorage.clearNotifications();
+                        Navigator.of(context).pop(); // close sheet
+                        _openNotificationsSheet(); // reopen with updated list
+                      },
+                      child: const Text(
+                        'Clear',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
 
                 const SizedBox(height: 12),
                 ...notifications.map(
@@ -1047,7 +1045,7 @@ Future<void> _refreshNotificationsCount() async {
           )
         else
           Container(
-            height: 64, 
+            height: 64,
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -1242,15 +1240,20 @@ Future<void> _refreshNotificationsCount() async {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-Text(
-  '${_greetingForTime()}, $_userName',
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-  style: theme.textTheme.titleLarge?.copyWith(
-    fontWeight: FontWeight.bold,
-    color: isDark ? kTextPrimary : const Color(0xFF14532D),
-  ),
-),
+                                            Text(
+                                              '${_greetingForTime()}, $_userName',
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.titleLarge
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isDark
+                                                        ? kTextPrimary
+                                                        : const Color(
+                                                            0xFF14532D,
+                                                          ),
+                                                  ),
+                                            ),
 
                                             const SizedBox(height: 4),
                                           ],
@@ -1267,29 +1270,32 @@ Text(
                                   SizedBox(height: kSpace2),
 
                                   // Today + date row
-Row(
-  children: [
-    Text(
-      'Today',
-      style: theme.textTheme.bodyMedium?.copyWith(
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-    const SizedBox(width: 12),
-    Expanded(
-      child: Text(
-        _formatFullDate(today),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.right,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: isDark ? Colors.white70 : Colors.black54,
-        ),
-      ),
-    ),
-  ],
-),
-
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Today',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _formatFullDate(today),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.right,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : Colors.black54,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
 
                                   SizedBox(height: kSpace1),
 
@@ -1301,8 +1307,13 @@ Row(
                                     calendarFormat: CalendarFormat.week,
                                     headerVisible: false,
                                     daysOfWeekVisible: false,
-                                    rowHeight: (MediaQuery.of(context).textScaleFactor > 1.15) ? 72 : 60,
-
+                                    rowHeight:
+                                        (MediaQuery.of(
+                                              context,
+                                            ).textScaleFactor >
+                                            1.15)
+                                        ? 72
+                                        : 60,
 
                                     // ✅ smoother swipe between weeks
                                     pageAnimationEnabled: true,
@@ -1563,61 +1574,62 @@ Row(
                             ),
                           ),
                           const SizedBox(height: 12),
-                       LayoutBuilder(
-  builder: (context, c) {
-    final isNarrow = c.maxWidth < 380;
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final isNarrow = c.maxWidth < 380;
 
-    if (!isNarrow) {
-      return Row(
-        children: [
-          _StatCard(
-            label: 'Walks joined',
-            value: '$_walksJoined',
-          ),
-          _StatCard(
-            label: 'Events hosted',
-            value: '$_eventsHosted',
-          ),
-          _StatCard(
-            label: 'Total km',
-            value: _totalKmJoined.toStringAsFixed(1),
-            isLast: true,
-          ),
-        ],
-      );
-    }
+                              if (!isNarrow) {
+                                return Row(
+                                  children: [
+                                    _StatCard(
+                                      label: 'Walks joined',
+                                      value: '$_walksJoined',
+                                    ),
+                                    _StatCard(
+                                      label: 'Events hosted',
+                                      value: '$_eventsHosted',
+                                    ),
+                                    _StatCard(
+                                      label: 'Total km',
+                                      value: _totalKmJoined.toStringAsFixed(1),
+                                      isLast: true,
+                                    ),
+                                  ],
+                                );
+                              }
 
-    // Narrow screens / large text: split into 2 rows to avoid squeeze/overflow
-    return Column(
-      children: [
-        Row(
-          children: [
-            _StatCard(
-              label: 'Walks joined',
-              value: '$_walksJoined',
-            ),
-            _StatCard(
-              label: 'Events hosted',
-              value: '$_eventsHosted',
-              isLast: true,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _StatCard(
-              label: 'Total km',
-              value: _totalKmJoined.toStringAsFixed(1),
-              isLast: true,
-            ),
-          ],
-        ),
-      ],
-    );
-  },
-),
-
+                              // Narrow screens / large text: split into 2 rows to avoid squeeze/overflow
+                              return Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      _StatCard(
+                                        label: 'Walks joined',
+                                        value: '$_walksJoined',
+                                      ),
+                                      _StatCard(
+                                        label: 'Events hosted',
+                                        value: '$_eventsHosted',
+                                        isLast: true,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      _StatCard(
+                                        label: 'Total km',
+                                        value: _totalKmJoined.toStringAsFixed(
+                                          1,
+                                        ),
+                                        isLast: true,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -1698,16 +1710,15 @@ class _WeeklySummaryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-  '$walks walk${walks == 1 ? '' : 's'} • '
-  '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-  style: theme.textTheme.titleMedium?.copyWith(
-    fontWeight: FontWeight.w800,
-    color: titleColor,
-  ),
-),
-
+                    '$walks walk${walks == 1 ? '' : 's'} • '
+                    '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: titleColor,
+                    ),
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1794,15 +1805,14 @@ class _WeeklySummaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-         Text(
-  streakDays > 0
-      ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
-      : 'Start a walk today to begin your streak!',
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-  style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
-),
-
+            Text(
+              streakDays > 0
+                  ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
+                  : 'Start a walk today to begin your streak!',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
+            ),
           ],
         ),
       ),
@@ -1895,11 +1905,11 @@ class _WalkCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusControl),
         side: BorderSide(
-            color:
+          color:
               (Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : Colors.black)
-                .withOpacity(kCardBorderAlpha),
+                      ? Colors.white
+                      : Colors.black)
+                  .withOpacity(kCardBorderAlpha),
         ),
       ),
       child: ListTile(
@@ -1974,7 +1984,7 @@ class _StepsRing extends StatelessWidget {
 
         // Very light color at 0 progress (so the start is almost white)
         final Color veryLight = isDark
-                    ? Colors.white.withOpacity(0.16)
+            ? Colors.white.withOpacity(0.16)
             : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
 
         // End color gets darker as progress increases
@@ -1991,7 +2001,7 @@ class _StepsRing extends StatelessWidget {
                 painter: _GradientRingPainter(
                   progress: animatedProgress,
                   strokeWidth: stroke,
-                    trackColor: isDark
+                  trackColor: isDark
                       ? Colors.white.withOpacity(0.10)
                       : const Color(
                           0xFFD7E2D7,

@@ -79,9 +79,9 @@ class _MapPickScreenState extends State<MapPickScreen> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Search error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Search error: $e')));
     } finally {
       if (mounted) setState(() => _searchLoading = false);
     }
@@ -98,8 +98,8 @@ class _MapPickScreenState extends State<MapPickScreen> {
     final hintText = _startLatLng == null
         ? 'Tap on the map to set the START point'
         : (_endLatLng == null
-            ? 'Tap on the map to set the END point'
-            : 'Tap again to reset (start over)');
+              ? 'Tap on the map to set the END point'
+              : 'Tap again to reset (start over)');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pick start & end')),
@@ -205,7 +205,10 @@ class _MapPickScreenState extends State<MapPickScreen> {
             child: SafeArea(
               bottom: false,
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(8),
@@ -253,10 +256,9 @@ class _MapPickScreenState extends State<MapPickScreen> {
                       onPressed: (_startLatLng == null || _endLatLng == null)
                           ? null
                           : () {
-                              Navigator.of(context).pop([
-                                _startLatLng!,
-                                _endLatLng!,
-                              ]);
+                              Navigator.of(
+                                context,
+                              ).pop([_startLatLng!, _endLatLng!]);
                             },
                       child: const Text(
                         'Confirm start & end',

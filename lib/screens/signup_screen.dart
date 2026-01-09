@@ -16,7 +16,7 @@ const kHintText = Colors.white;
 const kIconColor = Colors.white;
 
 const kButtonGradientStart = Color(0xFFFD5E77); // pink
-const kButtonGradientEnd = Color(0xFFFD7F5E);   // orange
+const kButtonGradientEnd = Color(0xFFFD7F5E); // orange
 
 const kSignUpAccent = Color(0xFFF86C81);
 
@@ -58,10 +58,7 @@ class _SignupScreenState extends State<SignupScreen> {
     final password = _passwordController.text.trim();
     final confirm = _confirmController.text.trim();
 
-    if (name.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        confirm.isEmpty) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields.')),
       );
@@ -69,9 +66,9 @@ class _SignupScreenState extends State<SignupScreen> {
     }
 
     if (password != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
 
@@ -89,9 +86,7 @@ class _SignupScreenState extends State<SignupScreen> {
       // Show full error while we debug
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Sign up failed: [${e.code}] ${e.message ?? ''}',
-          ),
+          content: Text('Sign up failed: [${e.code}] ${e.message ?? ''}'),
         ),
       );
     } catch (e) {
@@ -108,10 +103,9 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   void _onSocialTap(String provider) {
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider sign-up coming soon ✨')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$provider sign-up coming soon ✨')));
   }
 
   @override
@@ -261,26 +255,24 @@ class _SignupScreenState extends State<SignupScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color:
-                                        kSecondaryText.withOpacity(0.2),
+                                    color: kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0),
+                                    horizontal: 8.0,
+                                  ),
                                   child: Text(
                                     'or sign up with',
                                     style: TextStyle(
-                                      color: kSecondaryText
-                                          .withOpacity(0.7),
+                                      color: kSecondaryText.withOpacity(0.7),
                                       fontSize: 12,
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color:
-                                        kSecondaryText.withOpacity(0.2),
+                                    color: kSecondaryText.withOpacity(0.2),
                                   ),
                                 ),
                               ],
@@ -288,8 +280,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             const SizedBox(height: 12),
 
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceEvenly,
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 _SocialIconButton(
                                   icon: Icons.g_mobiledata,
@@ -322,8 +313,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                 Text(
                                   "Already have an account? ",
                                   style: TextStyle(
-                                    color: kSecondaryText
-                                        .withOpacity(0.7),
+                                    color: kSecondaryText.withOpacity(0.7),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -380,13 +370,8 @@ class _SignupScreenState extends State<SignupScreen> {
           style: const TextStyle(color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: TextStyle(
-              color: kHintText.withOpacity(0.5),
-            ),
-            prefixIcon: Icon(
-              icon,
-              color: kIconColor.withOpacity(0.9),
-            ),
+            hintStyle: TextStyle(color: kHintText.withOpacity(0.5)),
+            prefixIcon: Icon(icon, color: kIconColor.withOpacity(0.9)),
             filled: true,
             fillColor: kFieldFill.withOpacity(0.06),
             enabledBorder: OutlineInputBorder(
@@ -422,10 +407,7 @@ class _GradientButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            kButtonGradientStart,
-            kButtonGradientEnd,
-          ],
+          colors: [kButtonGradientStart, kButtonGradientEnd],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -444,10 +426,7 @@ class _GradientButton extends StatelessWidget {
           ),
           child: Text(
             text,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
       ),
@@ -480,9 +459,7 @@ class _SocialIconButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             color: kSocialGlassFill.withOpacity(0.08),
-            border: Border.all(
-              color: kSocialGlassBorder.withOpacity(0.2),
-            ),
+            border: Border.all(color: kSocialGlassBorder.withOpacity(0.2)),
             boxShadow: [
               BoxShadow(
                 color: kSocialShadow.withOpacity(0.4),
@@ -492,7 +469,7 @@ class _SocialIconButton extends StatelessWidget {
             ],
           ),
           child: Icon(
-            icon,                // ✅ use the icon passed in
+            icon, // ✅ use the icon passed in
             color: kPrimaryText,
             size: 22,
           ),

@@ -18,12 +18,19 @@ class BadgesInfoScreen extends StatelessWidget {
           final b = badges[i];
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: b.achieved ? theme.colorScheme.primary : Colors.grey.shade300,
-              child: Icon(b.icon, color: b.achieved ? Colors.white : Colors.grey.shade700),
+              backgroundColor: b.achieved
+                  ? theme.colorScheme.primary
+                  : Colors.grey.shade300,
+              child: Icon(
+                b.icon,
+                color: b.achieved ? Colors.white : Colors.grey.shade700,
+              ),
             ),
             title: Text(b.title),
             subtitle: Text(b.description),
-            trailing: b.achieved ? const Icon(Icons.check_circle, color: Colors.green) : null,
+            trailing: b.achieved
+                ? const Icon(Icons.check_circle, color: Colors.green)
+                : null,
           );
         },
       ),

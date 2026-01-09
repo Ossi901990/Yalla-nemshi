@@ -23,9 +23,7 @@ class EventStorage {
     if (decoded is! List) return [];
 
     return decoded
-        .map<WalkEvent>(
-          (e) => WalkEvent.fromMap(Map<String, dynamic>.from(e)),
-        )
+        .map<WalkEvent>((e) => WalkEvent.fromMap(Map<String, dynamic>.from(e)))
         .toList();
   }
 
