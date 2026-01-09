@@ -787,45 +787,6 @@ Expanded(
                                             const SizedBox(height: 8),
 
 
-                                            // Destination search (text only for now)
-                                            TextFormField(
-                                              decoration: const InputDecoration(
-                                                labelText: 'Destination (search)',
-                                                hintText: 'Search for a place name',
-                                                prefixIcon: Icon(Icons.search),
-                                              ),
-                                              onSaved: (val) => _destinationText = (val ?? '').trim(),
-                                            ),
-                                            const SizedBox(height: 8),
-
-                                            // Pick destination on map (uses end point)
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: OutlinedButton.icon(
-                                                onPressed: _pickOnMap,
-                                                style: OutlinedButton.styleFrom(
-                                                  minimumSize: const Size.fromHeight(52),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(16),
-                                                  ),
-                                                  side: BorderSide(
-                                                    color: (isDark ? Colors.white : Colors.black)
-                                                        .withOpacity(0.18),
-                                                  ),
-                                                  foregroundColor:
-                                                      isDark ? Colors.white : Colors.black,
-                                                ),
-                                                icon: const Icon(Icons.map_outlined),
-                                                label: const Text(
-                                                  'Pick start & destination on map',
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ),
-
-                                            const SizedBox(height: 6),
-
                                             Align(
                                               alignment: Alignment.centerLeft,
                                               child: Text(
