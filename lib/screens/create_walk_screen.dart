@@ -812,60 +812,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           ),
                                           const SizedBox(height: 16),
 
-<<<<<<< HEAD
-                                          // ===== TYPE-SPECIFIC SECTION =====
-                                          if (_walkTypeIndex == 0) ...[
-                                            // Type A: Point-to-point
-                                            Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: Text(
-                                                'Route',
-                                                style: theme.textTheme.titleMedium,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-
-
-                                            Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: Text(
-                                                _endLatLng == null
-                                                    ? 'Destination pin not selected yet (optional for now)'
-                                                    : 'Destination selected on map',
-                                                maxLines: 2,
-=======
-                                          // Pick start & destination (inside map screen now)
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: OutlinedButton.icon(
-                                              onPressed: _pickOnMap,
-                                              style: OutlinedButton.styleFrom(
-                                                minimumSize:
-                                                    const Size.fromHeight(52),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                ),
-                                                side: BorderSide(
-                                                  color: (isDark
-                                                          ? Colors.white
-                                                          : Colors.black)
-                                                      .withOpacity(0.18),
-                                                ),
-                                                foregroundColor: isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                              icon: const Icon(Icons.map_outlined),
-                                              label: const Text(
-                                                'Pick start & destination on map',
-                                                maxLines: 1,
->>>>>>> 2b2128464109ac9ff876b782a81c215b45f7bad4
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
+                                          // Map picker handled by the top 'Change' button
 
                                           Align(
                                             alignment: Alignment.centerLeft,
