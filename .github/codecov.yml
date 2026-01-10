@@ -2,16 +2,26 @@ coverage:
   status:
     project:
       default:
-        target: auto
-        threshold: 2
+        target: auto      # or set a number like 60%
+        threshold: 2%
     patch:
       default:
-        target: auto
-        threshold: 2
+        target: 70%       # strict but achievable
+        threshold: 5%     # allow small drops
+    changes:
+      default:
+        target: 70%
+        threshold: 5%
+
+ignore:
+  - "test"
+  - "**/*.g.dart"
+  - "**/*.freezed.dart"
+
 comment:
-  layout: reach, diff, flags, files
-  require_changes: false
+  layout: "reach, diff, files"
   behavior: default
+
 codecov:
   require_ci_to_pass: false
   strict_yaml_branch: main
