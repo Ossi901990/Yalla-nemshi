@@ -47,3 +47,4 @@ jobs:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
