@@ -1,4 +1,5 @@
 // lib/screens/create_walk_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/walk_event.dart';
 import 'map_pick_screen.dart';
 import '../services/app_preferences.dart';
+import '../services/geocoding_service.dart';
+import '../services/crash_service.dart';
+import '../utils/error_handler.dart';
 
 // ===== Design tokens (match Home / Profile) =====
 const double kRadiusCard = 24;
@@ -62,6 +66,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   // Start/end points (if null, start defaults to "My current location")
   LatLng? _startLatLng;
   LatLng? _endLatLng;
+
+  // City detected from meeting location
+  String? _detectedCity;
 
   // Type B (loop): Duration + Distance (kept in sync)
   int _loopMinutes = 30;
@@ -167,6 +174,32 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final mm = dt.minute.toString().padLeft(2, '0');
 
     return '$w, $d $m • $hh:$mm';
+  }
+
+  /// Build a loading dialog for async operations
+  PageRoute _buildLoadingDialog(BuildContext context) {
+    return PageRouteBuilder(
+      opaque: false,
+      barrierDismissible: false,
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Dialog(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                const Text(
+                  'Creating your walk...',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickDateTime() async {
@@ -333,11 +366,28 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     );
 
     if (result != null && result.length == 2) {
-      setState(() {
-        _startLatLng = result[0];
-        _endLatLng = result[1];
-        _meetingLatLng = _startLatLng; // legacy
-      });
+      final startPoint = result[0];
+      
+      // Auto-detect city from meeting location
+      String? detectedCity;
+      try {
+        detectedCity = await GeocodingService.getCityFromCoordinates(
+          latitude: startPoint.latitude,
+          longitude: startPoint.longitude,
+        );
+      } catch (e) {
+        debugPrint('Error detecting city: $e');
+        // If geocoding fails, city remains null
+      }
+      
+      if (mounted) {
+        setState(() {
+          _startLatLng = startPoint;
+          _endLatLng = result[1];
+          _meetingLatLng = _startLatLng; // legacy
+          _detectedCity = detectedCity;
+        });
+      }
     }
   }
 
@@ -423,42 +473,88 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'endLat': effectiveEnd?.latitude,
       'endLng': effectiveEnd?.longitude,
 
+      'city': _detectedCity,
+
       'description': _description.isEmpty ? null : _description,
       'createdAt': FieldValue.serverTimestamp(),
     };
 
     try {
-      final docRef = await FirebaseFirestore.instance
-          .collection('walks')
-          .add(payload);
-
-      final newEvent = WalkEvent(
-        id: docRef.id,
-        hostUid: uid,
-        firestoreId: docRef.id,
-        title: _title,
-        dateTime: _dateTime,
-        distanceKm: (effectiveDistanceKm ?? 0), // UI model expects a double
-        gender: _gender,
-        isOwner: true,
-        joined: false,
-        meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
-        meetingLat: effectiveMeeting?.latitude,
-        meetingLng: effectiveMeeting?.longitude,
-        startLat: effectiveStart?.latitude,
-        startLng: effectiveStart?.longitude,
-        endLat: effectiveEnd?.latitude,
-        endLng: effectiveEnd?.longitude,
-        description: _description.isEmpty ? null : _description,
-      );
-
-      widget.onEventCreated(newEvent);
-      widget.onCreatedNavigateHome();
-    } catch (e) {
+      // Show loading indicator
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to create walk: $e')));
+      
+      final loadingDialog = _buildLoadingDialog(context);
+      Navigator.of(context).push(loadingDialog);
+
+      try {
+        final docRef = await FirebaseFirestore.instance
+            .collection('walks')
+            .add(payload)
+            .timeout(const Duration(seconds: 30));
+
+        if (!mounted) return;
+        Navigator.of(context).pop(); // close loading dialog
+
+        final newEvent = WalkEvent(
+          id: docRef.id,
+          hostUid: uid,
+          firestoreId: docRef.id,
+          title: _title,
+          dateTime: _dateTime,
+          distanceKm: (effectiveDistanceKm ?? 0),
+          gender: _gender,
+          isOwner: true,
+          joined: false,
+          meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
+          meetingLat: effectiveMeeting?.latitude,
+          meetingLng: effectiveMeeting?.longitude,
+          startLat: effectiveStart?.latitude,
+          startLng: effectiveStart?.longitude,
+          endLat: effectiveEnd?.latitude,
+          endLng: effectiveEnd?.longitude,
+          city: _detectedCity,
+          description: _description.isEmpty ? null : _description,
+        );
+
+        widget.onEventCreated(newEvent);
+        widget.onCreatedNavigateHome();
+      } on TimeoutException catch (e, st) {
+        if (!mounted) return;
+        Navigator.of(context).pop(); // close loading dialog
+        
+        await ErrorHandler.handleError(
+          context,
+          e,
+          st,
+          action: 'create_walk',
+          userMessage: 'Creating the walk took too long. Please check your internet and try again.',
+        );
+      }
+    } catch (e, st) {
+      if (!mounted) return;
+      
+      // Ensure loading dialog is closed
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      debugPrint('❌ Walk creation error: $e');
+      CrashService.recordError(e, st);
+
+      String userMessage = 'Unable to create walk';
+      
+      if (e.toString().contains('PERMISSION_DENIED')) {
+        userMessage = 'You don\'t have permission to create walks. Try logging out and back in.';
+      } else if (e.toString().contains('network') || 
+                 e.toString().contains('Connection')) {
+        userMessage = 'Network error. Check your internet connection and try again.';
+      } else if (e.toString().contains('INVALID_ARGUMENT')) {
+        userMessage = 'Please fill in all required fields correctly.';
+      }
+
+      if (mounted) {
+        ErrorHandler.showErrorSnackBar(context, userMessage);
+      }
     }
   }
 

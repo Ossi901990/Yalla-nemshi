@@ -23,6 +23,9 @@ class WalkEvent {
   final double? endLat;
   final double? endLng;
   final String? description;
+  
+  /// City where the walk takes place (auto-detected from coordinates)
+  final String? city;
 
   /// Whether the current user has joined this event.
   bool joined;
@@ -69,6 +72,7 @@ class WalkEvent {
     this.comfortLevel,
     this.recurringRule,
     this.userNotes,
+    this.city,
   }) : tags = tags ?? const [];
 
   WalkEvent copyWith({
@@ -95,6 +99,7 @@ class WalkEvent {
     String? comfortLevel,
     String? recurringRule,
     String? userNotes,
+    String? city,
   }) {
     return WalkEvent(
       id: id ?? this.id,
@@ -121,6 +126,7 @@ class WalkEvent {
       comfortLevel: comfortLevel ?? this.comfortLevel,
       recurringRule: recurringRule ?? this.recurringRule,
       userNotes: userNotes ?? this.userNotes,
+      city: city ?? this.city,
     );
   }
 
@@ -150,6 +156,7 @@ class WalkEvent {
       'comfortLevel': comfortLevel,
       'recurringRule': recurringRule,
       'userNotes': userNotes,
+      'city': city,
     };
   }
 
@@ -239,6 +246,7 @@ class WalkEvent {
       comfortLevel: map['comfortLevel']?.toString(),
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
+      city: map['city']?.toString(),
     );
   }
 }

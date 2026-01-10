@@ -54,6 +54,11 @@ class NearbyWalksScreen extends StatefulWidget {
   final double weeklyGoalKm;
   final String userName;
 
+  // Pagination
+  final bool hasMoreWalks;
+  final bool isLoadingMore;
+  final VoidCallback onLoadMore;
+
   const NearbyWalksScreen({
     super.key,
     required this.events,
@@ -70,6 +75,9 @@ class NearbyWalksScreen extends StatefulWidget {
     required this.streakDays,
     required this.weeklyGoalKm,
     required this.userName,
+    required this.hasMoreWalks,
+    required this.isLoadingMore,
+    required this.onLoadMore,
   });
 
   @override
@@ -482,8 +490,13 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                                       0,
                                       8,
                                     ),
-                                    itemCount: upcoming.length,
+                                    itemCount: upcoming.length + 1, // +1 for load more button
                                     itemBuilder: (context, index) {
+                                      // Show load more button at the end
+                                      if (index == upcoming.length) {
+                                        return _buildLoadMoreButton(context);
+                                      }
+                                      
                                       final e = upcoming[index];
                                       return _NearbyWalkCard(
                                         event: e,
@@ -504,6 +517,67 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ===== LOAD MORE BUTTON =====
+
+  Widget _buildLoadMoreButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Don't show button if no more walks or currently loading
+    if (!widget.hasMoreWalks && !widget.isLoadingMore) {
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+          child: Text(
+            '✓ All walks loaded',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: isDark ? Colors.white54 : Colors.black54,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Show loading indicator while loading
+    if (widget.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Show "Load More" button
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: widget.onLoadMore,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(kRadiusControl),
+            ),
+            side: BorderSide(
+              color: isDark 
+                  ? Colors.white.withAlpha((0.2 * 255).round())
+                  : Colors.black.withAlpha((0.2 * 255).round()),
+            ),
+          ),
+          child: Text(
+            'Load more walks',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isDark ? kTextSecondary : Colors.black87,
+            ),
+          ),
+        ),
       ),
     );
   }

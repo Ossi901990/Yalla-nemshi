@@ -8,6 +8,9 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
+import '../services/app_preferences.dart';
+import '../services/crash_service.dart';
+import '../utils/error_handler.dart';
 //import '../services/profile_storage.dart';
 
 import 'create_walk_screen.dart';
@@ -16,7 +19,6 @@ import 'nearby_walks_screen.dart';
 import 'profile_screen.dart';
 import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
-import '../services/app_preferences.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 
@@ -69,71 +71,257 @@ class _HomeScreenState extends State<HomeScreen> {
   void _listenToWalks() {
     _walksSub?.cancel();
 
-    _walksSub = FirebaseFirestore.instance
-        .collection('walks')
-        .snapshots()
-        .listen(
-          (snap) {
-            final currentUid = FirebaseAuth.instance.currentUser?.uid;
-            debugPrint('WALKS SNAP: docs=${snap.docs.length} uid=$currentUid');
+    // Get user's city first
+    AppPreferences.getUserCity().then((userCity) {
+      if (!mounted) return;
 
-            final List<WalkEvent> loaded = snap.docs.map((doc) {
-              final data = Map<String, dynamic>.from(doc.data());
-              data['firestoreId'] = doc.id;
-              data['id'] ??= doc.id;
+      // Build query: filter by city if user has one set
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+          .collection('walks');
 
-              final hostUid = data['hostUid'] as String?;
-              data['isOwner'] =
-                  (currentUid != null &&
-                  hostUid != null &&
-                  hostUid == currentUid);
+      if (userCity != null && userCity.isNotEmpty) {
+        debugPrint('🏙️ Filtering walks by city: $userCity');
+        query = query.where('city', isEqualTo: userCity);
+      } else {
+        debugPrint('⚠️ No user city set; showing all walks');
+      }
 
-              final joinedUids =
-                  (data['joinedUids'] as List?)?.whereType<String>().toList() ??
-                  [];
-              data['joined'] =
-                  (currentUid != null && joinedUids.contains(currentUid));
+      // Add pagination limit
+      query = query.limit(_walksPerPage);
 
-              return WalkEvent.fromMap(data);
-            }).toList();
+      _walksSub = query
+          .snapshots()
+          .listen(
+            (snap) {
+              try {
+                final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                debugPrint('WALKS SNAP: docs=${snap.docs.length} uid=$currentUid city=$userCity');
 
-            if (!mounted) return;
-            
-            // 🔔 Check for newly added walks and trigger notifications
-            for (var change in snap.docChanges) {
-              if (change.type == DocumentChangeType.added) {
-                final data = Map<String, dynamic>.from(change.doc.data() as Map);
-                data['firestoreId'] = change.doc.id;
-                data['id'] ??= change.doc.id;
-                
-                final hostUid = data['hostUid'] as String?;
-                data['isOwner'] = (currentUid != null && hostUid != null && hostUid == currentUid);
-                
-                final joinedUids = (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
-                data['joined'] = (currentUid != null && joinedUids.contains(currentUid));
-                
-                final newWalk = WalkEvent.fromMap(data);
-                // Only notify if it's not the current user's walk
-                if (newWalk.hostUid != currentUid) {
-                  _onNewNearbyWalk(newWalk);
+                // Track last document for pagination
+                if (snap.docs.isNotEmpty) {
+                  _lastDocument = snap.docs.last;
+                  _hasMoreWalks = snap.docs.length >= _walksPerPage;
+                } else {
+                  _lastDocument = null;
+                  _hasMoreWalks = false;
                 }
+
+                final List<WalkEvent> loaded = snap.docs.map((doc) {
+                  final data = Map<String, dynamic>.from(doc.data());
+                  data['firestoreId'] = doc.id;
+                  data['id'] ??= doc.id;
+
+                  final hostUid = data['hostUid'] as String?;
+                  data['isOwner'] =
+                      (currentUid != null &&
+                      hostUid != null &&
+                      hostUid == currentUid);
+
+                  final joinedUids =
+                      (data['joinedUids'] as List?)?.whereType<String>().toList() ??
+                      [];
+                  data['joined'] =
+                      (currentUid != null && joinedUids.contains(currentUid));
+
+                  return WalkEvent.fromMap(data);
+                }).toList();
+
+                if (!mounted) return;
+                
+                // 🔔 Check for newly added walks and trigger notifications
+                for (var change in snap.docChanges) {
+                  if (change.type == DocumentChangeType.added) {
+                    final data = Map<String, dynamic>.from(change.doc.data() as Map);
+                    data['firestoreId'] = change.doc.id;
+                    data['id'] ??= change.doc.id;
+                    
+                    final hostUid = data['hostUid'] as String?;
+                    data['isOwner'] = (currentUid != null && hostUid != null && hostUid == currentUid);
+                    
+                    final joinedUids = (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
+                    data['joined'] = (currentUid != null && joinedUids.contains(currentUid));
+                    
+                    final newWalk = WalkEvent.fromMap(data);
+                    // Only notify if it's not the current user's walk
+                    if (newWalk.hostUid != currentUid) {
+                      _onNewNearbyWalk(newWalk);
+                    }
+                  }
+                }
+                
+                setState(() {
+                  _events
+                    ..clear()
+                    ..addAll(loaded);
+                });
+              } catch (e, st) {
+                debugPrint('❌ Error processing walks snapshot: $e');
+                CrashService.recordError(e, st);
               }
-            }
-            
-            setState(() {
-              _events
-                ..clear()
-                ..addAll(loaded);
-            });
-          },
-          onError: (e) {
-            debugPrint('WALKS STREAM ERROR: $e');
-          },
+            },
+            onError: (e, st) {
+              debugPrint('❌ WALKS STREAM ERROR: $e');
+              CrashService.recordError(e, st);
+              
+              // Attempt to recover by resetting listener
+              Future.delayed(const Duration(seconds: 5), () {
+                if (mounted) {
+                  debugPrint('↻ Attempting to reconnect to walks stream...');
+                  _listenToWalks();
+                }
+              });
+            },
+          );
+    }).catchError((e, st) {
+      debugPrint('❌ Error getting user city: $e');
+      CrashService.recordError(e, st ?? StackTrace.current);
+      // Try again without city filter
+      if (!mounted) return;
+      
+      try {
+        _walksSub = FirebaseFirestore.instance
+            .collection('walks')
+            .limit(_walksPerPage)
+            .snapshots()
+            .listen(
+              (snap) {
+                try {
+                  final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                  final List<WalkEvent> loaded = snap.docs.map((doc) {
+                    final data = Map<String, dynamic>.from(doc.data());
+                    data['firestoreId'] = doc.id;
+                    data['id'] ??= doc.id;
+                    final hostUid = data['hostUid'] as String?;
+                    data['isOwner'] = currentUid != null && hostUid == currentUid;
+                    final joinedUids = (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
+                    data['joined'] = currentUid != null && joinedUids.contains(currentUid);
+                    return WalkEvent.fromMap(data);
+                  }).toList();
+                  
+                  if (mounted) {
+                    setState(() {
+                      _events
+                        ..clear()
+                        ..addAll(loaded);
+                    });
+                  }
+                } catch (e, st) {
+                  CrashService.recordError(e, st);
+                }
+              },
+              onError: (e, st) {
+                CrashService.recordError(e, st);
+              },
+            );
+      } catch (e, st) {
+        CrashService.recordError(e, st);
+      }
+    });
+  }
+
+  /// Load more walks (next page)
+  /// Note: If you see a Firestore error about composite indexes on first use,
+  /// click the link in the error to create the index for (city, __name__).
+  /// Firestore will auto-create it and pagination will work after that.
+  Future<void> _loadMoreWalks() async {
+    if (_isLoadingMore || !_hasMoreWalks || _lastDocument == null) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final userCity = await AppPreferences.getUserCity();
+      
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+          .collection('walks')
+          .startAfterDocument(_lastDocument!);
+
+      if (userCity != null && userCity.isNotEmpty) {
+        query = query.where('city', isEqualTo: userCity);
+      }
+
+      query = query.limit(_walksPerPage);
+
+      final snap = await query.get().timeout(const Duration(seconds: 20));
+
+      if (!mounted) return;
+
+      if (snap.docs.isEmpty) {
+        setState(() {
+          _hasMoreWalks = false;
+          _isLoadingMore = false;
+        });
+        return;
+      }
+
+      _lastDocument = snap.docs.last;
+      _hasMoreWalks = snap.docs.length >= _walksPerPage;
+
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      final List<WalkEvent> newWalks = snap.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['firestoreId'] = doc.id;
+        data['id'] ??= doc.id;
+
+        final hostUid = data['hostUid'] as String?;
+        data['isOwner'] =
+            (currentUid != null && hostUid != null && hostUid == currentUid);
+
+        final joinedUids =
+            (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
+        data['joined'] = (currentUid != null && joinedUids.contains(currentUid));
+
+        return WalkEvent.fromMap(data);
+      }).toList();
+
+      setState(() {
+        _events.addAll(newWalks);
+        _isLoadingMore = false;
+      });
+
+      debugPrint('📄 Loaded ${newWalks.length} more walks. Total: ${_events.length}');
+    } on TimeoutException catch (e, st) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+        CrashService.recordError(e, st);
+        ErrorHandler.showErrorSnackBar(
+          context,
+          'Loading more walks took too long. Try again.',
         );
+      }
+    } catch (e, st) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+        
+        debugPrint('❌ Error loading more walks: $e');
+        CrashService.recordError(e, st);
+        
+        String message = 'Unable to load more walks';
+        if (e.toString().contains('network') || 
+            e.toString().contains('Connection')) {
+          message = 'Network error. Check your connection and try again.';
+        }
+        
+        ErrorHandler.showErrorSnackBar(context, message);
+      }
+    }
   }
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
+  
+  // Pagination state
+  static const int _walksPerPage = 20;
+  DocumentSnapshot? _lastDocument;
+  bool _hasMoreWalks = true;
+  bool _isLoadingMore = false;
 
   // Loaded from saved profile (falls back to "Walker")
   String _userName = 'Walker';
@@ -459,16 +647,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadWeeklyGoal() async {
-    final value = await AppPreferences.getWeeklyGoalKm();
-    setState(() {
-      _weeklyGoalKm = value;
-    });
+    try {
+      final value = await AppPreferences.getWeeklyGoalKm();
+      if (mounted) {
+        setState(() {
+          _weeklyGoalKm = value;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('⚠️ Error loading weekly goal: $e');
+      CrashService.recordError(e, st);
+      // Fall back to default (already set in class)
+    }
   }
 
   Future<void> _refreshNotificationsCount() async {
-    final unread = await NotificationStorage.getUnreadCount();
-    if (!mounted) return;
-    setState(() => _unreadNotifCount = unread);
+    try {
+      final unread = await NotificationStorage.getUnreadCount();
+      if (!mounted) return;
+      setState(() => _unreadNotifCount = unread);
+    } catch (e, st) {
+      debugPrint('⚠️ Error refreshing notification count: $e');
+      CrashService.recordError(e, st);
+    }
   }
 
   /// Called when user changes their weekly goal from the Profile settings panel.
@@ -483,36 +684,51 @@ class _HomeScreenState extends State<HomeScreen> {
     // Only try on Android
     if (!Platform.isAndroid) return;
 
-    final status = await Permission.activityRecognition.request();
-    if (!status.isGranted) {
-      return; // permission denied, keep at 0
-    }
-
     try {
+      final status = await Permission.activityRecognition.request();
+      if (!status.isGranted) {
+        debugPrint('⚠️ Activity recognition permission denied');
+        return;
+      }
+
       _stepSubscription = Pedometer.stepCountStream.listen(
         _onStepCount,
-        onError: _onStepError,
+        onError: (error, stackTrace) {
+          debugPrint('❌ Pedometer error: $error');
+          CrashService.recordError(error, stackTrace ?? StackTrace.current);
+        },
         cancelOnError: false,
       );
-    } catch (_) {
-      // silently ignore for now
+    } catch (e, st) {
+      debugPrint('❌ Error initializing step counter: $e');
+      CrashService.recordError(e, st);
+      // Don't fail the entire app, just skip step counter
     }
   }
 
   Future<void> _loadUserName() async {
-    final user = FirebaseAuth.instance.currentUser;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      if (user != null &&
-          user.displayName != null &&
-          user.displayName!.trim().isNotEmpty) {
-        _userName = user.displayName!.trim();
-      } else {
-        _userName = 'Walker';
+      setState(() {
+        if (user != null &&
+            user.displayName != null &&
+            user.displayName!.trim().isNotEmpty) {
+          _userName = user.displayName!.trim();
+        } else {
+          _userName = 'Walker';
+        }
+      });
+    } catch (e, st) {
+      debugPrint('❌ Error loading user name: $e');
+      CrashService.recordError(e, st);
+      // Fall back to default
+      if (mounted) {
+        setState(() => _userName = 'Walker');
       }
-    });
+    }
   }
 
   void _onStepCount(StepCount event) {
@@ -525,10 +741,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _sessionSteps = steps;
     });
-  }
-
-  void _onStepError(Object? error) {
-    // You could log this or show a SnackBar if needed
   }
 
   // --- Actions ---
@@ -555,8 +767,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _toggleJoin(WalkEvent event) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to join walks.')),
+      if (!mounted) return;
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'Please log in to join walks.',
       );
       return;
     }
@@ -568,7 +782,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool wasJoined = event.joined;
     final bool willJoin = !wasJoined;
 
-    // ✅ Optimistic UI update (UI only — NO Firestore here)
+    // ✅ Optimistic UI update
     setState(() {
       final index = _events.indexWhere((e) {
         final idA = e.firestoreId.isNotEmpty ? e.firestoreId : e.id;
@@ -580,12 +794,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // ✅ Persist to Firestore
+      // ✅ Persist to Firestore with timeout
       await docRef.update({
         'joinedUids': willJoin
             ? FieldValue.arrayUnion([uid])
             : FieldValue.arrayRemove([uid]),
-      });
+      }).timeout(const Duration(seconds: 15));
 
       // 🔔 Notifications
       final updated = event.copyWith(joined: willJoin);
@@ -594,23 +808,57 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         NotificationService.instance.cancelWalkReminder(updated);
       }
-    } catch (e) {
-      // ❌ Roll back if Firestore failed
-      setState(() {
-        final index = _events.indexWhere((e2) {
-          final idA = e2.firestoreId.isNotEmpty ? e2.firestoreId : e2.id;
-          return idA == walkId;
-        });
-        if (index == -1) return;
-        _events[index] = _events[index].copyWith(joined: wasJoined);
-      });
-
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update join status: $e')),
+        ErrorHandler.showErrorSnackBar(
+          context,
+          willJoin ? 'You joined the walk!' : 'You left the walk.',
+          duration: const Duration(seconds: 2),
         );
       }
+    } on TimeoutException catch (e, st) {
+      // ❌ Roll back on timeout
+      _rollbackJoinStatus(walkId, wasJoined);
+      
+      if (mounted) {
+        CrashService.recordError(e, st);
+        ErrorHandler.showErrorSnackBar(
+          context,
+          'Operation took too long. Please try again.',
+        );
+      }
+    } catch (e, st) {
+      // ❌ Roll back if Firestore failed
+      _rollbackJoinStatus(walkId, wasJoined);
+
+      if (mounted) {
+        debugPrint('❌ Join/Leave error: $e');
+        CrashService.recordError(e, st);
+        
+        String message = 'Failed to update join status';
+        if (e.toString().contains('PERMISSION_DENIED')) {
+          message = 'You don\'t have permission to join this walk.';
+        } else if (e.toString().contains('network') || 
+                   e.toString().contains('Connection')) {
+          message = 'Network error. Check your connection and try again.';
+        }
+        
+        ErrorHandler.showErrorSnackBar(context, message);
+      }
     }
+  }
+
+  /// Helper to rollback join status on error
+  void _rollbackJoinStatus(String walkId, bool previousState) {
+    if (!mounted) return;
+    setState(() {
+      final index = _events.indexWhere((e2) {
+        final idA = e2.firestoreId.isNotEmpty ? e2.firestoreId : e2.id;
+        return idA == walkId;
+      });
+      if (index == -1) return;
+      _events[index] = _events[index].copyWith(joined: previousState);
+    });
   }
 
   void _toggleInterested(WalkEvent event) {
@@ -854,6 +1102,9 @@ class _HomeScreenState extends State<HomeScreen> {
             streakDays: _streakDays,
             weeklyGoalKm: _weeklyGoalKm,
             userName: _userName,
+            hasMoreWalks: _hasMoreWalks,
+            isLoadingMore: _isLoadingMore,
+            onLoadMore: _loadMoreWalks,
           ); // ✅ THIS LINE MUST EXIST
 
           break;

@@ -7,7 +7,8 @@ class AppPreferences {
   static const _keyDefaultGender = 'default_gender';
   static const _keyWalkReminders = 'walk_reminders_enabled';
   static const _keyNearbyAlerts = 'nearby_alerts_enabled';
-  static const _keyWeeklyGoalKm = 'weekly_goal_km'; // 👈 NEW
+  static const _keyWeeklyGoalKm = 'weekly_goal_km';
+  static const _keyUserCity = 'user_city'; // 👈 NEW
 
   // ===== DEFAULT VALUES (used if nothing saved yet) =====
   static const double defaultDistanceKmFallback = 3.0;
@@ -69,5 +70,16 @@ class AppPreferences {
   static Future<void> setWeeklyGoalKm(double km) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_keyWeeklyGoalKm, km);
+  }
+
+  // ===== User's current city =====
+  static Future<String?> getUserCity() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserCity);
+  }
+
+  static Future<void> setUserCity(String city) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserCity, city);
   }
 }
