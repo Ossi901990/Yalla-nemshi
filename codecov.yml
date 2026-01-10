@@ -1,0 +1,13 @@
+codecov:
+  require:
+    changes: 80  # Require 80% coverage on changed lines in PRs
+    patch: 80    # Require 80% coverage on new lines
+
+ignore:
+  - "test"       # Don't count test files in coverage
+  - "**/*.g.dart"  # Don't count generated files
+  - "**/*.freezed.dart"
+
+comment:
+  layout: "reach,diff,files"  # Show reach (overall), diff (changes), and file-by-file
+  behavior: default           # Post comment on every PR

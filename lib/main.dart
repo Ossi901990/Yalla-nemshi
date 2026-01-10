@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'services/notification_service.dart';
 import 'screens/home_screen.dart';
+import 'screens/privacy_policy_screen.dart';
+import 'screens/terms_screen.dart';
 import 'theme_controller.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
@@ -28,6 +31,18 @@ Future<void> main() async {
     await Firebase.initializeApp();
   }
 
+  // 🔹 Initialize Firebase Crashlytics
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+
+  // Pass all uncaught exceptions to Crashlytics
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Handle async errors outside Flutter
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+
   await NotificationService.init();
   runApp(const MyApp());
 }
@@ -53,6 +68,8 @@ class MyApp extends StatelessWidget {
           // ⬇️ NEW: define your routes
           routes: {
             LoginScreen.routeName: (context) => const LoginScreen(),
+            PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
+            TermsScreen.routeName: (context) => const TermsScreen(),
             SignupScreen.routeName: (context) => const SignupScreen(),
             '/home': (context) => const HomeScreen(),
           },

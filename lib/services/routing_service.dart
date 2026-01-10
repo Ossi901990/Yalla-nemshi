@@ -9,8 +9,10 @@ import '../models/route_result.dart';
 
 class RoutingService {
   final String apiKey;
+  final http.Client _client;
 
-  RoutingService({required this.apiKey});
+  RoutingService({required this.apiKey, http.Client? client})
+      : _client = client ?? http.Client();
 
   // ----------------------------------------------------------
   // STANDARD WALKING ROUTE (Point A → Point B)
@@ -41,7 +43,7 @@ class RoutingService {
     }
 
     try {
-      final response = await http.post(
+      final response = await _client.post(
         url,
         headers: {"Authorization": apiKey, "Content-Type": "application/json"},
         body: jsonEncode(body),
@@ -91,7 +93,7 @@ class RoutingService {
     };
 
     try {
-      final response = await http.post(
+      final response = await _client.post(
         url,
         headers: {"Authorization": apiKey, "Content-Type": "application/json"},
         body: jsonEncode(body),
