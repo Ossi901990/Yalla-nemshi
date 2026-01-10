@@ -14,3 +14,4 @@ comment:
   behavior: default
 codecov:
   require_ci_to_pass: false
+  strict_yaml_branch: main
