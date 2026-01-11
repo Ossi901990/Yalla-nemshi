@@ -1,8 +1,9 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 
 /// Service to report errors and exceptions to Firebase Crashlytics
 class CrashService {
-  static final _instance = FirebaseCrashlytics.instance;
+  static FirebaseCrashlytics? get _instance => kIsWeb ? null : FirebaseCrashlytics.instance;
 
   /// Log a non-fatal error (won't crash the app but will be tracked)
   static void recordError(
@@ -11,7 +12,9 @@ class CrashService {
     String? reason,
     Iterable<Object>? information,
   }) {
-    _instance.recordError(
+    final inst = _instance;
+    if (inst == null) return; // no-op on web
+    inst.recordError(
       error,
       stackTrace,
       reason: reason,
@@ -21,26 +24,36 @@ class CrashService {
 
   /// Log a fatal error
   static void recordFatalError(dynamic error, StackTrace stackTrace) {
-    _instance.recordError(error, stackTrace, fatal: true);
+    final inst = _instance;
+    if (inst == null) return; // no-op on web
+    inst.recordError(error, stackTrace, fatal: true);
   }
 
   /// Set user-specific information for crash reports
   static void setUserIdentifier(String userId) {
-    _instance.setUserIdentifier(userId);
+    final inst = _instance;
+    if (inst == null) return; // no-op on web
+    inst.setUserIdentifier(userId);
   }
 
   /// Clear user information
   static void clearUserIdentifier() {
-    _instance.setUserIdentifier('');
+    final inst = _instance;
+    if (inst == null) return; // no-op on web
+    inst.setUserIdentifier('');
   }
 
   /// Add custom key-value pairs to crash reports
   static void setCustomKey(String key, Object value) {
-    _instance.setCustomKey(key, value);
+    final inst = _instance;
+    if (inst == null) return; // no-op on web
+    inst.setCustomKey(key, value);
   }
 
   /// Log a message without crashing
   static void log(String message) {
-    _instance.log(message);
+    final inst = _instance;
+    if (inst == null) return; // no-op on web
+    inst.log(message);
   }
 }
