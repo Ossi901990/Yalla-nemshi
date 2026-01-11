@@ -13,6 +13,7 @@ import 'theme_controller.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
+import 'screens/review_walk_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -138,6 +139,14 @@ class MyApp extends StatelessWidget {
           routes: {
             LoginScreen.routeName: (context) => const LoginScreen(),
             ForgotPasswordScreen.routeName: (context) => const ForgotPasswordScreen(),
+            ReviewWalkScreen.routeName: (context) {
+              final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+              return ReviewWalkScreen(
+                walk: args?['walk'],
+                userId: args?['userId'],
+                userName: args?['userName'],
+              );
+            },
             PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
             TermsScreen.routeName: (context) => const TermsScreen(),
             SignupScreen.routeName: (context) => const SignupScreen(),

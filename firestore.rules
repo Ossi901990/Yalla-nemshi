@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Reviews collection: /reviews/{reviewId}
+    match /reviews/{reviewId} {
+      allow read: if true; // public read (adjust if you want private)
+
+      // Create: only authenticated users; validate fields
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['walkId','userId','userName','userProfileUrl','rating','reviewText','createdAt','helpfulCount','helpfulBy'])
+        && request.resource.data.walkId is string
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userName is string
+        && (request.resource.data.userProfileUrl == null || request.resource.data.userProfileUrl is string)
+        && request.resource.data.rating is number && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.reviewText is string && request.resource.data.reviewText.size() <= 500
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.helpfulCount is number && request.resource.data.helpfulCount == 0
+        && request.resource.data.helpfulBy is list && request.resource.data.helpfulBy.size() == 0;
+
+      // Update: author can edit their own review text/rating; others may only increment helpfulCount
+      allow update: if request.auth != null && (
+        // Author editing: only rating/reviewText may change
+        (
+          resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['rating','reviewText'])
+          && request.resource.data.rating is number && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+          && request.resource.data.reviewText is string && request.resource.data.reviewText.size() <= 500
+        )
+        ||
+        // Helpful: any authed user may add themselves once
+        (
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['helpfulBy','helpfulCount'])
+          && request.resource.data.helpfulBy is list
+          && request.resource.data.helpfulBy.size() == resource.data.helpfulBy.size() + 1
+          && !(request.auth.uid in resource.data.helpfulBy)
+          && (request.auth.uid in request.resource.data.helpfulBy)
+          && request.resource.data.helpfulCount == resource.data.helpfulCount + 1
+        )
+      );
+
+      // Delete: only the author can delete
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Walks collection: /walks/{walkId}
+    match /walks/{walkId} {
+      allow read: if true;
+      // Default: restrict writes unless you have admin roles; for now deny
+      allow write: if false;
+    }
+  }
+}

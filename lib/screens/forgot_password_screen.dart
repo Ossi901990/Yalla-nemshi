@@ -149,11 +149,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             children: [
               const SizedBox(height: 32),
               if (!_emailSent) ...[
-                Icon(
-                  Icons.email_outlined,
-                  size: 64,
-                  color: theme.primaryColor,
-                ),
+                Icon(Icons.email_outlined, size: 64, color: theme.primaryColor),
                 const SizedBox(height: 24),
                 Text(
                   'Forgot Your Password?',
@@ -195,8 +191,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ),
                           filled: true,
                           fillColor: isDark
-                              ? Colors.white.withOpacity(0.05)
-                              : Colors.grey.withOpacity(0.05),
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.grey.withValues(alpha: 0.05),
                         ),
                       ),
                       if (_errorMessage != null) ...[
@@ -204,10 +200,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.red.withOpacity(0.3),
+                              color: Colors.red.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -239,8 +235,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           onPressed: _isLoading ? null : _sendPasswordReset,
                           style: FilledButton.styleFrom(
                             backgroundColor: theme.primaryColor,
-                            disabledBackgroundColor:
-                                Colors.grey.withOpacity(0.5),
+                            disabledBackgroundColor: Colors.grey.withValues(
+                              alpha: 0.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -272,10 +269,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.green.withOpacity(0.3),
+                      color: Colors.green.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Column(

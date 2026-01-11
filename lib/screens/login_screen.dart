@@ -129,7 +129,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (e.code == 'user-not-found') {
         message = 'No account found with this email. Please sign up instead.';
       } else if (e.code == 'wrong-password') {
-        message = 'Incorrect password. Please try again or reset your password.';
+        message =
+            'Incorrect password. Please try again or reset your password.';
       } else if (e.code == 'invalid-email') {
         message = 'Please enter a valid email address.';
       } else if (e.code == 'too-many-requests') {
@@ -291,42 +292,41 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                             ),
                             const SizedBox(height: 24),
-                            if (_errorMessage != null) ...
-                              [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.red.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline,
-                                        color: Colors.red,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          _errorMessage!,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: Colors.red,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
+                            if (_errorMessage != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.red.withValues(alpha: 0.3),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                              ],
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _errorMessage!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             Form(
                               key: _formKey,
                               child: Column(
@@ -353,9 +353,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       onPressed: _goToForgotPassword,
                                       style: TextButton.styleFrom(
                                         padding: EdgeInsets.zero,
-                                        foregroundColor: kSecondaryText.withAlpha(
-                                          (0.8 * 255).round(),
-                                        ),
+                                        foregroundColor: kSecondaryText
+                                            .withAlpha((0.8 * 255).round()),
                                         textStyle: Theme.of(
                                           context,
                                         ).textTheme.labelSmall,
@@ -529,15 +528,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(
-                color: Colors.red,
-                width: 1.3,
-              ),
+              borderSide: const BorderSide(color: Colors.red, width: 1.3),
             ),
-            errorStyle: const TextStyle(
-              color: Colors.red,
-              fontSize: 12,
-            ),
+            errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
           ),
         ),
       ],
@@ -563,7 +556,10 @@ class _GradientButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isLoading
-              ? [Colors.grey.withOpacity(0.5), Colors.grey.withOpacity(0.5)]
+              ? [
+                  Colors.grey.withValues(alpha: 0.5),
+                  Colors.grey.withValues(alpha: 0.5),
+                ]
               : const [kButtonGradientStart, kButtonGradientEnd],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
@@ -577,7 +573,7 @@ class _GradientButton extends StatelessWidget {
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
             foregroundColor: kPrimaryText,
-            disabledForegroundColor: Colors.white.withOpacity(0.6),
+            disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
@@ -589,7 +585,7 @@ class _GradientButton extends StatelessWidget {
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.white.withOpacity(0.8),
+                      Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 )

@@ -1,9 +1,14 @@
 // lib/screens/event_details_screen.dart
 import 'package:flutter/material.dart';
+import '../models/review.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'walk_chat_screen.dart';
+import 'review_walk_screen.dart';
 import '../models/walk_event.dart';
+import '../services/review_service.dart';
+import '../widgets/review_widgets.dart';
 
-class EventDetailsScreen extends StatelessWidget {
+class EventDetailsScreen extends StatefulWidget {
   final WalkEvent event;
   final void Function(WalkEvent) onToggleJoin;
   final void Function(WalkEvent) onToggleInterested;
@@ -17,6 +22,11 @@ class EventDetailsScreen extends StatelessWidget {
     required this.onCancelHosted,
   });
 
+  @override
+  State<EventDetailsScreen> createState() => _EventDetailsScreenState();
+}
+
+class _EventDetailsScreenState extends State<EventDetailsScreen> {
   String _formatDateTime(DateTime dt) {
     final dd = dt.day.toString().padLeft(2, '0');
     final mm = dt.month.toString().padLeft(2, '0');
@@ -36,11 +46,17 @@ class EventDetailsScreen extends StatelessWidget {
     Color? iconColorOverride,
   }) {
     final bg = danger
-        ? theme.colorScheme.error.withAlpha((isDark ? 0.14 : 0.10 * 255).round())
-        : (isDark ? Colors.white.withAlpha((0.06 * 255).round()) : theme.colorScheme.surface);
+        ? theme.colorScheme.error.withAlpha(
+            (isDark ? 0.14 : 0.10 * 255).round(),
+          )
+        : (isDark
+              ? Colors.white.withAlpha((0.06 * 255).round())
+              : theme.colorScheme.surface);
 
     final border = danger
-        ? theme.colorScheme.error.withAlpha((isDark ? 0.45 : 0.35 * 255).round())
+        ? theme.colorScheme.error.withAlpha(
+            (isDark ? 0.45 : 0.35 * 255).round(),
+          )
         : (isDark
               ? Colors.white.withAlpha((0.18 * 255).round())
               : Colors.black.withAlpha((0.12 * 255).round()));
@@ -101,7 +117,7 @@ class EventDetailsScreen extends StatelessWidget {
 
     if (ok == true) {
       if (!context.mounted) return;
-      onCancelHosted(event);
+      widget.onCancelHosted(widget.event);
       Navigator.pop(context); // close details
       ScaffoldMessenger.of(
         context,
@@ -134,15 +150,17 @@ class EventDetailsScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ...reasons.map(
-                      (reason) => // ignore: deprecated_member_use
-                          RadioListTile<String>(
+                      (reason) => ListTile(
                         title: Text(reason),
-                        value: reason,
-                        groupValue: selectedReason, // ignore: deprecated_member_use
-                        onChanged: (val) { // ignore: deprecated_member_use
-                          if (val == null) return;
+                        leading: Icon(
+                          selectedReason == reason
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          color: Theme.of(ctx).colorScheme.primary,
+                        ),
+                        onTap: () {
                           setState(() {
-                            selectedReason = val;
+                            selectedReason = reason;
                           });
                         },
                       ),
@@ -192,6 +210,11 @@ class EventDetailsScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // Shortcuts to avoid widget. prefix everywhere
+    final event = widget.event;
+    final onToggleJoin = widget.onToggleJoin;
+    final onToggleInterested = widget.onToggleInterested;
+
     final canJoin = !event.isOwner && !event.cancelled;
     final joinText = event.joined ? 'Leave walk' : 'Join walk';
 
@@ -232,13 +255,10 @@ class EventDetailsScreen extends StatelessWidget {
                         event.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -280,9 +300,7 @@ class EventDetailsScreen extends StatelessWidget {
                           event.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
+                          style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -330,8 +348,9 @@ class EventDetailsScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                       side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withAlpha((0.06 * 255).round()),
+                        color: (isDark ? Colors.white : Colors.black).withAlpha(
+                          (0.06 * 255).round(),
+                        ),
                       ),
                     ),
                     child: Padding(
@@ -362,10 +381,14 @@ class EventDetailsScreen extends StatelessWidget {
                                     vertical: 6,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withAlpha((0.15 * 255).round()),
+                                    color: Colors.amber.withAlpha(
+                                      (0.15 * 255).round(),
+                                    ),
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
-                                      color: Colors.amber.withAlpha((0.35 * 255).round()),
+                                      color: Colors.amber.withAlpha(
+                                        (0.35 * 255).round(),
+                                      ),
                                       width: 1,
                                     ),
                                   ),
@@ -380,10 +403,10 @@ class EventDetailsScreen extends StatelessWidget {
                                       const SizedBox(width: 6),
                                       Text(
                                         'Interested',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(
+                                        style:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.labelSmall?.copyWith(
                                               fontWeight: FontWeight.w700,
                                               color: Colors.amber,
                                             ) ??
@@ -615,6 +638,220 @@ class EventDetailsScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                           ],
 
+                          // ✅ Reviews Section
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Text(
+                              'Reviews',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Reviews stats + button to write review
+                          FutureBuilder(
+                            future: ReviewService.getWalkReviewStats(
+                              widget.event.id,
+                            ),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                  child: SizedBox(
+                                    height: 120,
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              final stats = snapshot.data;
+                              final currentUser =
+                                  FirebaseAuth.instance.currentUser;
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  RatingStatsWidget(
+                                    stats:
+                                        stats ??
+                                        ReviewStats(
+                                          averageRating: 0,
+                                          totalReviews: 0,
+                                          ratingDistribution: {},
+                                        ),
+                                    onWriteReview: currentUser != null
+                                        ? () async {
+                                            final result =
+                                                await Navigator.pushNamed(
+                                                  context,
+                                                  ReviewWalkScreen.routeName,
+                                                  arguments: {
+                                                    'walk': widget.event,
+                                                    'userId': currentUser.uid,
+                                                    'userName':
+                                                        currentUser
+                                                            .displayName ??
+                                                        'Anonymous',
+                                                  },
+                                                );
+                                            // Refresh if review was added
+                                            if (result == true &&
+                                                context.mounted) {
+                                              setState(() {});
+                                            }
+                                          }
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // List of recent reviews
+                                  FutureBuilder(
+                                    future:
+                                        ReviewService.getWalkReviewsPaginated(
+                                          widget.event.id,
+                                          limit: 5,
+                                        ),
+                                    builder: (context, reviewSnapshot) {
+                                      if (reviewSnapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const SizedBox(
+                                          height: 80,
+                                          child: CircularProgressIndicator(),
+                                        );
+                                      }
+
+                                      final reviews = reviewSnapshot.data ?? [];
+
+                                      if (reviews.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Recent Reviews',
+                                            style: theme.textTheme.titleSmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          ...reviews.map(
+                                            (review) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 12.0,
+                                              ),
+                                              child: ReviewCard(
+                                                review: review,
+                                                onDelete:
+                                                    currentUser?.uid ==
+                                                        review.userId
+                                                    ? () async {
+                                                        await ReviewService.deleteReview(
+                                                          review.id,
+                                                          widget.event.id,
+                                                        );
+                                                        if (context.mounted) {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Review deleted',
+                                                              ),
+                                                              duration:
+                                                                  Duration(
+                                                                    seconds: 2,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                          setState(() {});
+                                                        }
+                                                      }
+                                                    : null,
+                                                onHelpful: () async {
+                                                  if (currentUser == null) {
+                                                    if (!context.mounted) {
+                                                      return;
+                                                    }
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Please sign in to mark helpful',
+                                                        ),
+                                                        duration: Duration(
+                                                          seconds: 2,
+                                                        ),
+                                                      ),
+                                                    );
+                                                    return;
+                                                  }
+                                                  await ReviewService.markHelpful(
+                                                    review.id,
+                                                    currentUser.uid,
+                                                  );
+                                                  if (!context.mounted) return;
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Marked helpful',
+                                                      ),
+                                                      duration: Duration(
+                                                        seconds: 2,
+                                                      ),
+                                                    ),
+                                                  );
+                                                  setState(() {});
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          if (reviews.length >= 5)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 8.0,
+                                              ),
+                                              child: TextButton(
+                                                onPressed: () {
+                                                  // Could navigate to full reviews screen
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'See all reviews feature coming soon',
+                                                      ),
+                                                      duration: Duration(
+                                                        seconds: 2,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                child: const Text(
+                                                  'Load more reviews',
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+
                           // Host-only cancel button
                           if (event.isOwner && !event.cancelled) ...[
                             SizedBox(
@@ -681,4 +918,3 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 }
-
