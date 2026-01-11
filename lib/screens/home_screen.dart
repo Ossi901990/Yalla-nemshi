@@ -170,10 +170,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   }
                 }
 
+                // Collapse recurring instances into one card per series (show next upcoming)
+                final now = DateTime.now();
+                final Map<String, List<WalkEvent>> series = {};
+                final List<WalkEvent> singles = [];
+
+                for (final e in loaded) {
+                  // Hide recurring templates entirely
+                  if (e.isRecurringTemplate) {
+                    continue;
+                  }
+
+                  if (e.isRecurring && e.recurringGroupId != null) {
+                    series.putIfAbsent(e.recurringGroupId!, () => []).add(e);
+                  } else {
+                    singles.add(e);
+                  }
+                }
+
+                final List<WalkEvent> merged = []..addAll(singles);
+
+                for (final group in series.values) {
+                  // pick the soonest future occurrence, otherwise the earliest in the series
+                  WalkEvent? candidate;
+                  for (final e in group) {
+                    final isFuture = e.dateTime.isAfter(now);
+                    if (candidate == null) {
+                      candidate = e;
+                    } else {
+                      final betterFuture = isFuture && !candidate.dateTime.isAfter(now);
+                      final earlierSameBucket = (isFuture == candidate.dateTime.isAfter(now)) && e.dateTime.isBefore(candidate.dateTime);
+                      if (betterFuture || earlierSameBucket) {
+                        candidate = e;
+                      }
+                    }
+                  }
+                  if (candidate != null) {
+                    merged.add(candidate);
+                  }
+                }
+
+                merged.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
                 setState(() {
                   _events
                     ..clear()
-                    ..addAll(loaded);
+                    ..addAll(merged);
                 });
               } catch (e, st) {
                 debugPrint('❌ Error processing walks snapshot: $e');
@@ -978,12 +1020,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'No notifications yet',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ) ?? const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
+                  style:
+                      Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ) ??
+                      const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1017,12 +1061,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               'Notifications',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ) ?? const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style:
+                                  Theme.of(context).textTheme.headlineSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700) ??
+                                  const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                             ),
                           ),
                         ],
@@ -1066,12 +1111,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     subtitle: Text(n.message),
                     trailing: Text(
                       _formatNotificationTime(n.timestamp),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.grey.shade600,
-                      ) ?? TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Colors.grey.shade600,
+                          ) ??
+                          TextStyle(fontSize: 11, color: Colors.grey.shade600),
                     ),
                   ),
                 ),
@@ -1245,14 +1289,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(width: 8),
                       Text(
                         'Yalla Nemshi',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ) ?? const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ) ??
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                       ),
                     ],
                   ),
@@ -1268,7 +1314,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: GestureDetector(
                           onTap: _openNotificationsSheet,
                           child: Padding(
-                            padding: const EdgeInsets.all(8), // ✅ Ensures 48x48 touch target
+                            padding: const EdgeInsets.all(
+                              8,
+                            ), // ✅ Ensures 48x48 touch target
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
@@ -1287,35 +1335,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     size: 18,
                                   ),
                                 ),
-                              if (_unreadNotifCount > 0)
-                                Positioned(
-                                  right: -2,
-                                  top: -2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red,
-                                    ),
-                                    child: Text(
-                                      _unreadNotifCount > 99
-                                          ? '99+'
-                                          : '$_unreadNotifCount',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                      ) ?? const TextStyle(
-                                        fontSize: 9,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
+                                if (_unreadNotifCount > 0)
+                                  Positioned(
+                                    right: -2,
+                                    top: -2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red,
+                                      ),
+                                      child: Text(
+                                        _unreadNotifCount > 99
+                                            ? '99+'
+                                            : '$_unreadNotifCount',
+                                        style:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.labelSmall?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ) ??
+                                            const TextStyle(
+                                              fontSize: 9,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                       ),
                       const SizedBox(width: 4),
                       Semantics(
@@ -1324,7 +1376,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: GestureDetector(
                           onTap: _openProfileQuickSheet,
                           child: Padding(
-                            padding: const EdgeInsets.all(8), // ✅ Ensures 48x48 touch target
+                            padding: const EdgeInsets.all(
+                              8,
+                            ), // ✅ Ensures 48x48 touch target
                             child: Container(
                               width: 32,
                               height: 32,
@@ -1388,14 +1442,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Yalla Nemshi',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ) ?? const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ) ??
+                              const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
                         ),
                       ],
                     ),
@@ -1433,14 +1489,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       _unreadNotifCount > 99
                                           ? '99+'
                                           : '$_unreadNotifCount',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                      ) ?? const TextStyle(
-                                        fontSize: 9,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                                      style:
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ) ??
+                                          const TextStyle(
+                                            fontSize: 9,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                     ),
                                   ),
                                 ),
@@ -2232,11 +2292,43 @@ class _WalkCard extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        title: Text(
-          event.title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                event.title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (event.isRecurring && !event.isRecurringTemplate)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.repeat,
+                      size: 12,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      'Recurring',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         subtitle: Text(_formatDateTime(event.dateTime)),
         trailing: const Icon(Icons.chevron_right),

@@ -6,10 +6,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/walk_event.dart';
+import '../models/recurrence_rule.dart';
 import 'map_pick_screen.dart';
 import '../services/app_preferences.dart';
 import '../services/geocoding_service.dart';
 import '../services/crash_service.dart';
+import '../services/recurring_walk_service.dart';
 import '../utils/error_handler.dart';
 
 // ===== Design tokens (match Home / Profile) =====
@@ -83,6 +85,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   static const double _minutesPerKm = 12.0;
 
   String _description = '';
+
+  // ===== Recurring walk fields =====
+  bool _isRecurring = false;
+  RecurrenceType _recurrenceType = RecurrenceType.weekly;
+  Set<int> _selectedWeekDays = {
+    DateTime.now().weekday,
+  }; // Default to today's weekday
+  DateTime? _recurringEndDate;
 
   // ===== Point-to-point visibility =====
   bool _isPrivatePointToPoint = false;
@@ -192,10 +202,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                 const SizedBox(height: 16),
                 Text(
                   'Creating your walk...',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w500),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -288,10 +297,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(28),
               ),
-              helpTextStyle: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(
+              helpTextStyle:
+                  Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white70,
                     fontWeight: FontWeight.w600,
                   ) ??
@@ -302,10 +309,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   ),
               hourMinuteColor: dialogBg,
               hourMinuteTextColor: Colors.white,
-              hourMinuteTextStyle: Theme.of(context)
-                  .textTheme
-                  .displayMedium
-                  ?.copyWith(
+              hourMinuteTextStyle:
+                  Theme.of(context).textTheme.displayMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
@@ -319,10 +324,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               dialBackgroundColor: dialogBg,
               dialHandColor: accent,
               dialTextColor: Colors.white,
-              dialTextStyle: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(
+              dialTextStyle:
+                  Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
                   ) ??
@@ -334,10 +337,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               entryModeIconColor: Colors.white70,
               dayPeriodColor: dialogBg,
               dayPeriodTextColor: Colors.white,
-              dayPeriodTextStyle: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(
+              dayPeriodTextStyle:
+                  Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ) ??
@@ -349,14 +350,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               dayPeriodBorderSide: const BorderSide(color: Colors.white24),
               cancelButtonStyle: TextButton.styleFrom(
                 foregroundColor: Colors.white70,
-                textStyle: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600) ??
-                    const TextStyle(
-                      fontSize: 16,
+                textStyle:
+                    Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                    ),
+                    ) ??
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -364,14 +362,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               ),
               confirmButtonStyle: TextButton.styleFrom(
                 foregroundColor: Colors.white,
-                textStyle: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w700) ??
-                    const TextStyle(
-                      fontSize: 16,
+                textStyle:
+                    Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                    ),
+                    ) ??
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
@@ -407,7 +402,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
     if (result != null && result.length == 2) {
       final startPoint = result[0];
-      
+
       // Auto-detect city from meeting location
       String? detectedCity;
       try {
@@ -419,7 +414,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         debugPrint('Error detecting city: $e');
         // If geocoding fails, city remains null
       }
-      
+
       if (mounted) {
         setState(() {
           _startLatLng = startPoint;
@@ -440,6 +435,21 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     ).join();
   }
 
+  Future<void> _pickRecurringEndDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _recurringEndDate ?? now.add(const Duration(days: 60)),
+      firstDate: _dateTime,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      setState(() {
+        _recurringEndDate = picked;
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
@@ -454,9 +464,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       return;
     }
 
-    final walkType = _walkTypeIndex == 0
-        ? 'point_to_point'
-        : 'loop';
+    final walkType = _walkTypeIndex == 0 ? 'point_to_point' : 'loop';
 
     // Ensure share code exists if private point-to-point
     if (walkType == 'point_to_point' && _isPrivatePointToPoint) {
@@ -522,57 +530,114 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     try {
       // Show loading indicator
       if (!mounted) return;
-      
+
       final loadingDialog = _buildLoadingDialog(context);
       Navigator.of(context).push(loadingDialog);
 
       try {
-        final docRef = await FirebaseFirestore.instance
-            .collection('walks')
-            .add(payload)
-            .timeout(const Duration(seconds: 30));
+        // Check if recurring walk
+        if (_isRecurring) {
+          // Create recurring walk with instances
+          final templateWalk = WalkEvent(
+            id: '',
+            hostUid: uid,
+            firestoreId: '',
+            title: _title,
+            dateTime: _dateTime,
+            distanceKm: (effectiveDistanceKm ?? 0),
+            gender: _gender,
+            isOwner: true,
+            joined: false,
+            meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
+            meetingLat: effectiveMeeting?.latitude,
+            meetingLng: effectiveMeeting?.longitude,
+            startLat: effectiveStart?.latitude,
+            startLng: effectiveStart?.longitude,
+            endLat: effectiveEnd?.latitude,
+            endLng: effectiveEnd?.longitude,
+            city: _detectedCity,
+            description: _description.isEmpty ? null : _description,
+          );
 
-        if (!mounted) return;
-        Navigator.of(context).pop(); // close loading dialog
+          final recurrence = RecurrenceRule(
+            type: _recurrenceType,
+            weekDays: _recurrenceType == RecurrenceType.weekly
+                ? (_selectedWeekDays.toList()..sort())
+                : null,
+            monthDay: _recurrenceType == RecurrenceType.monthly
+                ? _dateTime.day
+                : null,
+          );
 
-        final newEvent = WalkEvent(
-          id: docRef.id,
-          hostUid: uid,
-          firestoreId: docRef.id,
-          title: _title,
-          dateTime: _dateTime,
-          distanceKm: (effectiveDistanceKm ?? 0),
-          gender: _gender,
-          isOwner: true,
-          joined: false,
-          meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
-          meetingLat: effectiveMeeting?.latitude,
-          meetingLng: effectiveMeeting?.longitude,
-          startLat: effectiveStart?.latitude,
-          startLng: effectiveStart?.longitude,
-          endLat: effectiveEnd?.latitude,
-          endLng: effectiveEnd?.longitude,
-          city: _detectedCity,
-          description: _description.isEmpty ? null : _description,
-        );
+          await RecurringWalkService.createRecurringWalk(
+            templateWalk: templateWalk,
+            recurrence: recurrence,
+            endDate: _recurringEndDate,
+          ).timeout(const Duration(seconds: 30));
 
-        widget.onEventCreated(newEvent);
-        widget.onCreatedNavigateHome();
+          if (!mounted) return;
+          Navigator.of(context).pop(); // close loading dialog
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Recurring walk created! ${recurrence.getDescription()}',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          widget.onCreatedNavigateHome();
+        } else {
+          // Regular walk creation
+          final docRef = await FirebaseFirestore.instance
+              .collection('walks')
+              .add(payload)
+              .timeout(const Duration(seconds: 30));
+
+          if (!mounted) return;
+          Navigator.of(context).pop(); // close loading dialog
+
+          final newEvent = WalkEvent(
+            id: docRef.id,
+            hostUid: uid,
+            firestoreId: docRef.id,
+            title: _title,
+            dateTime: _dateTime,
+            distanceKm: (effectiveDistanceKm ?? 0),
+            gender: _gender,
+            isOwner: true,
+            joined: false,
+            meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
+            meetingLat: effectiveMeeting?.latitude,
+            meetingLng: effectiveMeeting?.longitude,
+            startLat: effectiveStart?.latitude,
+            startLng: effectiveStart?.longitude,
+            endLat: effectiveEnd?.latitude,
+            endLng: effectiveEnd?.longitude,
+            city: _detectedCity,
+            description: _description.isEmpty ? null : _description,
+          );
+
+          widget.onEventCreated(newEvent);
+          widget.onCreatedNavigateHome();
+        }
       } on TimeoutException catch (e, st) {
         if (!mounted) return;
         Navigator.of(context).pop(); // close loading dialog
-        
+
         await ErrorHandler.handleError(
           context,
           e,
           st,
           action: 'create_walk',
-          userMessage: 'Creating the walk took too long. Please check your internet and try again.',
+          userMessage:
+              'Creating the walk took too long. Please check your internet and try again.',
         );
       }
     } catch (e, st) {
       if (!mounted) return;
-      
+
       // Ensure loading dialog is closed
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
@@ -582,12 +647,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       CrashService.recordError(e, st);
 
       String userMessage = 'Unable to create walk';
-      
+
       if (e.toString().contains('PERMISSION_DENIED')) {
-        userMessage = 'You don\'t have permission to create walks. Try logging out and back in.';
-      } else if (e.toString().contains('network') || 
-                 e.toString().contains('Connection')) {
-        userMessage = 'Network error. Check your internet connection and try again.';
+        userMessage =
+            'You don\'t have permission to create walks. Try logging out and back in.';
+      } else if (e.toString().contains('network') ||
+          e.toString().contains('Connection')) {
+        userMessage =
+            'Network error. Check your internet connection and try again.';
       } else if (e.toString().contains('INVALID_ARGUMENT')) {
         userMessage = 'Please fill in all required fields correctly.';
       }
@@ -595,6 +662,20 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       if (mounted) {
         ErrorHandler.showErrorSnackBar(context, userMessage);
       }
+    }
+  }
+
+  String _getDaySuffix(int day) {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
     }
   }
 
@@ -626,13 +707,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         'Yalla Nemshi',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(
-                              color: isDark ? Colors.white : Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: isDark ? Colors.white : Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -680,8 +758,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withAlpha((kCardBorderAlpha * 255).round()),
+                        color: (isDark ? Colors.white : Colors.black).withAlpha(
+                          (kCardBorderAlpha * 255).round(),
+                        ),
                       ),
                     ),
                     child: Theme(
@@ -776,8 +855,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
                                             color: isDark
-                                                ? Colors.white.withAlpha((0.06 * 255).round())
-                                                : Colors.black.withAlpha((0.04 * 255).round()),
+                                                ? Colors.white.withAlpha(
+                                                    (0.06 * 255).round(),
+                                                  )
+                                                : Colors.black.withAlpha(
+                                                    (0.04 * 255).round(),
+                                                  ),
                                             borderRadius: BorderRadius.circular(
                                               16,
                                             ),
@@ -786,7 +869,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   (isDark
                                                           ? Colors.white
                                                           : Colors.black)
-                                                      .withAlpha((0.08 * 255).round()),
+                                                      .withAlpha(
+                                                        (0.08 * 255).round(),
+                                                      ),
                                             ),
                                           ),
                                           child: TabBar(
@@ -797,7 +882,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               color: isDark
-                                                  ? Colors.white.withAlpha((0.10 * 255).round())
+                                                  ? Colors.white.withAlpha(
+                                                      (0.10 * 255).round(),
+                                                    )
                                                   : Colors.white,
                                             ),
                                             labelColor: isDark
@@ -838,7 +925,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: isDark
-                                                ? Colors.white.withAlpha((0.06 * 255).round())
+                                                ? Colors.white.withAlpha(
+                                                    (0.06 * 255).round(),
+                                                  )
                                                 : Colors.white,
                                             borderRadius: BorderRadius.circular(
                                               16,
@@ -848,7 +937,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   (isDark
                                                           ? Colors.white
                                                           : Colors.black)
-                                                      .withAlpha((0.12 * 255).round()),
+                                                      .withAlpha(
+                                                        (0.12 * 255).round(),
+                                                      ),
                                             ),
                                           ),
                                           child: Row(
@@ -1229,6 +1320,236 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                         ),
                                         const SizedBox(height: 24),
 
+                                        // ===== Recurring Walk Section =====
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white.withAlpha(
+                                                    (0.04 * 255).round(),
+                                                  )
+                                                : Colors.grey.withAlpha(
+                                                    (0.05 * 255).round(),
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  (isDark
+                                                          ? Colors.white
+                                                          : Colors.black)
+                                                      .withAlpha(
+                                                        (0.08 * 255).round(),
+                                                      ),
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.repeat,
+                                                    size: 20,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : Colors.black87,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Recurring Walk',
+                                                    style: theme
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                  ),
+                                                  const Spacer(),
+                                                  Switch(
+                                                    value: _isRecurring,
+                                                    onChanged: (val) {
+                                                      setState(() {
+                                                        _isRecurring = val;
+                                                      });
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                              if (_isRecurring) ...[
+                                                const SizedBox(height: 16),
+                                                // Frequency selector
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: SegmentedButton<RecurrenceType>(
+                                                        segments: const [
+                                                          ButtonSegment(
+                                                            value:
+                                                                RecurrenceType
+                                                                    .weekly,
+                                                            label: Text(
+                                                              'Weekly',
+                                                            ),
+                                                          ),
+                                                          ButtonSegment(
+                                                            value:
+                                                                RecurrenceType
+                                                                    .monthly,
+                                                            label: Text(
+                                                              'Monthly',
+                                                            ),
+                                                          ),
+                                                        ],
+                                                        selected: {
+                                                          _recurrenceType,
+                                                        },
+                                                        onSelectionChanged:
+                                                            (
+                                                              Set<
+                                                                RecurrenceType
+                                                              >
+                                                              newSelection,
+                                                            ) {
+                                                              setState(() {
+                                                                _recurrenceType =
+                                                                    newSelection
+                                                                        .first;
+                                                              });
+                                                            },
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                // Weekly: Day selection
+                                                if (_recurrenceType ==
+                                                    RecurrenceType.weekly) ...[
+                                                  Text(
+                                                    'Select days:',
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          color: isDark
+                                                              ? Colors.white70
+                                                              : Colors.black87,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 8,
+                                                    children: [
+                                                      for (var day in [
+                                                        (1, 'Mon'),
+                                                        (2, 'Tue'),
+                                                        (3, 'Wed'),
+                                                        (4, 'Thu'),
+                                                        (5, 'Fri'),
+                                                        (6, 'Sat'),
+                                                        (7, 'Sun'),
+                                                      ])
+                                                        FilterChip(
+                                                          label: Text(day.$2),
+                                                          selected:
+                                                              _selectedWeekDays
+                                                                  .contains(
+                                                                    day.$1,
+                                                                  ),
+                                                          onSelected: (val) {
+                                                            setState(() {
+                                                              if (val) {
+                                                                _selectedWeekDays
+                                                                    .add(
+                                                                      day.$1,
+                                                                    );
+                                                              } else {
+                                                                _selectedWeekDays
+                                                                    .remove(
+                                                                      day.$1,
+                                                                    );
+                                                              }
+                                                            });
+                                                          },
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ],
+                                                // Monthly: Show info
+                                                if (_recurrenceType ==
+                                                    RecurrenceType.monthly)
+                                                  Text(
+                                                    'Repeats on the ${_dateTime.day}${_getDaySuffix(_dateTime.day)} of each month',
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          color: isDark
+                                                              ? Colors.white70
+                                                              : Colors.black87,
+                                                        ),
+                                                  ),
+                                                const SizedBox(height: 12),
+                                                // End date (optional)
+                                                ListTile(
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                  title: Text(
+                                                    'End date (optional)',
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodyMedium,
+                                                  ),
+                                                  subtitle: Text(
+                                                    _recurringEndDate != null
+                                                        ? '${_recurringEndDate!.day}/${_recurringEndDate!.month}/${_recurringEndDate!.year}'
+                                                        : 'No end date',
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          color: isDark
+                                                              ? Colors.white60
+                                                              : Colors.black54,
+                                                        ),
+                                                  ),
+                                                  trailing: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      if (_recurringEndDate !=
+                                                          null)
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                            Icons.clear,
+                                                          ),
+                                                          onPressed: () {
+                                                            setState(() {
+                                                              _recurringEndDate =
+                                                                  null;
+                                                            });
+                                                          },
+                                                        ),
+                                                      IconButton(
+                                                        icon: const Icon(
+                                                          Icons.calendar_today,
+                                                        ),
+                                                        onPressed:
+                                                            _pickRecurringEndDate,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
+
                                         // Submit
                                         SizedBox(
                                           width: double.infinity,
@@ -1293,6 +1614,3 @@ class _HeaderLogo extends StatelessWidget {
     );
   }
 }
-
-
-

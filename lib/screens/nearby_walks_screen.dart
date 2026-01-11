@@ -156,25 +156,22 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.notifications_none,
-                size: 40,
-                color: Colors.grey.shade500,
-              ),
-              const SizedBox(height: 16),
               Text(
-                'No notifications yet',
+                'Notifications',
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1F2933),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'You’ll see reminders and new nearby walks here.',
-                textAlign: TextAlign.center,
+              const SizedBox(height: 12),
+              Text(
+                'No notifications yet. We\'ll show walk updates here.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.black54,
+                ),
               ),
-              const SizedBox(height: 16),
             ],
           ),
         );
@@ -189,11 +186,11 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
           walksJoined: widget.walksJoined,
           eventsHosted: widget.eventsHosted,
           totalKm: widget.totalKm,
-          weeklyWalks: widget.weeklyWalks,
-          weeklyKm: widget.weeklyKm,
-          weeklyGoalKm: widget.weeklyGoalKm,
-          streakDays: widget.streakDays,
           interestedCount: widget.interestedCount,
+          weeklyKm: widget.weeklyKm,
+          weeklyWalks: widget.weeklyWalks,
+          streakDays: widget.streakDays,
+          weeklyGoalKm: widget.weeklyGoalKm,
         ),
       ),
     );
@@ -914,6 +911,33 @@ class _NearbyWalkCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (event.isRecurring && !event.isRecurringTemplate)
+                          Container(
+                            margin: const EdgeInsets.only(left: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.repeat,
+                                  size: 12,
+                                  color: theme.colorScheme.onPrimaryContainer,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'Recurring',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onPrimaryContainer,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         if (event.interested) ...[
                           const SizedBox(width: 8),
                           ConstrainedBox(

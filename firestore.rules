@@ -47,8 +47,7 @@ service cloud.firestore {
     // Walks collection: /walks/{walkId}
     match /walks/{walkId} {
       allow read: if true;
-      // Default: restrict writes unless you have admin roles; for now deny
-      allow write: if false;
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.hostUid;
     }
   }
 }

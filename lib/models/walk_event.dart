@@ -1,4 +1,5 @@
 // lib/models/walk_event.dart
+import 'recurrence_rule.dart';
 
 class WalkEvent {
   final String id;
@@ -23,7 +24,7 @@ class WalkEvent {
   final double? endLat;
   final double? endLng;
   final String? description;
-  
+
   /// City where the walk takes place (auto-detected from coordinates)
   final String? city;
 
@@ -42,11 +43,27 @@ class WalkEvent {
   /// Optional: comfort/vibe, e.g. "Social", "Quiet", "Workout" (for future use)
   final String? comfortLevel;
 
-  /// Optional: recurring rule text, e.g. "Weekly on Saturday" (for future use)
+  /// Optional: recurring rule text, e.g. "Weekly on Saturday" (deprecated, use recurrence)
   final String? recurringRule;
 
-  /// Optional: user’s private notes about this event (for future use)
+  /// Optional: user's private notes about this event (for future use)
   final String? userNotes;
+
+  // ===== Recurring Walk Fields =====
+  /// Whether this walk is part of a recurring series
+  final bool isRecurring;
+
+  /// ID linking all instances of the same recurring walk (null if not recurring)
+  final String? recurringGroupId;
+
+  /// Recurrence pattern (only stored on template, null on instances)
+  final RecurrenceRule? recurrence;
+
+  /// True if this is the template walk (not shown in lists), false for generated instances
+  final bool isRecurringTemplate;
+
+  /// Optional end date for recurring generation
+  final DateTime? recurringEndDate;
 
   WalkEvent({
     required this.id,
@@ -73,6 +90,11 @@ class WalkEvent {
     this.recurringRule,
     this.userNotes,
     this.city,
+    this.isRecurring = false,
+    this.recurringGroupId,
+    this.recurrence,
+    this.isRecurringTemplate = false,
+    this.recurringEndDate,
   }) : tags = tags ?? const [];
 
   WalkEvent copyWith({
@@ -100,6 +122,11 @@ class WalkEvent {
     String? recurringRule,
     String? userNotes,
     String? city,
+    bool? isRecurring,
+    String? recurringGroupId,
+    RecurrenceRule? recurrence,
+    bool? isRecurringTemplate,
+    DateTime? recurringEndDate,
   }) {
     return WalkEvent(
       id: id ?? this.id,
@@ -127,6 +154,11 @@ class WalkEvent {
       recurringRule: recurringRule ?? this.recurringRule,
       userNotes: userNotes ?? this.userNotes,
       city: city ?? this.city,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurringGroupId: recurringGroupId ?? this.recurringGroupId,
+      recurrence: recurrence ?? this.recurrence,
+      isRecurringTemplate: isRecurringTemplate ?? this.isRecurringTemplate,
+      recurringEndDate: recurringEndDate ?? this.recurringEndDate,
     );
   }
 
@@ -136,6 +168,7 @@ class WalkEvent {
     return {
       'id': id,
       'firestoreId': firestoreId,
+      'hostUid': hostUid,
       'title': title,
       'dateTime': dateTime.toIso8601String(),
       'distanceKm': distanceKm,
@@ -157,6 +190,11 @@ class WalkEvent {
       'recurringRule': recurringRule,
       'userNotes': userNotes,
       'city': city,
+      'isRecurring': isRecurring,
+      'recurringGroupId': recurringGroupId,
+      'recurrence': recurrence?.toMap(),
+      'isRecurringTemplate': isRecurringTemplate,
+      'recurringEndDate': recurringEndDate?.toIso8601String(),
     };
   }
 
@@ -247,6 +285,15 @@ class WalkEvent {
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
       city: map['city']?.toString(),
+      isRecurring: _toBool(map['isRecurring']),
+      recurringGroupId: map['recurringGroupId']?.toString(),
+      recurrence: map['recurrence'] != null
+          ? RecurrenceRule.fromMap(map['recurrence'] as Map<String, dynamic>)
+          : null,
+      isRecurringTemplate: _toBool(map['isRecurringTemplate']),
+      recurringEndDate: map['recurringEndDate'] != null
+          ? DateTime.tryParse(map['recurringEndDate'].toString())
+          : null,
     );
   }
 }

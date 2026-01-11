@@ -6,6 +6,7 @@ import 'walk_chat_screen.dart';
 import 'review_walk_screen.dart';
 import '../models/walk_event.dart';
 import '../services/review_service.dart';
+import '../services/recurring_walk_service.dart';
 import '../widgets/review_widgets.dart';
 
 class EventDetailsScreen extends StatefulWidget {
@@ -122,6 +123,97 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Walk cancelled')));
+    }
+  }
+
+  Future<void> _confirmCancelSingle(BuildContext context) async {
+    final theme = Theme.of(context);
+    final dateStr = '${widget.event.dateTime.day}/${widget.event.dateTime.month}/${widget.event.dateTime.year}';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel this occurrence?'),
+        content: Text(
+          'This will only cancel this single walk on $dateStr. '
+          'Other walks in the series will remain active.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep walk'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+            ),
+            child: const Text('Cancel this occurrence'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      if (!context.mounted) return;
+      widget.onCancelHosted(widget.event);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Walk occurrence cancelled')),
+      );
+    }
+  }
+
+  Future<void> _confirmCancelAllFuture(BuildContext context) async {
+    final theme = Theme.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel all future walks?'),
+        content: const Text(
+          'This will cancel all future walks in this recurring series. '
+          'Past walks will remain visible. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep walks'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+            ),
+            child: const Text('Cancel all future'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      if (!context.mounted) return;
+      
+      final groupId = widget.event.recurringGroupId;
+      if (groupId == null || groupId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: No recurring group ID found')),
+        );
+        return;
+      }
+
+      try {
+        await RecurringWalkService.cancelAllFutureInstances(groupId);
+        if (!context.mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All future walks cancelled')),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error cancelling walks: $e')),
+        );
+      }
     }
   }
 
@@ -486,8 +578,59 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                   label: 'Cancelled',
                                   danger: true,
                                 ),
+                              if (event.isRecurring && !event.isRecurringTemplate)
+                                _eventPill(
+                                  isDark: isDark,
+                                  theme: theme,
+                                  icon: Icons.repeat,
+                                  label: 'Recurring',
+                                  iconColorOverride: theme.colorScheme.primary,
+                                ),
                             ],
                           ),
+
+                          if (event.isRecurring && !event.isRecurringTemplate && event.recurrence != null) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer.withAlpha((0.3 * 255).round()),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary.withAlpha((0.3 * 255).round()),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.repeat,
+                                        size: 18,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Part of a recurring series',
+                                        style: theme.textTheme.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    event.recurrence!.getDescription(),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isDark ? Colors.white70 : Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
 
                           const SizedBox(height: 16),
 
@@ -852,26 +995,65 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // Host-only cancel button
+                          // Host-only cancel button(s)
                           if (event.isOwner && !event.cancelled) ...[
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(52),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                            if (event.isRecurring && !event.isRecurringTemplate && event.recurringGroupId != null) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    foregroundColor: theme.colorScheme.error,
+                                    side: BorderSide(
+                                      color: theme.colorScheme.error,
+                                    ),
                                   ),
-                                  foregroundColor: theme.colorScheme.error,
-                                  side: BorderSide(
-                                    color: theme.colorScheme.error,
-                                  ),
+                                  onPressed: () => _confirmCancelSingle(context),
+                                  icon: const Icon(Icons.cancel_outlined),
+                                  label: const Text('Cancel this occurrence'),
                                 ),
-                                onPressed: () => _confirmCancel(context),
-                                icon: const Icon(Icons.cancel_outlined),
-                                label: const Text('Cancel this walk'),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    foregroundColor: theme.colorScheme.error,
+                                    side: BorderSide(
+                                      color: theme.colorScheme.error,
+                                    ),
+                                  ),
+                                  onPressed: () => _confirmCancelAllFuture(context),
+                                  icon: const Icon(Icons.event_busy),
+                                  label: const Text('Cancel all future walks'),
+                                ),
+                              ),
+                            ] else
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    foregroundColor: theme.colorScheme.error,
+                                    side: BorderSide(
+                                      color: theme.colorScheme.error,
+                                    ),
+                                  ),
+                                  onPressed: () => _confirmCancel(context),
+                                  icon: const Icon(Icons.cancel_outlined),
+                                  label: const Text('Cancel this walk'),
+                                ),
+                              ),
                             const SizedBox(height: 16),
                           ],
 
