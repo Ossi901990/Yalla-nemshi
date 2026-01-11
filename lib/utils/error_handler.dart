@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/crash_service.dart';
+import '../models/app_exception.dart';
 
 /// Centralized error handling and user-friendly messaging
 class ErrorHandler {
@@ -107,6 +108,11 @@ class ErrorHandler {
   static String _getDefaultUserMessage(Object error) {
     final errorStr = error.toString();
 
+    // Handle AppException types
+    if (error is AppException) {
+      return error.message;
+    }
+
     if (errorStr.contains('FirebaseException')) {
       return 'Unable to sync data. Check your internet connection.';
     }
@@ -122,6 +128,27 @@ class ErrorHandler {
     }
 
     return 'Something went wrong. Please try again.';
+  }
+
+  /// Handle AppException with typed handling
+  static Future<void> handleAppException(
+    BuildContext? context,
+    AppException exception, {
+    required String action,
+  }) async {
+    // Log to Crashlytics
+    CrashService.recordError(
+      exception,
+      StackTrace.current,
+      reason: 'AppException in $action: ${exception.code}',
+    );
+
+    debugPrint('❌ $action: ${exception.message} (Code: ${exception.code})');
+
+    // Show user message
+    if (context != null && context.mounted) {
+      showErrorSnackBar(context, exception.message);
+    }
   }
 }
 

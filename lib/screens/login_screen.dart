@@ -3,6 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// Custom exception for timeout errors
+class TimeoutException implements Exception {
+  final String message;
+  TimeoutException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// ===== COLOR PALETTE =====
 const kBgTop = Color(0xFF04120B);
 const kBgMid = Color(0xFF062219);
@@ -40,7 +49,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
+  String? _errorMessage;
   Future<void> _signInWithGoogle() async {
     try {
       if (kIsWeb) {
@@ -87,18 +99,25 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter both email and password.')),
-      );
-      return;
-    }
-
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      await _auth
+          .signInWithEmailAndPassword(email: email, password: password)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException(
+              'Login request timed out. Please check your internet connection.',
+            ),
+          );
 
       if (!mounted) return;
 
@@ -108,23 +127,58 @@ class _LoginScreenState extends State<LoginScreen> {
       String message = 'Login failed. Please try again.';
 
       if (e.code == 'user-not-found') {
-        message = 'No user found with that email.';
+        message = 'No account found with this email. Please sign up instead.';
       } else if (e.code == 'wrong-password') {
-        message = 'Incorrect password. Please try again.';
+        message = 'Incorrect password. Please try again or reset your password.';
       } else if (e.code == 'invalid-email') {
         message = 'Please enter a valid email address.';
+      } else if (e.code == 'too-many-requests') {
+        message = 'Too many failed login attempts. Please try again later.';
+      } else if (e.code == 'user-disabled') {
+        message = 'This account has been disabled.';
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      setState(() {
+        _errorMessage = message;
+        _isLoading = false;
+      });
+    } on TimeoutException catch (e) {
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('An unexpected error occurred. Please try again.'),
-        ),
-      );
+      setState(() {
+        _errorMessage =
+            'An unexpected error occurred. Please check your connection and try again.';
+        _isLoading = false;
+      });
     }
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Email is required';
+    }
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
+
+  void _goToForgotPassword() {
+    Navigator.of(context).pushNamed('/forgot-password');
   }
 
   void _goToSignup() {
@@ -181,7 +235,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: kCardOverlay.withAlpha((0.35 * 255).round()),
-                    border: Border.all(color: kCardBorder.withAlpha((0.2 * 255).round())),
+                    border: Border.all(
+                      color: kCardBorder.withAlpha((0.2 * 255).round()),
+                    ),
                   ),
                   child: const Icon(
                     Icons.directions_walk,
@@ -219,58 +275,103 @@ class _LoginScreenState extends State<LoginScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
+                            Text(
                               'Welcome back!',
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: kPrimaryText,
-                              ),
+                              style: Theme.of(context).textTheme.displayMedium
+                                  ?.copyWith(color: kPrimaryText),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Log in to continue walking with Yalla Nemshi',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: kSecondaryText.withAlpha((0.7 * 255).round()),
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: kSecondaryText.withAlpha(
+                                      (0.7 * 255).round(),
+                                    ),
+                                  ),
                             ),
                             const SizedBox(height: 24),
-
-                            // Email
-                            _buildLabeledField(
-                              label: 'Email',
-                              icon: Icons.email_outlined,
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Password
-                            _buildLabeledField(
-                              label: 'Password',
-                              icon: Icons.lock_outline,
-                              controller: _passwordController,
-                              obscureText: true,
-                            ),
-
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {},
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  foregroundColor: kSecondaryText.withAlpha((0.8 * 255).round()),
-                                  textStyle: const TextStyle(fontSize: 12),
+                            if (_errorMessage != null) ...
+                              [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.red.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          _errorMessage!,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Colors.red,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                child: const Text('Forgot Password?'),
+                                const SizedBox(height: 16),
+                              ],
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  _buildLabeledField(
+                                    label: 'Email',
+                                    icon: Icons.email_outlined,
+                                    controller: _emailController,
+                                    validator: _validateEmail,
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildLabeledField(
+                                    label: 'Password',
+                                    icon: Icons.lock_outline,
+                                    controller: _passwordController,
+                                    validator: _validatePassword,
+                                    obscureText: true,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _goToForgotPassword,
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        foregroundColor: kSecondaryText.withAlpha(
+                                          (0.8 * 255).round(),
+                                        ),
+                                        textStyle: Theme.of(
+                                          context,
+                                        ).textTheme.labelSmall,
+                                      ),
+                                      child: const Text('Forgot Password?'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _GradientButton(
+                                    text: 'Sign in',
+                                    onPressed: _isLoading ? null : _login,
+                                    isLoading: _isLoading,
+                                  ),
+                                ],
                               ),
                             ),
-
-                            const SizedBox(height: 8),
-
-                            _GradientButton(text: 'Sign in', onPressed: _login),
 
                             const SizedBox(height: 16),
 
@@ -278,7 +379,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color: kSecondaryText.withAlpha((0.2 * 255).round()),
+                                    color: kSecondaryText.withAlpha(
+                                      (0.2 * 255).round(),
+                                    ),
                                   ),
                                 ),
                                 Padding(
@@ -287,15 +390,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   child: Text(
                                     'or continue with',
-                                    style: TextStyle(
-                                      color: kSecondaryText.withAlpha((0.7 * 255).round()),
-                                      fontSize: 12,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: kSecondaryText.withAlpha(
+                                            (0.7 * 255).round(),
+                                          ),
+                                        ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color: kSecondaryText.withAlpha((0.2 * 255).round()),
+                                    color: kSecondaryText.withAlpha(
+                                      (0.2 * 255).round(),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -335,19 +444,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Text(
                                   "Don’t have an account? ",
-                                  style: TextStyle(
-                                    color: kSecondaryText.withAlpha((0.7 * 255).round()),
-                                    fontSize: 13,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: kSecondaryText.withAlpha(
+                                          (0.7 * 255).round(),
+                                        ),
+                                      ),
                                 ),
                                 TextButton(
                                   onPressed: _goToSignup,
                                   style: TextButton.styleFrom(
                                     foregroundColor: kSignUpAccent,
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
+                                    textStyle: Theme.of(
+                                      context,
+                                    ).textTheme.labelLarge,
                                   ),
                                   child: const Text('Sign up'),
                                 ),
@@ -371,6 +481,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required String label,
     required IconData icon,
     required TextEditingController controller,
+    required String? Function(String?)? validator,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
@@ -379,22 +490,27 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: kSecondaryText.withAlpha((0.8 * 255).round()),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
+        TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          enabled: !_isLoading,
+          validator: validator,
           style: const TextStyle(color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: TextStyle(color: kHintText.withAlpha((0.5 * 255).round())),
-            prefixIcon: Icon(icon, color: kIconColor.withAlpha((0.9 * 255).round())),
+            hintStyle: TextStyle(
+              color: kHintText.withAlpha((0.5 * 255).round()),
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: kIconColor.withAlpha((0.9 * 255).round()),
+            ),
             filled: true,
             fillColor: kFieldFill.withAlpha((0.06 * 255).round()),
             enabledBorder: OutlineInputBorder(
@@ -411,6 +527,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 1.3,
               ),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: Colors.red,
+                width: 1.3,
+              ),
+            ),
+            errorStyle: const TextStyle(
+              color: Colors.red,
+              fontSize: 12,
+            ),
           ),
         ),
       ],
@@ -421,16 +548,23 @@ class _LoginScreenState extends State<LoginScreen> {
 /// Gradient pill button like the reference
 class _GradientButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool isLoading;
 
-  const _GradientButton({required this.text, required this.onPressed});
+  const _GradientButton({
+    required this.text,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [kButtonGradientStart, kButtonGradientEnd],
+        gradient: LinearGradient(
+          colors: isLoading
+              ? [Colors.grey.withOpacity(0.5), Colors.grey.withOpacity(0.5)]
+              : const [kButtonGradientStart, kButtonGradientEnd],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -440,17 +574,26 @@ class _GradientButton extends StatelessWidget {
         width: double.infinity,
         height: 48,
         child: TextButton(
-          onPressed: onPressed,
+          onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
             foregroundColor: kPrimaryText,
+            disabledForegroundColor: Colors.white.withOpacity(0.6),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
           ),
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          ),
+          child: isLoading
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                )
+              : Text(text, style: Theme.of(context).textTheme.labelLarge),
         ),
       ),
     );
@@ -471,31 +614,35 @@ class _SocialIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: kSocialGlassFill.withAlpha((0.08 * 255).round()),
-            border: Border.all(color: kSocialGlassBorder.withAlpha((0.2 * 255).round())),
-            boxShadow: [
-              BoxShadow(
-                color: kSocialShadow.withAlpha((0.4 * 255).round()),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+    return Semantics(
+      label: tooltip,
+      button: true,
+      child: Tooltip(
+        message: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: kSocialGlassFill.withAlpha((0.08 * 255).round()),
+              border: Border.all(
+                color: kSocialGlassBorder.withAlpha((0.2 * 255).round()),
               ),
-            ],
+              boxShadow: [
+                BoxShadow(
+                  color: kSocialShadow.withAlpha((0.4 * 255).round()),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: kPrimaryText, size: 22),
           ),
-          child: Icon(icon, color: kPrimaryText, size: 22),
         ),
       ),
     );
   }
 }
-
-

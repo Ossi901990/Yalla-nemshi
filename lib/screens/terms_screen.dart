@@ -11,7 +11,9 @@ class TermsScreen extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF4F925C),
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF4F925C),
       body: Column(
         children: [
           // ===== HEADER =====
@@ -19,11 +21,15 @@ class TermsScreen extends StatelessWidget {
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Go back',
                       icon: const Icon(
                         Icons.arrow_back_ios_new,
                         color: Colors.white,
@@ -36,9 +42,12 @@ class TermsScreen extends StatelessWidget {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: const Text(
+                        child: Text(
                           'Terms of Service',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ) ?? const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 24,
@@ -64,11 +73,15 @@ class TermsScreen extends StatelessWidget {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Row(
                     children: [
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
+                        tooltip: 'Go back',
                         icon: const Icon(
                           Icons.arrow_back_ios_new,
                           color: Colors.white,
@@ -81,9 +94,12 @@ class TermsScreen extends StatelessWidget {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
-                          child: const Text(
+                          child: Text(
                             'Terms of Service',
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ) ?? const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 24,
@@ -101,15 +117,14 @@ class TermsScreen extends StatelessWidget {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
                 gradient: isDark
                     ? const LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF071B26),
-                          Color(0xFF041016),
-                        ],
+                        colors: [Color(0xFF071B26), Color(0xFF041016)],
                       )
                     : null,
                 color: isDark ? null : const Color(0xFFF7F9F2),
@@ -117,13 +132,16 @@ class TermsScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                 child: Card(
-                  color: isDark ? const Color(0xFF0C2430) : const Color(0xFFFBFEF8),
+                  color: isDark
+                      ? const Color(0xFF0C2430)
+                      : const Color(0xFFFBFEF8),
                   elevation: isDark ? 0.0 : 0.6,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                     side: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black)
-                          .withAlpha((0.06 * 255).round()),
+                      color: (isDark ? Colors.white : Colors.black).withAlpha(
+                        (0.06 * 255).round(),
+                      ),
                     ),
                   ),
                   child: Padding(
@@ -240,10 +258,7 @@ class TermsScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          content,
-          style: theme.textTheme.bodyMedium,
-        ),
+        Text(content, style: theme.textTheme.bodyMedium),
         const SizedBox(height: 16),
       ],
     );

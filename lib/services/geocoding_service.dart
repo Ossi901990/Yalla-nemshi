@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'crash_service.dart';
+import '../models/app_exception.dart';
 
 /// Service to convert coordinates (lat/lng) → city name using Google Geocoding API
 class GeocodingService {
@@ -10,7 +11,7 @@ class GeocodingService {
   static const String _googleGeocodingApiKey = 'AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8lTT8';
 
   /// Convert latitude/longitude to city name
-  /// Returns the city name or null if unable to determine
+  /// Throws LocationException if unable to determine
   static Future<String?> getCityFromCoordinates({
     required double latitude,
     required double longitude,
@@ -22,18 +23,36 @@ class GeocodingService {
         '&key=$_googleGeocodingApiKey',
       );
 
-      final response = await http.get(url);
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw LocationException(
+          message: 'Geocoding request timed out.',
+          originalError: Exception('HTTP timeout'),
+        ),
+      );
 
       if (response.statusCode != 200) {
-        debugPrint('❌ Geocoding error: ${response.statusCode}');
-        return null;
+        throw LocationException(
+          message: 'Unable to determine location: HTTP ${response.statusCode}',
+          code: 'geocoding/http-${response.statusCode}',
+          originalError: Exception('HTTP ${response.statusCode}'),
+        );
       }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final status = json['status'] as String?;
+
+      if (status != 'OK') {
+        throw LocationException(
+          message: 'Geocoding API returned status: $status',
+          code: 'geocoding/$status',
+        );
+      }
+
       final results = json['results'] as List?;
 
       if (results == null || results.isEmpty) {
-        debugPrint('❌ No geocoding results found');
+        debugPrint('⚠️ No geocoding results found');
         return null;
       }
 
@@ -60,10 +79,13 @@ class GeocodingService {
         debugPrint('✅ Detected city: $city');
       }
       return city;
+    } on LocationException {
+      rethrow;
     } catch (e, st) {
+      final exception = LocationException.fromException(e);
       debugPrint('❌ Geocoding exception: $e');
-      CrashService.recordError(e, st);
-      return null;
+      CrashService.recordError(exception, st);
+      throw exception;
     }
   }
 }

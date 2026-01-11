@@ -1,20 +1,21 @@
 // lib/screens/settings_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_preferences.dart';
-import '../theme_controller.dart';
+import '../providers/theme_provider.dart';
 import 'safety_tips_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _loading = true;
 
   bool _useSystemTheme = false; // coming soon (kept for UI)
@@ -66,7 +67,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SliderThemeData sliderTheme() {
       return theme.sliderTheme.copyWith(
         trackHeight: 4,
-        inactiveTrackColor: (isDark ? Colors.white : Colors.black).withAlpha((0.14 * 255).round()),
+        inactiveTrackColor: (isDark ? Colors.white : Colors.black).withAlpha(
+          (0.14 * 255).round(),
+        ),
         activeTrackColor: const Color(0xFF9BD77A),
         thumbColor: const Color(0xFF9BD77A),
         overlayColor: Colors.transparent,
@@ -82,12 +85,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withAlpha((0.10 * 255).round()),
+          color: (isDark ? Colors.white : Colors.black).withAlpha(
+            (0.10 * 255).round(),
+          ),
           width: 1,
         ),
         color: isDark
-          ? Colors.white.withAlpha((0.03 * 255).round())
-          : Colors.black.withAlpha((0.03 * 255).round()),
+            ? Colors.white.withAlpha((0.03 * 255).round())
+            : Colors.black.withAlpha((0.03 * 255).round()),
       );
     }
 
@@ -111,6 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Go back',
                       icon: const Icon(
                         Icons.arrow_back_ios_new,
                         color: Colors.white,
@@ -123,9 +129,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: const Text(
+                        child: Text(
                           'Settings',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ) ?? const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 24,
@@ -171,9 +180,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
-                          child: const Text(
+                          child: Text(
                             'Settings',
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ) ?? const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 24,
@@ -223,7 +235,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           elevation: isDark ? 0.0 : 0.6,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
-                              side: BorderSide(
+                            side: BorderSide(
                               color: (isDark ? Colors.white : Colors.black)
                                   .withAlpha((0.06 * 255).round()),
                             ),
@@ -255,14 +267,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 trailing: Switch(
                                   value: isDark,
-                                  onChanged: (value) async {
+                                  onChanged: (value) {
                                     _useSystemTheme = false;
-                                    ThemeController.instance.setDarkMode(value);
-                                    await Future.delayed(
-                                      const Duration(milliseconds: 50),
-                                    );
-                                    if (!mounted) return;
-                                    setState(() {});
+                                    ref
+                                        .read(themeModeProvider.notifier)
+                                        .toggleTheme();
                                   },
                                 ),
                               ),
@@ -450,8 +459,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color:
-                                      (isDark ? Colors.white : Colors.black)
-                                        .withAlpha((0.28 * 255).round()),
+                                        (isDark ? Colors.white : Colors.black)
+                                            .withAlpha((0.28 * 255).round()),
                                     width: 1,
                                   ),
                                   color: Colors.transparent,
@@ -638,9 +647,7 @@ class _TermsPrivacyDialog extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const TermsScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const TermsScreen()),
                   );
                 },
                 child: const Text(
@@ -672,5 +679,3 @@ class _TermsPrivacyDialog extends StatelessWidget {
     );
   }
 }
-
-

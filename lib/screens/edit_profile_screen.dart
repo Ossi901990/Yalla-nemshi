@@ -133,9 +133,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       splashRadius: 20,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'Edit profile',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ) ?? const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 24,
@@ -175,9 +178,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         splashRadius: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Edit profile',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ) ?? const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 24,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/notification_service.dart';
 import 'services/geocoding_service.dart';
 import 'services/app_preferences.dart';
@@ -11,6 +12,7 @@ import 'screens/terms_screen.dart';
 import 'theme_controller.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/forgot_password_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -54,7 +56,7 @@ Future<void> main() async {
   // 🔹 Detect user's city on app startup (runs in background)
   _detectAndSaveUserCity();
   
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 /// Detects user's current location and saves their city to preferences.
@@ -135,6 +137,7 @@ class MyApp extends StatelessWidget {
           // ⬇️ NEW: define your routes
           routes: {
             LoginScreen.routeName: (context) => const LoginScreen(),
+            ForgotPasswordScreen.routeName: (context) => const ForgotPasswordScreen(),
             PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
             TermsScreen.routeName: (context) => const TermsScreen(),
             SignupScreen.routeName: (context) => const SignupScreen(),
@@ -160,6 +163,24 @@ final ThemeData _lightTheme = ThemeData(
   ),
   scaffoldBackgroundColor: const Color(0xFFF7F9F2),
   cardColor: const Color(0xFFFBFEF8),
+  // ✅ Add text theme for accessibility text scaling
+  textTheme: const TextTheme(
+    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+    displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+    displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+    headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+    headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+    titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    titleMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+    titleSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+    bodyLarge: TextStyle(fontSize: 16),
+    bodyMedium: TextStyle(fontSize: 14),
+    bodySmall: TextStyle(fontSize: 12),
+    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+    labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+    labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+  ),
 );
 
 /// DARK THEME  🌙
@@ -176,4 +197,22 @@ final ThemeData _darkTheme = ThemeData(
   ),
   scaffoldBackgroundColor: const Color(0xFF050A08),
   cardColor: const Color(0xFF151F18),
+  // ✅ Add text theme for accessibility text scaling
+  textTheme: const TextTheme(
+    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+    displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+    displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+    headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+    headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+    titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    titleMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+    titleSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+    bodyLarge: TextStyle(fontSize: 16),
+    bodyMedium: TextStyle(fontSize: 14),
+    bodySmall: TextStyle(fontSize: 12),
+    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+    labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+    labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+  ),
 );

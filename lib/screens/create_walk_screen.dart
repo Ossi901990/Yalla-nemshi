@@ -190,9 +190,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               children: [
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Creating your walk...',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -285,42 +288,75 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(28),
               ),
-              helpTextStyle: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              helpTextStyle: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ) ??
+                  const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
               hourMinuteColor: dialogBg,
               hourMinuteTextColor: Colors.white,
-              hourMinuteTextStyle: const TextStyle(
-                color: Colors.white,
-                fontSize: 34,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
+              hourMinuteTextStyle: Theme.of(context)
+                  .textTheme
+                  .displayMedium
+                  ?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ) ??
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
               dialBackgroundColor: dialogBg,
               dialHandColor: accent,
               dialTextColor: Colors.white,
-              dialTextStyle: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              dialTextStyle: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ) ??
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
               entryModeIconColor: Colors.white70,
               dayPeriodColor: dialogBg,
               dayPeriodTextColor: Colors.white,
-              dayPeriodTextStyle: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+              dayPeriodTextStyle: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ) ??
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
               dayPeriodBorderSide: const BorderSide(color: Colors.white24),
               cancelButtonStyle: TextButton.styleFrom(
                 foregroundColor: Colors.white70,
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                textStyle: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w600) ??
+                    const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -328,10 +364,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               ),
               confirmButtonStyle: TextButton.styleFrom(
                 foregroundColor: Colors.white,
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                textStyle: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w700) ??
+                    const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
@@ -586,11 +626,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         'Yalla Nemshi',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(
+                              color: isDark ? Colors.white : Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                     ],
                   ),

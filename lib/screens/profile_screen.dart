@@ -353,13 +353,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Yalla Nemshi',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
@@ -367,50 +369,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Right: notif + settings (NO profile icon)
                     Row(
                       children: [
-                        GestureDetector(
-                          onTap: _showNotificationsSheet,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withAlpha((0.08 * 255).round()),
-                            ),
-                            child: const Icon(
-                              Icons.notifications_none,
-                              color: Colors.white,
-                              size: 18,
+                        Semantics(
+                          label: 'Notifications',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: _showNotificationsSheet,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withAlpha(
+                                    (0.08 * 255).round(),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_none,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 4),
 
                         // ✅ Keep SAME settings functionality from Profile
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const SettingsScreen(),
+                        Semantics(
+                          label: 'Settings',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+
+                              final wg = await AppPreferences.getWeeklyGoalKm();
+                              if (!mounted) return;
+
+                              setState(() => _weeklyGoalKmLocal = wg);
+                              widget.onWeeklyGoalChanged?.call(wg);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withAlpha(
+                                    (0.08 * 255).round(),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.settings,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
                               ),
-                            );
-
-                            final wg = await AppPreferences.getWeeklyGoalKm();
-                            if (!mounted) return;
-
-                            setState(() => _weeklyGoalKmLocal = wg);
-                            widget.onWeeklyGoalChanged?.call(wg);
-                          },
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withAlpha((0.08 * 255).round()),
-                            ),
-                            child: const Icon(
-                              Icons.settings,
-                              size: 18,
-                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -458,60 +478,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
+                          Text(
                             'Yalla Nemshi',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ],
                       ),
                       Row(
                         children: [
-                          GestureDetector(
-                            onTap: _showNotificationsSheet,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white24,
-                              ),
-                              child: const Icon(
-                                Icons.notifications_none,
-                                color: Colors.white,
-                                size: 18,
+                          Semantics(
+                            label: 'Notifications',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: _showNotificationsSheet,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white24,
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_none,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
+                          const SizedBox(width: 4),
+                          Semantics(
+                            label: 'Settings',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SettingsScreen(),
+                                  ),
+                                );
+
+                                final wg =
+                                    await AppPreferences.getWeeklyGoalKm();
+                                if (!mounted) return;
+
+                                setState(() => _weeklyGoalKmLocal = wg);
+                                widget.onWeeklyGoalChanged?.call(wg);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white24,
+                                  ),
+                                  child: const Icon(
+                                    Icons.settings,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              );
-
-                              final wg = await AppPreferences.getWeeklyGoalKm();
-                              if (!mounted) return;
-
-                              setState(() => _weeklyGoalKmLocal = wg);
-                              widget.onWeeklyGoalChanged?.call(wg);
-                            },
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white24,
-                              ),
-                              child: const Icon(
-                                Icons.settings,
-                                size: 18,
-                                color: Colors.white,
                               ),
                             ),
                           ),
@@ -562,8 +599,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withAlpha((kCardBorderAlpha * 255).round()),
+                        color: (isDark ? Colors.white : Colors.black).withAlpha(
+                          (kCardBorderAlpha * 255).round(),
+                        ),
                       ),
                     ),
                     child: Padding(
@@ -599,9 +637,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Stack(
                                   alignment: Alignment.bottomRight,
                                   children: [
-                                    GestureDetector(
-                                      onTap: _onAvatarTap,
-                                      child: _buildAvatar(profile),
+                                    Semantics(
+                                      label: 'Change profile picture',
+                                      button: true,
+                                      child: GestureDetector(
+                                        onTap: _onAvatarTap,
+                                        child: _buildAvatar(profile),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -770,7 +812,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: isDark
-                                              ? Colors.white.withAlpha((0.08 * 255).round())
+                                              ? Colors.white.withAlpha(
+                                                  (0.08 * 255).round(),
+                                                )
                                               : const Color(0xFFE5F3D9),
                                           borderRadius: BorderRadius.circular(
                                             999,
@@ -805,8 +849,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             height: trackH,
                                             decoration: BoxDecoration(
                                               color: isDark
-                                                  ? Colors.white.withAlpha((0.10 * 255).round())
-                                                  : Colors.black.withAlpha((0.06 * 255).round()),
+                                                  ? Colors.white.withAlpha(
+                                                      (0.10 * 255).round(),
+                                                    )
+                                                  : Colors.black.withAlpha(
+                                                      (0.06 * 255).round(),
+                                                    ),
                                               borderRadius:
                                                   BorderRadius.circular(999),
                                             ),
@@ -1007,7 +1055,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 side: BorderSide(
-                                  color: Colors.red.withAlpha((0.5 * 255).round()),
+                                  color: Colors.red.withAlpha(
+                                    (0.5 * 255).round(),
+                                  ),
                                 ),
                                 foregroundColor: Colors.red,
                               ),
@@ -1068,7 +1118,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withAlpha((0.08 * 255).round()),
+            color: (isDark ? Colors.white : Colors.black).withAlpha(
+              (0.08 * 255).round(),
+            ),
           ),
         ),
         child: Padding(
@@ -1099,5 +1151,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
-

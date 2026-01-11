@@ -253,9 +253,12 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Yalla Nemshi',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ) ?? const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -344,9 +347,12 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
+                          Text(
                             'Yalla Nemshi',
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ) ?? const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
@@ -805,7 +811,10 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ) ?? TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: textColor,
@@ -877,7 +886,10 @@ class _NearbyWalkCard extends StatelessWidget {
                 child: Text(
                   '${event.distanceKm.toStringAsFixed(1)}\nkm',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1F2933),
+                  ) ?? const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1F2933),
@@ -917,11 +929,13 @@ class _NearbyWalkCard extends StatelessWidget {
                                   kRadiusPill,
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Interested',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ) ?? const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),

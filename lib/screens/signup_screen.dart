@@ -158,6 +158,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     IconButton(
                       onPressed: _goToLogin,
                       padding: EdgeInsets.zero,
+                      tooltip: 'Go back',
                       icon: const Icon(
                         Icons.arrow_back_ios_new_rounded,
                         color: kPrimaryText,
@@ -165,19 +166,16 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Create account",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: kPrimaryText,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.displaySmall?.copyWith(color: kPrimaryText),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "Join Yalla Nemshi and start walking with others.",
-                      style: TextStyle(
-                        fontSize: 13,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: kSecondaryText.withAlpha((0.7 * 255).round()),
                       ),
                     ),
@@ -260,7 +258,9 @@ class _SignupScreenState extends State<SignupScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color: kSecondaryText.withAlpha((0.2 * 255).round()),
+                                    color: kSecondaryText.withAlpha(
+                                      (0.2 * 255).round(),
+                                    ),
                                   ),
                                 ),
                                 Padding(
@@ -269,15 +269,21 @@ class _SignupScreenState extends State<SignupScreen> {
                                   ),
                                   child: Text(
                                     'or sign up with',
-                                    style: TextStyle(
-                                      color: kSecondaryText.withAlpha((0.7 * 255).round()),
-                                      fontSize: 12,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: kSecondaryText.withAlpha(
+                                            (0.7 * 255).round(),
+                                          ),
+                                        ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color: kSecondaryText.withAlpha((0.2 * 255).round()),
+                                    color: kSecondaryText.withAlpha(
+                                      (0.2 * 255).round(),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -317,19 +323,20 @@ class _SignupScreenState extends State<SignupScreen> {
                               children: [
                                 Text(
                                   "Already have an account? ",
-                                  style: TextStyle(
-                                    color: kSecondaryText.withAlpha((0.7 * 255).round()),
-                                    fontSize: 13,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: kSecondaryText.withAlpha(
+                                          (0.7 * 255).round(),
+                                        ),
+                                      ),
                                 ),
                                 TextButton(
                                   onPressed: _goToLogin,
                                   style: TextButton.styleFrom(
                                     foregroundColor: kSignUpAccent,
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
+                                    textStyle: Theme.of(
+                                      context,
+                                    ).textTheme.labelLarge,
                                   ),
                                   child: const Text('Sign in'),
                                 ),
@@ -361,10 +368,8 @@ class _SignupScreenState extends State<SignupScreen> {
       children: [
         Text(
           label,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: kSecondaryText.withAlpha((0.8 * 255).round()),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 6),
@@ -375,8 +380,13 @@ class _SignupScreenState extends State<SignupScreen> {
           style: const TextStyle(color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
-            hintStyle: TextStyle(color: kHintText.withAlpha((0.5 * 255).round())),
-            prefixIcon: Icon(icon, color: kIconColor.withAlpha((0.9 * 255).round())),
+            hintStyle: TextStyle(
+              color: kHintText.withAlpha((0.5 * 255).round()),
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: kIconColor.withAlpha((0.9 * 255).round()),
+            ),
             filled: true,
             fillColor: kFieldFill.withAlpha((0.06 * 255).round()),
             enabledBorder: OutlineInputBorder(
@@ -429,10 +439,7 @@ class _GradientButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
             ),
           ),
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          ),
+          child: Text(text, style: Theme.of(context).textTheme.labelLarge),
         ),
       ),
     );
@@ -453,34 +460,39 @@ class _SocialIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: kSocialGlassFill.withAlpha((0.08 * 255).round()),
-            border: Border.all(color: kSocialGlassBorder.withAlpha((0.2 * 255).round())),
-            boxShadow: [
-              BoxShadow(
-                color: kSocialShadow.withAlpha((0.4 * 255).round()),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+    return Semantics(
+      label: tooltip,
+      button: true,
+      child: Tooltip(
+        message: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: kSocialGlassFill.withAlpha((0.08 * 255).round()),
+              border: Border.all(
+                color: kSocialGlassBorder.withAlpha((0.2 * 255).round()),
               ),
-            ],
-          ),
-          child: Icon(
-            icon, // ✅ use the icon passed in
-            color: kPrimaryText,
-            size: 22,
+              boxShadow: [
+                BoxShadow(
+                  color: kSocialShadow.withAlpha((0.4 * 255).round()),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Icon(
+              icon, // ✅ use the icon passed in
+              color: kPrimaryText,
+              size: 22,
+            ),
           ),
         ),
       ),
     );
   }
 }
-

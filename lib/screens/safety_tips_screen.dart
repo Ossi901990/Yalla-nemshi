@@ -43,26 +43,38 @@ class SafetyTipsScreen extends StatelessWidget {
                     // Left: back + title
                     Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).maybePop(),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withAlpha((0.08 * 255).round()),
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                              size: 18,
+                        Semantics(
+                          label: 'Go back',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(context).maybePop(),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withAlpha(
+                                    (0.08 * 255).round(),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_back,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Text(
+                        Text(
                           'Safety & Community Tips',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ) ?? const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -98,18 +110,31 @@ class SafetyTipsScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).maybePop(),
-                        child: const SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: Icon(Icons.arrow_back, color: Colors.white),
+                      Semantics(
+                        label: 'Go back',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).maybePop(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: const SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: Icon(
+                                Icons.arrow_back,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'Safety & Community Tips',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ) ?? const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -162,8 +187,9 @@ class SafetyTipsScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(kRadiusCard),
                       side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withAlpha((kCardBorderAlpha * 255).round()),
+                        color: (isDark ? Colors.white : Colors.black).withAlpha(
+                          (kCardBorderAlpha * 255).round(),
+                        ),
                       ),
                     ),
                     child: Padding(
@@ -361,4 +387,3 @@ class _Bullet extends StatelessWidget {
     );
   }
 }
-
