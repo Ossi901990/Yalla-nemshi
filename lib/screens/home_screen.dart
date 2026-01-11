@@ -86,6 +86,10 @@ class _HomeScreenState extends State<HomeScreen> {
         debugPrint('⚠️ No user city set; showing all walks');
       }
 
+      // Exclude private walks to satisfy Firestore rules for list queries
+      // Note: Firestore requires ordering by the same field when using isNotEqualTo
+      query = query.where('visibility', isNotEqualTo: 'private').orderBy('visibility');
+
       // Add pagination limit
       query = query.limit(_walksPerPage);
 
@@ -180,9 +184,11 @@ class _HomeScreenState extends State<HomeScreen> {
       
       try {
         _walksSub = FirebaseFirestore.instance
-            .collection('walks')
-            .limit(_walksPerPage)
-            .snapshots()
+          .collection('walks')
+          .where('visibility', isNotEqualTo: 'private')
+          .orderBy('visibility')
+          .limit(_walksPerPage)
+          .snapshots()
             .listen(
               (snap) {
                 try {
@@ -235,8 +241,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final userCity = await AppPreferences.getUserCity();
       
-      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
+          .where('visibility', isNotEqualTo: 'private')
+          .orderBy('visibility')
           .startAfterDocument(_lastDocument!);
 
       if (userCity != null && userCity.isNotEmpty) {
