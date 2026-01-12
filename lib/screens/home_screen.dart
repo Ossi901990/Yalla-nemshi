@@ -93,7 +93,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Note: Firestore requires ordering by the same field when using isNotEqualTo
           query = query
               .where('visibility', isNotEqualTo: 'private')
-              .orderBy('visibility');
+              .orderBy('visibility')
+              .where('cancelled', isEqualTo: false);
 
           // Add pagination limit
           query = query.limit(_walksPerPage);
