@@ -2,11 +2,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Walk helpers
+    function isHostOfWalk(walk) {
+      return signedIn() && walk.hostUid == request.auth.uid;
+    }
+
+    // Treat missing visibility as OPEN (backwards compatible)
+    function isOpenWalk(walk) {
+      return walk.visibility != 'private';
+    }
+
+    // Allowed = user has redeemed invite (written by Cloud Function using Admin SDK)
+    function isAllowedViewer(walkId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/walks/$(walkId)/allowed/$(request.auth.uid));
+    }
+
+    // Participant = host OR accepted/joined
+    // NOTE: allowed viewers are NOT participants by default (no chat access)
+    function isParticipant(walkId) {
+      let walk = get(/databases/$(database)/documents/walks/$(walkId)).data;
+      return signedIn()
+        && (
+          walk.hostUid == request.auth.uid ||
+          (walk.joinedUids != null && request.auth.uid in walk.joinedUids)
+        );
+    }
+
     // Reviews collection: /reviews/{reviewId}
     match /reviews/{reviewId} {
-      allow read: if true; // public read (adjust if you want private)
+      allow read: if true;
 
-      // Create: only authenticated users; validate fields
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly(['walkId','userId','userName','userProfileUrl','rating','reviewText','createdAt','helpfulCount','helpfulBy'])
         && request.resource.data.walkId is string
@@ -19,17 +49,13 @@ service cloud.firestore {
         && request.resource.data.helpfulCount is number && request.resource.data.helpfulCount == 0
         && request.resource.data.helpfulBy is list && request.resource.data.helpfulBy.size() == 0;
 
-      // Update: author can edit their own review text/rating; others may only increment helpfulCount
       allow update: if request.auth != null && (
-        // Author editing: only rating/reviewText may change
         (
           resource.data.userId == request.auth.uid
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['rating','reviewText'])
           && request.resource.data.rating is number && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
           && request.resource.data.reviewText is string && request.resource.data.reviewText.size() <= 500
-        )
-        ||
-        // Helpful: any authed user may add themselves once
+        ) ||
         (
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['helpfulBy','helpfulCount'])
           && request.resource.data.helpfulBy is list
@@ -40,14 +66,79 @@ service cloud.firestore {
         )
       );
 
-      // Delete: only the author can delete
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // Walks collection: /walks/{walkId}
     match /walks/{walkId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == request.resource.data.hostUid;
+
+      // READ walks: open (or missing visibility): any signed-in user; private: host OR allowed viewer
+      allow get, list: if signedIn()
+        && (
+          isOpenWalk(resource.data) ||
+          isHostOfWalk(resource.data) ||
+          isAllowedViewer(walkId)
+        );
+
+      // CREATE: only if hostUid == current user
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid;
+
+      // UPDATE: host can change anything; non-hosts can modify joinedUids only
+      allow update: if signedIn() && (
+        resource.data.hostUid == request.auth.uid
+        || (
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedUids'])
+          && request.resource.data.joinedUids is list
+        )
+      );
+
+      // DELETE: host only
+      allow delete: if signedIn()
+        && resource.data.hostUid == request.auth.uid;
+
+      // Subcollection: allowed viewers (invite redeemed)
+      match /allowed/{uid} {
+        allow get: if signedIn()
+          && (get(/databases/$(database)/documents/walks/$(walkId)).data.hostUid == request.auth.uid
+              || request.auth.uid == uid);
+
+        allow list: if signedIn()
+          && get(/databases/$(database)/documents/walks/$(walkId)).data.hostUid == request.auth.uid;
+
+        allow create, update, delete: if signedIn()
+          && get(/databases/$(database)/documents/walks/$(walkId)).data.hostUid == request.auth.uid;
+      }
+
+      // Subcollection: join requests
+      match /joinRequests/{uid} {
+        allow create, get: if signedIn() && request.auth.uid == uid;
+
+        allow get, list, update, delete: if signedIn()
+          && get(/databases/$(database)/documents/walks/$(walkId)).data.hostUid == request.auth.uid;
+      }
+    }
+
+    // Chat rules (participant-only)
+    match /walk_chats/{walkId} {
+      allow read: if isParticipant(walkId);
+
+      allow create, update: if isParticipant(walkId)
+        && request.resource.data.walkId == walkId;
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isParticipant(walkId);
+
+        allow create: if isParticipant(walkId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.sentAt is timestamp;
+
+        allow update, delete: if false;
+      }
     }
   }
 }
