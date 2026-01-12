@@ -1,9 +1,11 @@
 // lib/screens/create_walk_screen.dart
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/walk_event.dart';
 import '../models/recurrence_rule.dart';
@@ -12,6 +14,7 @@ import '../services/app_preferences.dart';
 import '../services/geocoding_service.dart';
 import '../services/crash_service.dart';
 import '../services/recurring_walk_service.dart';
+import '../services/storage_service.dart';
 import '../utils/error_handler.dart';
 
 // ===== Design tokens (match Home / Profile) =====
@@ -85,6 +88,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   static const double _minutesPerKm = 12.0;
 
   String _description = '';
+
+  // ===== Photo picker fields =====
+  final List<File> _selectedPhotos = [];
+  final ImagePicker _imagePicker = ImagePicker();
 
   // ===== Recurring walk fields =====
   bool _isRecurring = false;
@@ -440,6 +447,79 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     ).join();
   }
 
+  // ===== Photo picker methods =====
+  Future<void> _pickPhotos() async {
+    try {
+      final List<XFile> pickedFiles = await _imagePicker.pickMultiImage(
+        maxHeight: 1080,
+        maxWidth: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFiles.isEmpty) return;
+
+      setState(() {
+        // Limit to 10 photos max
+        final available = 10 - _selectedPhotos.length;
+        final toAdd = pickedFiles.take(available);
+        _selectedPhotos.addAll(toAdd.map((xf) => File(xf.path)));
+      });
+
+      if (mounted && _selectedPhotos.length >= 10) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Maximum 10 photos reached'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('❌ Photo pick error: $e');
+      CrashService.recordError(e, st);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick photos: $e')),
+        );
+      }
+    }
+  }
+
+  void _removePhoto(int index) {
+    setState(() {
+      _selectedPhotos.removeAt(index);
+    });
+  }
+
+  /// Upload selected photos to Firebase Storage and return URLs
+  Future<List<String>> _uploadPhotos(String walkId) async {
+    if (_selectedPhotos.isEmpty) return [];
+
+    final photoUrls = <String>[];
+
+    try {
+      for (int i = 0; i < _selectedPhotos.length; i++) {
+        final photo = _selectedPhotos[i];
+        final photoIndex = 'photo_$i';
+
+        final url = await StorageService.uploadWalkPhoto(
+          walkId: walkId,
+          photoFile: photo,
+          photoIndex: photoIndex,
+        );
+
+        photoUrls.add(url);
+      }
+
+      debugPrint('✅ Uploaded ${photoUrls.length} photos');
+      return photoUrls;
+    } catch (e, st) {
+      debugPrint('❌ Photo upload batch error: $e');
+      CrashService.recordError(e, st);
+      rethrow;
+    }
+  }
+
+
   Future<void> _pickRecurringEndDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -611,6 +691,26 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               .collection('walks')
               .add(payload)
               .timeout(const Duration(seconds: 30));
+
+          // Upload photos if any selected
+          List<String> photoUrls = [];
+          if (_selectedPhotos.isNotEmpty) {
+            try {
+              photoUrls = await _uploadPhotos(docRef.id)
+                  .timeout(const Duration(seconds: 60));
+
+              // Update walk document with photo URLs
+              if (photoUrls.isNotEmpty) {
+                await docRef.update({'photoUrls': photoUrls});
+                debugPrint('✅ Walk document updated with photo URLs');
+              }
+            } catch (e, st) {
+              debugPrint('⚠️ Photo upload failed (walk still created): $e');
+              CrashService.recordError(e, st,
+                  reason: 'Photo upload after walk creation');
+              // Don't throw - walk is already created
+            }
+          }
 
           if (!mounted) return;
           Navigator.of(context).pop(); // close loading dialog
@@ -1334,6 +1434,186 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               : 5,
                                           onSaved: (val) =>
                                               _description = (val ?? '').trim(),
+                                        ),
+                                        const SizedBox(height: 24),
+
+                                        // ===== Photo Picker Section =====
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white.withAlpha(
+                                                    (0.04 * 255).round(),
+                                                  )
+                                                : Colors.grey.withAlpha(
+                                                    (0.05 * 255).round(),
+                                                  ),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: (isDark
+                                                      ? Colors.white
+                                                      : Colors.black)
+                                                  .withAlpha(
+                                                (0.12 * 255).round(),
+                                              ),
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    'Photos (Optional)',
+                                                    style: theme.textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                  ),
+                                                  if (_selectedPhotos
+                                                      .isNotEmpty)
+                                                    Text(
+                                                      '${_selectedPhotos.length}/10',
+                                                      style:
+                                                          theme.textTheme
+                                                              .labelSmall
+                                                              ?.copyWith(
+                                                                color: Colors
+                                                                    .grey,
+                                                              ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 12),
+                                              // Photo grid
+                                              if (_selectedPhotos.isEmpty)
+                                                Center(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          24,
+                                                        ),
+                                                    child: Column(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.image_outlined,
+                                                          size: 40,
+                                                          color:
+                                                              Colors.grey[600],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        Text(
+                                                          'Add walk photos',
+                                                          style: theme
+                                                              .textTheme
+                                                              .bodySmall
+                                                              ?.copyWith(
+                                                                color: Colors
+                                                                    .grey[600],
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                )
+                                              else
+                                                GridView.builder(
+                                                  shrinkWrap: true,
+                                                  physics:
+                                                      const NeverScrollableScrollPhysics(),
+                                                  gridDelegate:
+                                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                                        crossAxisCount: 3,
+                                                        crossAxisSpacing: 8,
+                                                        mainAxisSpacing: 8,
+                                                      ),
+                                                  itemCount: _selectedPhotos
+                                                      .length,
+                                                  itemBuilder: (ctx, idx) {
+                                                    return Stack(
+                                                      children: [
+                                                        Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                              12,
+                                                            ),
+                                                            image:
+                                                                DecorationImage(
+                                                              image: FileImage(
+                                                                _selectedPhotos[
+                                                                    idx],
+                                                              ),
+                                                              fit: BoxFit
+                                                                  .cover,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Positioned(
+                                                          top: 4,
+                                                          right: 4,
+                                                          child: GestureDetector(
+                                                            onTap: () =>
+                                                                _removePhoto(
+                                                                  idx,
+                                                                ),
+                                                            child: Container(
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: Colors
+                                                                    .red
+                                                                    .withOpacity(
+                                                                  0.8,
+                                                                ),
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(2),
+                                                              child: const Icon(
+                                                                Icons.close,
+                                                                color: Colors
+                                                                    .white,
+                                                                size: 14,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                                ),
+                                              if (_selectedPhotos.length < 10)
+                                                const SizedBox(height: 12),
+                                              if (_selectedPhotos.length < 10)
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  child: OutlinedButton.icon(
+                                                    onPressed: _pickPhotos,
+                                                    icon: const Icon(
+                                                      Icons.add_photo_alternate,
+                                                    ),
+                                                    label: Text(
+                                                      _selectedPhotos.isEmpty
+                                                          ? 'Pick Photos'
+                                                          : 'Add More Photos',
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                         const SizedBox(height: 24),
 
