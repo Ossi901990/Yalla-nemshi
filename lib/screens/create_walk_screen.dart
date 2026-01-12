@@ -412,7 +412,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         );
       } catch (e) {
         debugPrint('Error detecting city: $e');
-        // If geocoding fails, city remains null
+        // If geocoding fails, fall back to user's saved city
+        try {
+          detectedCity = await AppPreferences.getUserCity();
+        } catch (_) {
+          // City detection completely failed - will be null
+        }
       }
 
       if (mounted) {
@@ -487,6 +492,18 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         ? _loopDistanceKm
         : (walkType == 'free' ? (_distanceEdited ? _distanceKm : null) : null);
 
+    // ✅ Ensure walk has a city (critical for visibility to other users!)
+    // Fall back to user's saved city if auto-detect failed
+    String? cityForWalk = _detectedCity;
+    if (cityForWalk == null || cityForWalk.isEmpty) {
+      try {
+        cityForWalk = await AppPreferences.getUserCity();
+      } catch (_) {
+        // City completely unavailable - walk will still be created but may not appear in queries
+        debugPrint('⚠️ Warning: Walk created without city information');
+      }
+    }
+
     final payload = <String, dynamic>{
       'walkType': walkType,
       'title': _title,
@@ -521,7 +538,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'endLat': effectiveEnd?.latitude,
       'endLng': effectiveEnd?.longitude,
 
-      'city': _detectedCity,
+      'city': cityForWalk,
 
       'description': _description.isEmpty ? null : _description,
       'createdAt': FieldValue.serverTimestamp(),

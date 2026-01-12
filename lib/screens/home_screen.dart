@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:intl/intl.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
@@ -16,8 +17,9 @@ import '../utils/error_handler.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
-import 'nearby_walks_screen.dart';
 import 'profile_screen.dart';
+import 'walks_screen.dart';
+import 'events_screen.dart';
 import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
 import '../providers/auth_provider.dart';
@@ -526,24 +528,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }).toList();
   }
 
-  String _formatFullDate(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    final monthName = months[date.month - 1];
-    return '$monthName ${date.day}, ${date.year}';
-  }
+
 
   String _formatNotificationTime(DateTime dt) {
     final now = DateTime.now();
@@ -1130,7 +1115,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Profile icon should go directly to Profile
   void _openProfileQuickSheet() {
-    setState(() => _currentTab = 2);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileScreen(
+          walksJoined: _walksJoined,
+          eventsHosted: _eventsHosted,
+          totalKm: _totalKmJoined,
+          weeklyWalks: _weeklyWalkCount,
+          weeklyKm: _weeklyKm,
+          weeklyGoalKm: _weeklyGoalKm,
+          streakDays: _streakDays,
+          interestedCount: _interestedCount,
+          onWeeklyGoalChanged: _updateWeeklyGoal,
+        ),
+      ),
+    );
   }
 
   // --- UI ---
@@ -1166,24 +1166,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 1:
         {
           debugPrint(
-            'NEARBY TAB: events=${_events.length} nearby=${_nearbyWalks.length} '
+            'WALKS TAB: events=${_events.length} myWalks=${_myHostedWalks.length} '
             'uid=${FirebaseAuth.instance.currentUser?.uid}',
           );
 
-          if (_events.isNotEmpty) {
-            final e0 = _events.first;
-            debugPrint(
-              'SAMPLE WALK: title=${e0.title} isOwner=${e0.isOwner} cancelled=${e0.cancelled} '
-              'joined=${e0.joined} firestoreId=${e0.firestoreId}',
-            );
-          }
-
-          body = NearbyWalksScreen(
-            events: _nearbyWalks,
+          body = WalksScreen(
+            myWalks: _myHostedWalks,
+            nearbyWalks: _nearbyWalks,
             onToggleJoin: (e) => _toggleJoin(e),
             onToggleInterested: _toggleInterested,
             onTapEvent: _navigateToDetails,
             onCancelHosted: _cancelHostedWalk,
+            onEventCreated: _onEventCreated,
+            onCreatedNavigateHome: () {
+              Navigator.pop(context);
+            },
             walksJoined: _walksJoined,
             eventsHosted: _eventsHosted,
             totalKm: _totalKmJoined,
@@ -1196,24 +1193,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             hasMoreWalks: _hasMoreWalks,
             isLoadingMore: _isLoadingMore,
             onLoadMore: _loadMoreWalks,
-          ); // ✅ THIS LINE MUST EXIST
+          );
 
           break;
         }
 
       case 2:
       default:
-        body = ProfileScreen(
-          walksJoined: _walksJoined,
-          eventsHosted: _eventsHosted,
-          totalKm: _totalKmJoined,
-          weeklyWalks: _weeklyWalkCount,
-          weeklyKm: _weeklyKm,
-          weeklyGoalKm: _weeklyGoalKm,
-          streakDays: _streakDays,
-          interestedCount: _interestedCount,
-          onWeeklyGoalChanged: _updateWeeklyGoal, // 👈 NEW
-        );
+        body = const EventsScreen();
         break;
     }
 
@@ -1243,12 +1230,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            label: 'Nearby',
+            icon: Icon(Icons.directions_walk),
+            label: 'Walk',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
+            icon: Icon(Icons.event_outlined),
+            label: 'Events',
           ),
         ],
       ),
@@ -1257,7 +1244,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildHomeTab(BuildContext context) {
     final theme = Theme.of(context);
-    final today = DateTime.now();
     final isDark = theme.brightness == Brightness.dark;
 
     return Column(
@@ -1644,35 +1630,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   SizedBox(height: kSpace2),
 
-                                  // Today + date row
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Today',
-                                        style: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          _formatFullDate(today),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.right,
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : Colors.black54,
-                                              ),
+                                  // Ready to walk + buttons
+                                  Text(
+                                    'Ready to walk?',
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  SizedBox(height: kSpace1),
+                                  Text(
+                                    'Start a walk now or join others nearby. Your steps, your pace.',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  SizedBox(height: kSpace2),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: kBtnHeight,
+                                    child: FilledButton.icon(
+                                      onPressed: _openCreateWalk,
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: kMintBright,
+                                        foregroundColor: kOnMint,
+                                        padding: kBtnPadding,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            kRadiusPill,
+                                          ),
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                    ],
+                                      icon: const Icon(
+                                        Icons.directions_walk_outlined,
+                                      ),
+                                      label: const Text('Start walk'),
+                                    ),
                                   ),
 
-                                  SizedBox(height: kSpace1),
+                                  const SizedBox(height: 20),
 
                                   // ===== Calendar (week swipe + no dots + fixed sizing) =====
                                   TableCalendar(
@@ -1761,148 +1757,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         _selectedDay = selectedDay;
                                         _focusedDay = focusedDay;
                                       });
-
-                                      final events = _eventsForDay(selectedDay);
-                                      if (events.isNotEmpty) {
-                                        _navigateToDetails(events.first);
-                                      }
                                     },
                                   ),
 
                                   // ===== End Calendar =====
                                   const SizedBox(height: 20),
 
-                                  // Ready to walk + buttons
+                                  // Walks for selected date
                                   Text(
-                                    'Ready to walk?',
-                                    style: theme.textTheme.headlineSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  SizedBox(height: kSpace1),
-                                  Text(
-                                    'Start a walk now or join others nearby. Your steps, your pace.',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                  SizedBox(height: kSpace2),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: kBtnHeight,
-                                    child: FilledButton.icon(
-                                      onPressed: _openCreateWalk,
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: kMintBright,
-                                        foregroundColor: kOnMint,
-                                        padding: kBtnPadding,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            kRadiusPill,
-                                          ),
-                                        ),
-                                        textStyle: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.directions_walk_outlined,
-                                      ),
-                                      label: const Text('Start walk'),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: SizedBox(
-                                          height: kBtnHeight,
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              setState(() => _currentTab = 1);
-                                            },
-                                            style: OutlinedButton.styleFrom(
-                                              padding: kBtnPadding,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      kRadiusControl,
-                                                    ),
-                                              ),
-                                              side: BorderSide(
-                                                color:
-                                                    (isDark
-                                                            ? Colors.white
-                                                            : Colors.black)
-                                                        .withAlpha(
-                                                          (0.14 * 255).round(),
-                                                        ),
-                                              ),
-                                              foregroundColor: isDark
-                                                  ? kTextPrimary
-                                                  : const Color(0xFF14532D),
-                                              textStyle: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'Find nearby walks',
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: kSpace1),
-                                      Expanded(
-                                        child: SizedBox(
-                                          height: kBtnHeight,
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              setState(() => _currentTab = 2);
-                                            },
-                                            style: OutlinedButton.styleFrom(
-                                              padding: kBtnPadding,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      kRadiusControl,
-                                                    ),
-                                              ),
-                                              side: BorderSide(
-                                                color:
-                                                    (isDark
-                                                            ? Colors.white
-                                                            : Colors.black)
-                                                        .withAlpha(
-                                                          (0.14 * 255).round(),
-                                                        ),
-                                              ),
-                                              foregroundColor: isDark
-                                                  ? kTextPrimary
-                                                  : const Color(0xFF14532D),
-                                              textStyle: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'Profile & stats',
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 20),
-
-                                  // Your walks inside main card
-                                  Text(
-                                    'Your walks',
+                                    DateFormat('MMMM d, y').format(_selectedDay),
                                     style: theme.textTheme.titleMedium
                                         ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                   SizedBox(height: kSpace1),
-                                  if (_myHostedWalks.isEmpty)
+                                  if (_eventsForDay(_selectedDay).isEmpty)
                                     Text(
-                                      'No walks yet.\nTap "Start walk" above to create your first one.',
+                                      'No walks scheduled for this date.',
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: isDark
@@ -1912,7 +1782,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     )
                                   else
                                     Column(
-                                      children: _myHostedWalks
+                                      children: _eventsForDay(_selectedDay)
                                           .map(
                                             (e) => _WalkCard(
                                               event: e,
@@ -1944,71 +1814,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             streakDays: _streakDays,
                           ),
                           SizedBox(height: kSpace2),
-
-                          // ===== QUICK STATS =====
-                          Text(
-                            'Your quick stats',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          LayoutBuilder(
-                            builder: (context, c) {
-                              final isNarrow = c.maxWidth < 380;
-
-                              if (!isNarrow) {
-                                return Row(
-                                  children: [
-                                    _StatCard(
-                                      label: 'Walks joined',
-                                      value: '$_walksJoined',
-                                    ),
-                                    _StatCard(
-                                      label: 'Events hosted',
-                                      value: '$_eventsHosted',
-                                    ),
-                                    _StatCard(
-                                      label: 'Total km',
-                                      value: _totalKmJoined.toStringAsFixed(1),
-                                      isLast: true,
-                                    ),
-                                  ],
-                                );
-                              }
-
-                              // Narrow screens / large text: split into 2 rows to avoid squeeze/overflow
-                              return Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      _StatCard(
-                                        label: 'Walks joined',
-                                        value: '$_walksJoined',
-                                      ),
-                                      _StatCard(
-                                        label: 'Events hosted',
-                                        value: '$_eventsHosted',
-                                        isLast: true,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      _StatCard(
-                                        label: 'Total km',
-                                        value: _totalKmJoined.toStringAsFixed(
-                                          1,
-                                        ),
-                                        isLast: true,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
                         ],
                       ),
                     ),
@@ -2193,62 +1998,6 @@ class _WeeklySummaryCard extends StatelessWidget {
               style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isLast;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Expanded(
-      child: Card(
-        color: isDark ? kDarkSurface : kLightSurface,
-        margin: EdgeInsets.only(right: isLast ? 0 : 8),
-        elevation: isDark ? kCardElevationDark : kCardElevationLight,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kRadiusControl),
-          side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withAlpha(
-              (kCardBorderAlpha * 255).round(),
-            ),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? kTextPrimary : null,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isDark ? kTextSecondary : null,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
