@@ -7,6 +7,7 @@ import 'review_walk_screen.dart';
 import '../models/walk_event.dart';
 import '../services/review_service.dart';
 import '../services/recurring_walk_service.dart';
+import '../services/host_rating_service.dart';
 import '../widgets/review_widgets.dart';
 
 class EventDetailsScreen extends StatefulWidget {
@@ -87,6 +88,53 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Build host rating badge for walk cards
+  Widget _buildHostRatingBadge(BuildContext context, String hostUid) {
+    final theme = Theme.of(context);
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: HostRatingService.instance.getHostRating(hostUid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final ratingData = snapshot.data!;
+        final rating = ratingData['rating'] as double? ?? 5.0;
+        final reviewCount = ratingData['reviewCount'] as int? ?? 0;
+
+        // Only show if host has reviews
+        if (reviewCount == 0) {
+          return const SizedBox.shrink();
+        }
+
+        final tier = HostRatingService.getRatingTier(rating);
+        final emoji = HostRatingService.getRatingEmoji(rating);
+
+        return Row(
+          children: [
+            Text(
+              emoji,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$rating • $tier',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: Colors.amber[700],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -745,14 +793,24 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: Text(
-                                    event.hostName ?? 'Host ${event.hostUid.substring(0, 6)}',
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        event.hostName ??
+                                            'Host ${event.hostUid.substring(0, 6)}',
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : Colors.black87,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      _buildHostRatingBadge(context, event.hostUid),
+                                    ],
                                   ),
                                 ),
                               ],

@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'crash_service.dart';
 import '../models/app_exception.dart';
 
 /// Service to convert coordinates (lat/lng) → city name using Google Geocoding API
 class GeocodingService {
-  // 🔹 This is the public API key — it's okay to keep it here for now
-  // In production, you should use Cloud API keys with restrictions
-  static const String _googleGeocodingApiKey = 'AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8lTT8';
+  /// Get Google Geocoding API key from environment
+  static String get _googleGeocodingApiKey {
+    return dotenv.env['GOOGLE_GEOCODING_API_KEY'] ?? '';
+  }
 
   /// Convert latitude/longitude to city name
   /// Throws LocationException if unable to determine

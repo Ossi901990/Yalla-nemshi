@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firestore_user_service.dart';
+import '../services/crash_service.dart';
 
 /// ===== SAME COLOR PALETTE AS LOGIN =====
 const kBgTop = Color(0xFF04120B);
@@ -79,6 +81,34 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       await cred.user?.updateDisplayName(name);
+
+      // ✅ Create user profile in Firestore (with error handling)
+      if (cred.user != null) {
+        try {
+          await FirestoreUserService.createUser(
+            uid: cred.user!.uid,
+            email: email,
+            displayName: name,
+          );
+          debugPrint('✅ Firestore user created successfully');
+        } catch (firestoreError) {
+          debugPrint('❌ Firestore creation error: $firestoreError');
+          CrashService.recordError(
+            firestoreError,
+            StackTrace.current,
+            reason: 'Failed to create Firestore user on signup',
+          );
+          
+          // Don't block signup even if Firestore fails
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created but profile sync failed. Please retry profile setup.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
 
       // ✅ Success → go to home
       if (!mounted) return;

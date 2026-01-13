@@ -2,8 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ===== HELPER FUNCTIONS =====
     function signedIn() {
       return request.auth != null;
+    }
+
+    function isAuth(uid) {
+      return request.auth != null && request.auth.uid == uid;
     }
 
     // Walk helpers
@@ -33,9 +38,66 @@ service cloud.firestore {
         );
     }
 
-    // Reviews collection: /reviews/{reviewId}
+    // Rate limiting helper (simple check)
+    function isRateLimited() {
+      return request.time < resource.data.rateLimitUntil;
+    }
+
+    // ===== USERS COLLECTION (NEW) =====
+    match /users/{userId} {
+      allow get: if signedIn();
+      
+      allow list: if false; // Never allow listing all users
+
+      allow create: if isAuth(userId)
+        && request.resource.data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'photoURL', 
+          'bio', 'createdAt', 'lastUpdated'
+        ])
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.createdAt is timestamp;
+
+      allow update: if isAuth(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false; // Never allow user self-deletion (use admin)
+
+      // User stats subcollection
+      match /stats/{document=**} {
+        allow read: if signedIn();
+        allow create, update: if isAuth(userId);
+        allow delete: if false;
+      }
+
+      // User walks history
+      match /walks/{walkId} {
+        allow read: if isAuth(userId);
+        allow create, update: if isAuth(userId)
+          && request.resource.data.userId == userId
+          && request.resource.data.joinedAt is timestamp;
+        allow delete: if isAuth(userId);
+      }
+
+      // User badges
+      match /badges/{badgeId} {
+        allow read: if signedIn();
+        allow write: if false; // Server-side only
+      }
+
+      // FCM tokens for notifications
+      match /fcmTokens/{tokenId} {
+        allow read: if isAuth(userId);
+        allow write: if isAuth(userId);
+      }
+    }
+
+    // ===== REVIEWS COLLECTION =====
     match /reviews/{reviewId} {
-      allow read: if true;
+      allow read: if true; // Anyone can read reviews
 
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly(['walkId','userId','userName','userProfileUrl','rating','reviewText','createdAt','helpfulCount','helpfulBy'])
@@ -69,7 +131,7 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Walks collection: /walks/{walkId}
+    // ===== WALKS COLLECTION =====
     match /walks/{walkId} {
 
       // READ walks: open (or missing visibility): any signed-in user; private: host OR allowed viewer
@@ -80,9 +142,13 @@ service cloud.firestore {
           isAllowedViewer(walkId)
         );
 
-      // CREATE: only if hostUid == current user
+      // CREATE: only if hostUid == current user (with validation)
       allow create: if signedIn()
-        && request.resource.data.hostUid == request.auth.uid;
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.keys().hasAny(['title', 'dateTime', 'distanceKm'])
+        && request.resource.data.title is string
+        && request.resource.data.dateTime is timestamp
+        && request.resource.data.distanceKm is number;
 
       // UPDATE: host can change anything; non-hosts can modify join metadata only
       allow update: if signedIn() && (
@@ -125,7 +191,7 @@ service cloud.firestore {
       }
     }
 
-    // Chat rules (participant-only)
+    // ===== CHAT RULES (PARTICIPANT-ONLY) =====
     match /walk_chats/{walkId} {
       allow read: if isParticipant(walkId);
 
@@ -141,10 +207,40 @@ service cloud.firestore {
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000  // Max message length
           && request.resource.data.sentAt is timestamp;
 
         allow update, delete: if false;
       }
+    }
+
+    // ===== FRIEND REQUESTS (NEW) =====
+    match /friend_requests/{userId} {
+      // Users can only access their own friend requests
+      allow get, list: if isAuth(userId);
+
+      match /received/{requestId} {
+        allow read, create, delete: if isAuth(userId);
+      }
+
+      match /sent/{requestId} {
+        allow read, create, delete: if isAuth(userId);
+      }
+    }
+
+    // ===== FRIENDS LIST (NEW) =====
+    match /friends/{userId} {
+      allow get: if signedIn();
+
+      match /friendsList/{friendId} {
+        allow read: if signedIn();
+        allow write: if isAuth(userId);
+      }
+    }
+
+    // ===== CATCH-ALL: DENY EVERYTHING ELSE =====
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

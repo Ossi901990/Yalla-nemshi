@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/notification_service.dart';
 import 'services/geocoding_service.dart';
 import 'services/app_preferences.dart';
 import 'services/crash_service.dart';
+import 'services/profile_migration_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/privacy_policy_screen.dart';
 import 'screens/terms_screen.dart';
@@ -20,17 +22,19 @@ import 'package:geolocator/geolocator.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 🔹 Load environment variables
+  await dotenv.load(fileName: ".env");
+
   if (kIsWeb) {
-    // 🔹 Web: use the firebaseConfig values you just saw
+    // 🔹 Web: use env variables
     await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8lTT8",
-        authDomain: "yallanemshiapp.firebaseapp.com",
-        projectId: "yallanemshiapp",
-        storageBucket: "yallanemshiapp.firebasestorage.app",
-        messagingSenderId: "695876088604",
-        appId: "1:695876088604:web:d7b5d37c1ff68131dcc0d9",
-        // measurementId: "G-XXXXXXX", // <- only if your snippet shows this line
+      options: FirebaseOptions(
+        apiKey: dotenv.env['FIREBASE_API_KEY'] ?? "",
+        authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN'] ?? "",
+        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? "",
+        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? "",
+        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? "",
+        appId: dotenv.env['FIREBASE_APP_ID'] ?? "",
       ),
     );
   } else {
@@ -53,6 +57,9 @@ Future<void> main() async {
   }
 
   await NotificationService.init();
+  
+  // 🔹 Migrate local profile to Firestore (background, non-blocking)
+  ProfileMigrationService.migrateIfNeeded();
   
   // 🔹 Detect user's city on app startup (runs in background)
   _detectAndSaveUserCity();

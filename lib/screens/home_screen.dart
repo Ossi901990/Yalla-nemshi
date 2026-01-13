@@ -12,6 +12,9 @@ import '../models/walk_event.dart';
 import '../services/notification_service.dart';
 import '../services/app_preferences.dart';
 import '../services/crash_service.dart';
+import '../services/firestore_sync_service.dart';
+import '../services/walk_history_service.dart';
+import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
 //import '../services/profile_storage.dart';
 
@@ -685,6 +688,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _loadWeeklyGoal();
     _listenToWalks();
 
+    // 🔹 Sync user profile to Firestore (if missing)
+    FirestoreSyncService.syncCurrentUser();
+
     Future.microtask(() async {
       try {
         final currentUserId = ref.read(currentUserIdProvider);
@@ -902,6 +908,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
 
         await docRef.update(updateData).timeout(const Duration(seconds: 15));
+
+      // ✅ Record walk history for tracking
+      if (willJoin) {
+        await WalkHistoryService.instance.recordWalkJoin(walkId);
+        await UserStatsService.instance.recordWalkJoined(uid);
+      } else {
+        await WalkHistoryService.instance.recordWalkLeave(walkId);
+      }
 
       // 🔔 Notifications
       final updated = event.copyWith(joined: willJoin);

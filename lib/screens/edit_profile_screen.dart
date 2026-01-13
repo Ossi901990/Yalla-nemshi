@@ -1,7 +1,9 @@
 // lib/screens/edit_profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
+import '../services/firestore_user_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final UserProfile? profile;
@@ -60,7 +62,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       profileImagePath: existing?.profileImagePath, // keep existing photo
     );
 
+    // Save to local SharedPreferences
     await ProfileStorage.saveProfile(updatedProfile);
+
+    // ✅ Also save to Firestore
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await FirestoreUserService.updateUser(
+        uid: uid,
+        displayName: _nameController.text.trim(),
+        bio: _bioController.text.trim(),
+        age: age > 0 ? age : null,
+        gender: _gender != 'Not set' ? _gender : null,
+      );
+    }
+
     if (!mounted) return;
     Navigator.of(context).pop();
   }

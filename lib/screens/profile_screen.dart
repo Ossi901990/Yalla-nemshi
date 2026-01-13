@@ -7,6 +7,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
+import '../services/firestore_user_service.dart';
+import '../services/host_rating_service.dart';
+import '../services/user_stats_service.dart';
+import '../services/walk_history_service.dart';
+import '../services/walk_export_service.dart';
 import '../models/profile_badge.dart';
 
 import 'badges_info_screen.dart';
@@ -102,22 +107,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    String? imagePath;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    
     if (kIsWeb) {
-      // On web, we can't use file paths, so we store a placeholder or handle differently
-      // For now, we'll use the name as a reference (you may want to upload to storage)
-      imagePath = 'web_${picked.name}';
+      // Web: Store placeholder locally (full web upload can be added later)
+      final imagePath = 'web_${picked.name}';
+      final updated = _profile!.copyWith(profileImagePath: imagePath);
+      await ProfileStorage.saveProfile(updated);
+      setState(() => _profile = updated);
     } else {
-      imagePath = picked.path;
-    }
+      // Mobile: Upload to Firebase Storage
+      final imageFile = File(picked.path);
+      
+      if (uid != null) {
+        try {
+          // Show loading
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(child: CircularProgressIndicator()),
+          );
 
-    final updated = _profile!.copyWith(profileImagePath: imagePath);
-    await ProfileStorage.saveProfile(updated);
-    setState(() => _profile = updated);
+          // Upload to Firebase Storage
+          final downloadUrl = await FirestoreUserService.uploadProfilePhoto(
+            uid: uid,
+            photoFile: imageFile,
+          );
+
+          // Save locally with Firebase URL
+          final updated = _profile!.copyWith(profileImagePath: downloadUrl);
+          await ProfileStorage.saveProfile(updated);
+
+          if (!mounted) return;
+          Navigator.of(context).pop(); // Close loading dialog
+          setState(() => _profile = updated);
+        } catch (e) {
+          if (!mounted) return;
+          Navigator.of(context).pop(); // Close loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to upload photo: $e')),
+          );
+        }
+      } else {
+        // Fallback: save locally only
+        final imagePath = picked.path;
+        final updated = _profile!.copyWith(profileImagePath: imagePath);
+        await ProfileStorage.saveProfile(updated);
+        setState(() => _profile = updated);
+      }
+    }
   }
 
   Future<void> _removeProfileImage() async {
     if (_profile == null) return;
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    
+    // Delete from Firebase Storage if user is logged in
+    if (uid != null) {
+      try {
+        await FirestoreUserService.deleteProfilePhoto(uid);
+      } catch (e) {
+        // Continue even if Firebase delete fails
+        debugPrint('Warning: Could not delete photo from Firebase: $e');
+      }
+    }
 
     final cleared = _profile!.copyWith(profileImagePath: null);
     await ProfileStorage.saveProfile(cleared);
@@ -196,6 +251,266 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return 'Trail pro';
   }
 
+  /// Build host rating widget
+  Widget _buildHostRatingCard(BuildContext context, String userId) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: HostRatingService.instance.getHostRating(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+            elevation: isDark ? 0.0 : 0.5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color:
+                    (isDark ? Colors.white : Colors.black)
+                        .withAlpha((0.08 * 255).round()),
+              ),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                height: 40,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final ratingData = snapshot.data!;
+        final rating = ratingData['rating'] as double? ?? 5.0;
+        final reviewCount = ratingData['reviewCount'] as int? ?? 0;
+        final tier = HostRatingService.getRatingTier(rating);
+
+        // Only show if user has hosted at least one walk
+        if (widget.eventsHosted == 0 && reviewCount == 0) {
+          return const SizedBox.shrink();
+        }
+
+        return Card(
+          color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+          elevation: isDark ? 0.0 : 0.5,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: (isDark ? Colors.white : Colors.black)
+                  .withAlpha((0.08 * 255).round()),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Host Rating',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    // Stars
+                    Text(
+                      HostRatingService.getRatingEmoji(rating),
+                      style: const TextStyle(fontSize: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    // Rating value and tier
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          rating.toStringAsFixed(1),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber[700],
+                          ),
+                        ),
+                        Text(
+                          tier,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Review count
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          reviewCount.toString(),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'review${reviewCount == 1 ? '' : 's'}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build past walks section showing recent completed walks
+  Widget _buildPastWalksSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: UserStatsService.instance.getQuickStats(uid).then((_) =>
+          // Get recent completed walks from the user's walk history
+          WalkHistoryService.instance
+              .getPastWalks(limit: 5)
+              .then((walks) => walks
+                  .map((w) => {
+                        'walkId': w.walkId,
+                        'joinedAt': w.joinedAt,
+                        'completed': w.completed,
+                        'distance': w.actualDistanceKm ?? 0.0,
+                      })
+                  .toList())),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+            elevation: isDark ? 0.0 : 0.5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color:
+                    (isDark ? Colors.white : Colors.black)
+                        .withAlpha((0.08 * 255).round()),
+              ),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                height: 40,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          );
+        }
+
+        final walks = snapshot.data ?? [];
+
+        if (walks.isEmpty) {
+          return Card(
+            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+            elevation: isDark ? 0.0 : 0.5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color:
+                    (isDark ? Colors.white : Colors.black)
+                        .withAlpha((0.08 * 255).round()),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No completed walks yet. Join a walk to get started!',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.textTheme.bodySmall?.color?.withAlpha(150),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Card(
+          color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+          elevation: isDark ? 0.0 : 0.5,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: (isDark ? Colors.white : Colors.black)
+                  .withAlpha((0.08 * 255).round()),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                walks.length,
+                (index) {
+                  final walk = walks[index];
+                  final joinedAt = walk['joinedAt'] as DateTime? ?? DateTime.now();
+                  final distance = walk['distance'] as double? ?? 0.0;
+                  final isLast = index == walks.length - 1;
+
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 20,
+                            color: Colors.green[600],
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Walk on ${joinedAt.day}/${joinedAt.month}/${joinedAt.year}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  '${distance.toStringAsFixed(1)} km',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.textTheme.bodySmall?.color
+                                        ?.withAlpha(150),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!isLast) ...[
+                        const SizedBox(height: 12),
+                        Divider(
+                          height: 1,
+                          color: (isDark ? Colors.white : Colors.black)
+                              .withAlpha((0.06 * 255).round()),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openEditProfile() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EditProfileScreen(profile: _profile)),
@@ -246,6 +561,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const SafetyTipsScreen()));
+  }
+
+  Future<void> _exportWalkHistory() async {
+    try {
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const AlertDialog(
+          title: Text('Exporting...'),
+          content: SizedBox(
+            height: 40,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        ),
+      );
+
+      // Generate CSV
+      final csv = await WalkExportService.instance
+          .generateWalkHistoryCSV();
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show success dialog with option to copy or save
+      final theme = Theme.of(context);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Walk history exported'),
+          content: Text(
+            'Your walk history has been exported to CSV format.\n\n'
+            'Total entries: ${csv.split('\n').length - 2}',
+            style: theme.textTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () {
+                // Copy to clipboard
+                _copyToClipboard(csv);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Copy CSV'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to export: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _copyToClipboard(String text) {
+    // Note: This is a simplified version. In production, you'd use:
+    // import 'package:share_plus/share_plus.dart';
+    // or implement actual file saving
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'CSV content ready to share. You can paste it into a text file.',
+        ),
+      ),
+    );
   }
 
   Future<void> _signOut() async {
@@ -944,6 +1333,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 24),
 
+                          // Host Rating (only if user has hosted walks)
+                          if (widget.eventsHosted > 0)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildHostRatingCard(
+                                  context,
+                                  FirebaseAuth.instance.currentUser?.uid ?? '',
+                                ),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+
                           // Badges
                           Text(
                             'Badges',
@@ -1028,6 +1430,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 24),
 
+                          // Past Walks Section
+                          Text(
+                            'Past walks',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildPastWalksSection(context),
+
+                          const SizedBox(height: 24),
+
                           // Actions
                           const SizedBox(height: 8),
                           SizedBox(
@@ -1051,6 +1465,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               label: const Text(
                                 'Walking safety & community tips',
                               ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _exportWalkHistory,
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                side: BorderSide(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withAlpha((0.18 * 255).round()),
+                                ),
+                                foregroundColor: isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                              icon: const Icon(Icons.download),
+                              label: const Text('Export walk history'),
                             ),
                           ),
 
