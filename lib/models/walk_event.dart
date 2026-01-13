@@ -14,6 +14,7 @@ class WalkEvent {
   final DateTime dateTime;
   final double distanceKm;
   final String gender; // e.g. "Mixed", "Women only", "Men only"
+  final String pace; // e.g. "Relaxed", "Normal", "Brisk"
   final bool isOwner;
   final String? meetingPlaceName;
   final double? meetingLat;
@@ -73,6 +74,7 @@ class WalkEvent {
     required this.dateTime,
     required this.distanceKm,
     required this.gender,
+    required this.pace,
     this.isOwner = false,
     this.joined = false,
     this.interested = false,
@@ -105,6 +107,7 @@ class WalkEvent {
     DateTime? dateTime,
     double? distanceKm,
     String? gender,
+    String? pace,
     bool? isOwner,
     bool? joined,
     bool? interested,
@@ -137,6 +140,7 @@ class WalkEvent {
       dateTime: dateTime ?? this.dateTime,
       distanceKm: distanceKm ?? this.distanceKm,
       gender: gender ?? this.gender,
+      pace: pace ?? this.pace,
       isOwner: isOwner ?? this.isOwner,
       joined: joined ?? this.joined,
       interested: interested ?? this.interested,
@@ -173,6 +177,7 @@ class WalkEvent {
       'dateTime': dateTime.toIso8601String(),
       'distanceKm': distanceKm,
       'gender': gender,
+      'pace': pace,
       'isOwner': isOwner,
       'joined': joined,
       'interested': interested,
@@ -238,6 +243,7 @@ class WalkEvent {
 
     // ✅ distanceKm might be null/int/double/string -> safe
     final double distanceKm = _toDouble(map['distanceKm'], fallback: 0.0);
+    final String pace = _toStringSafe(map['pace'], fallback: 'Relaxed');
 
     // ✅ meetingLat/Lng might be null -> keep null
     final double? meetingLat = map['meetingLat'] == null
@@ -268,6 +274,7 @@ class WalkEvent {
       dateTime: dateTime,
       distanceKm: distanceKm,
       gender: _toStringSafe(map['gender'], fallback: 'Mixed'),
+      pace: pace,
       isOwner: _toBool(map['isOwner']),
       joined: _toBool(map['joined']),
       interested: _toBool(map['interested']),

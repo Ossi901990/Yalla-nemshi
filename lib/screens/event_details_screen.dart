@@ -554,6 +554,15 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                               _eventPill(
                                 isDark: isDark,
                                 theme: theme,
+                                icon: Icons.directions_walk,
+                                label: event.pace,
+                                iconColorOverride: isDark
+                                    ? Colors.white70
+                                    : Colors.black54,
+                              ),
+                              _eventPill(
+                                isDark: isDark,
+                                theme: theme,
                                 icon: Icons.person,
                                 label: event.gender,
                                 iconColorOverride: isDark

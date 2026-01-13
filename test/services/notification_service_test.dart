@@ -25,6 +25,7 @@ void main() {
         dateTime: DateTime(2025, 1, 1, 8),
         distanceKm: 3.0,
         gender: 'Mixed',
+        pace: 'Normal',
       );
 
       await NotificationService.instance.scheduleWalkReminder(event);
@@ -56,6 +57,7 @@ void main() {
         dateTime: DateTime(2025, 1, 1, 9),
         distanceKm: 2.0,
         gender: 'Mixed',
+        pace: 'Normal',
       );
 
       await NotificationService.instance.showNearbyWalkAlert(event);
