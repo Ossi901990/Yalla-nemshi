@@ -837,6 +837,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bool wasJoined = event.joined;
     final bool willJoin = !wasJoined;
 
+    // Get current user info for optimistic update
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final userPhotoUrl = currentUser?.photoURL;
+
     // ✅ Optimistic UI update
     setState(() {
       final index = _events.indexWhere((e) {
@@ -845,18 +849,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return idA == idB;
       });
       if (index == -1) return;
-      _events[index] = _events[index].copyWith(joined: willJoin);
+      
+      final currentEvent = _events[index];
+      final newJoinedUids = List<String>.from(currentEvent.joinedUserUids);
+      final newJoinedPhotos = List<String>.from(currentEvent.joinedUserPhotoUrls);
+      
+      if (willJoin) {
+        if (!newJoinedUids.contains(uid)) {
+          newJoinedUids.add(uid);
+        }
+        if (userPhotoUrl != null && !newJoinedPhotos.contains(userPhotoUrl)) {
+          newJoinedPhotos.add(userPhotoUrl);
+        }
+      } else {
+        newJoinedUids.remove(uid);
+        if (userPhotoUrl != null) {
+          newJoinedPhotos.remove(userPhotoUrl);
+        }
+      }
+      
+      _events[index] = currentEvent.copyWith(
+        joined: willJoin,
+        joinedUserUids: newJoinedUids,
+        joinedUserPhotoUrls: newJoinedPhotos,
+        joinedCount: newJoinedUids.length,
+      );
     });
 
     try {
-      // ✅ Persist to Firestore with timeout
-      await docRef
-          .update({
-            'joinedUids': willJoin
-                ? FieldValue.arrayUnion([uid])
-                : FieldValue.arrayRemove([uid]),
-          })
-          .timeout(const Duration(seconds: 15));
+      // ✅ Get current user info for participant data
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final userPhotoUrl = currentUser?.photoURL;
+
+        // ✅ Persist to Firestore with timeout
+        final updateData = <String, dynamic>{
+        'joinedUids': willJoin
+          ? FieldValue.arrayUnion([uid])
+          : FieldValue.arrayRemove([uid]),
+        'joinedUserUids': willJoin
+          ? FieldValue.arrayUnion([uid])
+          : FieldValue.arrayRemove([uid]),
+        'joinedCount': willJoin
+          ? FieldValue.increment(1)
+          : FieldValue.increment(-1),
+        };
+
+        // Only include photo updates when we actually have a photo URL
+        if (userPhotoUrl != null) {
+        updateData['joinedUserPhotoUrls'] = willJoin
+          ? FieldValue.arrayUnion([userPhotoUrl])
+          : FieldValue.arrayRemove([userPhotoUrl]);
+        }
+
+        await docRef.update(updateData).timeout(const Duration(seconds: 15));
 
       // 🔔 Notifications
       final updated = event.copyWith(joined: willJoin);

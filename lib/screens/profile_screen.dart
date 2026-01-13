@@ -1,5 +1,6 @@
 // lib/screens/profile_screen.dart
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -101,7 +102,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    final updated = _profile!.copyWith(profileImagePath: picked.path);
+    String? imagePath;
+    if (kIsWeb) {
+      // On web, we can't use file paths, so we store a placeholder or handle differently
+      // For now, we'll use the name as a reference (you may want to upload to storage)
+      imagePath = 'web_${picked.name}';
+    } else {
+      imagePath = picked.path;
+    }
+
+    final updated = _profile!.copyWith(profileImagePath: imagePath);
     await ProfileStorage.saveProfile(updated);
     setState(() => _profile = updated);
   }
@@ -1089,11 +1099,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAvatar(UserProfile? profile) {
     final imgPath = profile?.profileImagePath;
 
-    if (imgPath != null && imgPath.isNotEmpty && File(imgPath).existsSync()) {
-      return CircleAvatar(
-        radius: 48,
-        backgroundImage: FileImage(File(imgPath)),
-      );
+    if (imgPath != null && imgPath.isNotEmpty && !kIsWeb) {
+      // On mobile/desktop, use file path
+      try {
+        final file = File(imgPath);
+        if (file.existsSync()) {
+          return CircleAvatar(
+            radius: 48,
+            backgroundImage: FileImage(file),
+          );
+        }
+      } catch (e) {
+        // File doesn't exist or error reading
+      }
     }
 
     return const CircleAvatar(

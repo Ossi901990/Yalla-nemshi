@@ -84,12 +84,18 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.hostUid == request.auth.uid;
 
-      // UPDATE: host can change anything; non-hosts can modify joinedUids only
+      // UPDATE: host can change anything; non-hosts can modify join metadata only
       allow update: if signedIn() && (
         resource.data.hostUid == request.auth.uid
         || (
-          request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedUids'])
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(
+            ['joinedUids','joinedUserUids','joinedUserPhotoUrls','joinedCount']
+          )
           && request.resource.data.joinedUids is list
+          && request.resource.data.joinedUserUids is list
+          && (!request.resource.data.keys().hasAny(['joinedUserPhotoUrls'])
+              || request.resource.data.joinedUserPhotoUrls is list)
+          && request.resource.data.joinedCount is number
         )
       );
 

@@ -701,6 +701,201 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
                           const SizedBox(height: 16),
 
+                          // ===== HOSTED BY CARD =====
+                          Text(
+                            'Hosted by',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.white.withAlpha((0.05 * 255).round())
+                                  : Colors.black.withAlpha((0.03 * 255).round()),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withAlpha((0.08 * 255).round()),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: theme.colorScheme.primary
+                                      .withAlpha((0.2 * 255).round()),
+                                  backgroundImage: (event.hostPhotoUrl != null &&
+                                          event.hostPhotoUrl!.isNotEmpty)
+                                      ? NetworkImage(event.hostPhotoUrl!)
+                                      : null,
+                                  child: (event.hostPhotoUrl == null ||
+                                          event.hostPhotoUrl!.isEmpty)
+                                      ? Icon(
+                                          Icons.person,
+                                          size: 28,
+                                          color: theme.colorScheme.primary,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    event.hostName ?? 'Host ${event.hostUid.substring(0, 6)}',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // ===== PEOPLE JOINING =====
+                          Text(
+                            'People joining',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              // Overlapping avatars
+                              SizedBox(
+                                width: event.joinedUserPhotoUrls.isEmpty
+                                    ? 88
+                                    : (event.joinedUserPhotoUrls.length > 4
+                                        ? 120
+                                        : (event.joinedUserPhotoUrls.length * 24.0 + 16)),
+                                height: 40,
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    if (event.joinedUserPhotoUrls.isEmpty)
+                                      // Show 3 placeholder avatars when no one joined
+                                      ...[
+                                        Positioned(
+                                          left: 0,
+                                          child: CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.grey
+                                                .withAlpha((0.3 * 255).round()),
+                                            child: Icon(
+                                              Icons.person_outline,
+                                              size: 20,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          left: 24,
+                                          child: CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.grey
+                                                .withAlpha((0.3 * 255).round()),
+                                            child: Icon(
+                                              Icons.person_outline,
+                                              size: 20,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          left: 48,
+                                          child: CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: Colors.grey
+                                                .withAlpha((0.3 * 255).round()),
+                                            child: Icon(
+                                              Icons.person_outline,
+                                              size: 20,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ),
+                                      ]
+                                    else
+                                      // Show actual participant avatars (max 4)
+                                      ...List.generate(
+                                        event.joinedUserPhotoUrls.length > 4
+                                            ? 4
+                                            : event.joinedUserPhotoUrls.length,
+                                        (index) {
+                                          final photoUrl = event
+                                              .joinedUserPhotoUrls[index];
+                                          return Positioned(
+                                            left: index * 24.0,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? const Color(0xFF0C2430)
+                                                      : const Color(0xFFFBFEF8),
+                                                  width: 2,
+                                                ),
+                                              ),
+                                              child: CircleAvatar(
+                                                radius: 20,
+                                                backgroundColor:
+                                                    theme.colorScheme.primary
+                                                        .withAlpha(
+                                                          (0.2 * 255).round(),
+                                                        ),
+                                                backgroundImage: photoUrl
+                                                        .isNotEmpty
+                                                    ? NetworkImage(photoUrl)
+                                                    : null,
+                                                child: photoUrl.isEmpty
+                                                    ? Icon(
+                                                        Icons.person,
+                                                        size: 20,
+                                                        color: theme.colorScheme
+                                                            .primary,
+                                                      )
+                                                    : null,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                event.joinedCount > 0
+                                    ? (event.joinedCount > 4
+                                        ? '+${event.joinedCount - 4} others joining'
+                                        : event.joinedCount == 1
+                                            ? '1 person joining'
+                                            : '${event.joinedCount} people joining')
+                                    : '+0 others joining',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+
                           // Description
                           if (event.description != null &&
                               event.description!.trim().isNotEmpty) ...[

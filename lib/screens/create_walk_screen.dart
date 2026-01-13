@@ -539,7 +539,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final uid = currentUser?.uid;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -548,6 +549,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       );
       return;
     }
+
+    // ✅ Get host info from Firebase Auth (for new host fields)
+    final hostName = currentUser?.displayName;
+    final hostPhotoUrl = currentUser?.photoURL;
 
     final walkType = _walkTypeIndex == 0 ? 'point_to_point' : 'loop';
 
@@ -592,6 +597,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'gender': _gender,
       'hostUid': uid,
       'cancelled': false,
+
+      // ===== Host Info (for UI display) =====
+      'hostName': hostName,
+      'hostPhotoUrl': hostPhotoUrl,
+      'joinedUserUids': [],
+      'joinedUserPhotoUrls': [],
+      'joinedCount': 0,
 
       // ===== Visibility & join rules (Point-to-point only for now) =====
       'visibility': (walkType == 'point_to_point' && _isPrivatePointToPoint)

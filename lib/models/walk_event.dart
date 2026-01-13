@@ -69,6 +69,22 @@ class WalkEvent {
   /// Photo URLs stored in Firebase Storage
   final List<String> photoUrls;
 
+  // ===== Host & Participants Info =====
+  /// Host's display name (nullable for backward compatibility)
+  final String? hostName;
+
+  /// Host's profile photo URL (nullable for backward compatibility)
+  final String? hostPhotoUrl;
+
+  /// List of user IDs who have joined this walk
+  final List<String> joinedUserUids;
+
+  /// List of photo URLs for users who joined (parallel to joinedUserUids)
+  final List<String> joinedUserPhotoUrls;
+
+  /// Count of users who joined (fallback to joinedUserUids.length if not provided)
+  final int joinedCount;
+
   WalkEvent({
     required this.id,
     required this.firestoreId,
@@ -101,8 +117,16 @@ class WalkEvent {
     this.isRecurringTemplate = false,
     this.recurringEndDate,
     List<String>? photoUrls,
+    this.hostName,
+    this.hostPhotoUrl,
+    List<String>? joinedUserUids,
+    List<String>? joinedUserPhotoUrls,
+    int? joinedCount,
   }) : tags = tags ?? const [],
-       photoUrls = photoUrls ?? const [];
+       photoUrls = photoUrls ?? const [],
+       joinedUserUids = joinedUserUids ?? const [],
+       joinedUserPhotoUrls = joinedUserPhotoUrls ?? const [],
+       joinedCount = joinedCount ?? (joinedUserUids?.length ?? 0);
 
   WalkEvent copyWith({
     String? id,
@@ -135,8 +159,11 @@ class WalkEvent {
     RecurrenceRule? recurrence,
     bool? isRecurringTemplate,
     DateTime? recurringEndDate,
-    List<String>? photoUrls,
-  }) {
+    List<String>? photoUrls,    String? hostName,
+    String? hostPhotoUrl,
+    List<String>? joinedUserUids,
+    List<String>? joinedUserPhotoUrls,
+    int? joinedCount,  }) {
     return WalkEvent(
       id: id ?? this.id,
       firestoreId: firestoreId ?? this.firestoreId,
@@ -170,6 +197,11 @@ class WalkEvent {
       isRecurringTemplate: isRecurringTemplate ?? this.isRecurringTemplate,
       recurringEndDate: recurringEndDate ?? this.recurringEndDate,
       photoUrls: photoUrls ?? this.photoUrls,
+      hostName: hostName ?? this.hostName,
+      hostPhotoUrl: hostPhotoUrl ?? this.hostPhotoUrl,
+      joinedUserUids: joinedUserUids ?? this.joinedUserUids,
+      joinedUserPhotoUrls: joinedUserPhotoUrls ?? this.joinedUserPhotoUrls,
+      joinedCount: joinedCount ?? this.joinedCount,
     );
   }
 
@@ -208,6 +240,11 @@ class WalkEvent {
       'isRecurringTemplate': isRecurringTemplate,
       'recurringEndDate': recurringEndDate?.toIso8601String(),
       'photoUrls': photoUrls,
+      'hostName': hostName,
+      'hostPhotoUrl': hostPhotoUrl,
+      'joinedUserUids': joinedUserUids,
+      'joinedUserPhotoUrls': joinedUserPhotoUrls,
+      'joinedCount': joinedCount,
     };
   }
 
@@ -312,6 +349,19 @@ class WalkEvent {
       photoUrls: (map['photoUrls'] is List)
           ? (map['photoUrls'] as List).whereType<String>().toList()
           : <String>[],
+      hostName: map['hostName']?.toString(),
+      hostPhotoUrl: map['hostPhotoUrl']?.toString(),
+      joinedUserUids: (map['joinedUserUids'] is List)
+          ? (map['joinedUserUids'] as List).whereType<String>().toList()
+          : <String>[],
+      joinedUserPhotoUrls: (map['joinedUserPhotoUrls'] is List)
+          ? (map['joinedUserPhotoUrls'] as List).whereType<String>().toList()
+          : <String>[],
+      joinedCount: map['joinedCount'] != null
+          ? _toDouble(map['joinedCount']).toInt()
+          : (map['joinedUserUids'] is List
+              ? (map['joinedUserUids'] as List).length
+              : 0),
     );
   }
 
