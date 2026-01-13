@@ -66,6 +66,9 @@ class WalkEvent {
   /// Optional end date for recurring generation
   final DateTime? recurringEndDate;
 
+  /// Photo URLs stored in Firebase Storage
+  final List<String> photoUrls;
+
   WalkEvent({
     required this.id,
     required this.firestoreId,
@@ -97,7 +100,9 @@ class WalkEvent {
     this.recurrence,
     this.isRecurringTemplate = false,
     this.recurringEndDate,
-  }) : tags = tags ?? const [];
+    List<String>? photoUrls,
+  }) : tags = tags ?? const [],
+       photoUrls = photoUrls ?? const [];
 
   WalkEvent copyWith({
     String? id,
@@ -130,6 +135,7 @@ class WalkEvent {
     RecurrenceRule? recurrence,
     bool? isRecurringTemplate,
     DateTime? recurringEndDate,
+    List<String>? photoUrls,
   }) {
     return WalkEvent(
       id: id ?? this.id,
@@ -163,6 +169,7 @@ class WalkEvent {
       recurrence: recurrence ?? this.recurrence,
       isRecurringTemplate: isRecurringTemplate ?? this.isRecurringTemplate,
       recurringEndDate: recurringEndDate ?? this.recurringEndDate,
+      photoUrls: photoUrls ?? this.photoUrls,
     );
   }
 
@@ -200,6 +207,7 @@ class WalkEvent {
       'recurrence': recurrence?.toMap(),
       'isRecurringTemplate': isRecurringTemplate,
       'recurringEndDate': recurringEndDate?.toIso8601String(),
+      'photoUrls': photoUrls,
     };
   }
 
@@ -301,6 +309,14 @@ class WalkEvent {
       recurringEndDate: map['recurringEndDate'] != null
           ? DateTime.tryParse(map['recurringEndDate'].toString())
           : null,
+      photoUrls: (map['photoUrls'] is List)
+          ? (map['photoUrls'] as List).whereType<String>().toList()
+          : <String>[],
     );
+  }
+
+  /// Format date for display
+  String get formattedDate {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
