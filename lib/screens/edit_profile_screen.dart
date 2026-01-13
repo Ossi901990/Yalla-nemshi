@@ -1,7 +1,12 @@
 // lib/screens/edit_profile_screen.dart
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
+
 
 class EditProfileScreen extends StatefulWidget {
   final UserProfile? profile;
@@ -19,6 +24,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _ageController;
   late TextEditingController _bioController;
   String _gender = 'Not set';
+    final _picker = ImagePicker();
+
+  String? _localImagePath;      // for mobile/desktop
+  String? _imageBase64ForWeb;   // for web testing
+
 
   static const _kDarkBase = Color(0xFF071B26);
   static const _kDarkSurface = Color(0xFF0C2430);
@@ -36,6 +46,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
     _bioController = TextEditingController(text: p?.bio ?? '');
     _gender = p?.gender ?? 'Not set';
+    // Keep existing image (mobile path OR web base64)
+    _localImagePath = p?.profileImagePath;
+    _imageBase64ForWeb = p?.profileImageBase64;
   }
 
   @override
@@ -45,6 +58,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _bioController.dispose();
     super.dispose();
   }
+    Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (picked == null) return;
+
+    if (kIsWeb) {
+      final bytes = await picked.readAsBytes();
+      setState(() {
+        _imageBase64ForWeb = base64Encode(bytes);
+        _localImagePath = null;
+      });
+    } else {
+      setState(() {
+        _localImagePath = picked.path;
+        _imageBase64ForWeb = null;
+      });
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _localImagePath = null;
+      _imageBase64ForWeb = null;
+    });
+  }
+
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
@@ -52,13 +94,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final age = int.tryParse(_ageController.text.trim()) ?? 0;
     final existing = widget.profile;
 
-    final updatedProfile = UserProfile(
+      final updatedProfile = UserProfile(
       name: _nameController.text.trim(),
       age: age,
       gender: _gender,
       bio: _bioController.text.trim(),
-      profileImagePath: existing?.profileImagePath, // keep existing photo
+
+      // Mobile keeps file path
+      profileImagePath: kIsWeb ? null : (_localImagePath ?? existing?.profileImagePath),
+
+      // Web testing uses base64
+      profileImageBase64: kIsWeb ? (_imageBase64ForWeb ?? existing?.profileImageBase64) : null,
     );
+
 
     await ProfileStorage.saveProfile(updatedProfile);
     if (!mounted) return;
@@ -252,6 +300,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                             ),
                             const SizedBox(height: 14),
+                                                        // ===== PROFILE PHOTO (mobile + web testing) =====
+                            Row(
+                              children: [
+                                _ProfilePhotoPreview(
+                                  isDark: isDark,
+                                  imageBase64: _imageBase64ForWeb,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Profile photo',
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? Colors.white : const Color(0xFF111827),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 10,
+                                        runSpacing: 10,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: _pickImage,
+                                            icon: const Icon(Icons.photo_library_outlined, size: 18),
+                                            label: const Text('Change'),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: _removeImage,
+                                            icon: const Icon(Icons.delete_outline, size: 18),
+                                            label: const Text('Remove'),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        kIsWeb
+                                            ? 'Web testing: stored as base64.'
+                                            : 'Stored on device (file path).',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: isDark ? Colors.white60 : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+
 
                             TextFormField(
                               controller: _nameController,
@@ -373,4 +473,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 }
 
+class _ProfilePhotoPreview extends StatelessWidget {
+  final bool isDark;
+  final String? imageBase64;
+
+  const _ProfilePhotoPreview({
+    required this.isDark,
+    required this.imageBase64,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF0C2430) : const Color(0xFFFBFEF8);
+    final border = (isDark ? Colors.white : Colors.black).withAlpha((0.12 * 255).round());
+
+    if (kIsWeb && imageBase64 != null && imageBase64!.isNotEmpty) {
+      final bytes = base64Decode(imageBase64!);
+      return CircleAvatar(
+        radius: 28,
+        backgroundColor: bg,
+        backgroundImage: MemoryImage(bytes),
+      );
+    }
+
+    // On this screen we don't preview local file path to avoid dart:io handling here;
+    // actual avatar rendering is handled in ProfileScreen / other UI.
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: bg,
+      child: Icon(Icons.person, color: border),
+    );
+  }
+}
 

@@ -1,6 +1,8 @@
 // lib/screens/profile_screen.dart
-import 'dart:io';
+import 'dart:convert';
+import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -99,37 +101,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (picked == null) return;
 
-    String? imagePath;
+    UserProfile updated;
+
     if (kIsWeb) {
-      // On web, we can't use file paths, so we store a placeholder or handle differently
-      // For now, we'll use the name as a reference (you may want to upload to storage)
-      imagePath = 'web_${picked.name}';
+      final bytes = await picked.readAsBytes();
+      final b64 = base64Encode(bytes);
+
+      updated = _profile!.copyWith(
+        profileImageBase64: b64,
+        profileImagePath: null, // web doesn't use local file paths
+      );
     } else {
-      imagePath = picked.path;
+      updated = _profile!.copyWith(
+        profileImagePath: picked.path,
+        profileImageBase64: null, // keep storage clean on device
+      );
     }
 
-    final updated = _profile!.copyWith(profileImagePath: imagePath);
     await ProfileStorage.saveProfile(updated);
+    if (!mounted) return;
     setState(() => _profile = updated);
   }
+
 
   Future<void> _removeProfileImage() async {
     if (_profile == null) return;
 
-    final cleared = _profile!.copyWith(profileImagePath: null);
+    final cleared = _profile!.copyWith(
+      profileImagePath: null,
+      profileImageBase64: null,
+    );
     await ProfileStorage.saveProfile(cleared);
 
     if (!mounted) return;
     setState(() => _profile = cleared);
   }
 
+
   void _onAvatarTap() {
-    final hasPhoto =
-        _profile?.profileImagePath != null &&
-        _profile!.profileImagePath!.isNotEmpty;
+    final hasPhoto = (_profile?.profileImageBase64 != null &&
+            _profile!.profileImageBase64!.isNotEmpty) ||
+        (_profile?.profileImagePath != null &&
+            _profile!.profileImagePath!.isNotEmpty);
+
 
     if (!hasPhoto) {
       _pickAndSaveImage();
@@ -1097,10 +1117,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildAvatar(UserProfile? profile) {
+    final b64 = profile?.profileImageBase64;
+
+    // Web (testing): show stored base64
+    if (b64 != null && b64.isNotEmpty) {
+      try {
+        final bytes = base64Decode(b64);
+        return CircleAvatar(
+          radius: 48,
+          backgroundImage: MemoryImage(bytes),
+        );
+      } catch (_) {
+        // ignore decode errors and fall back
+      }
+    }
+
     final imgPath = profile?.profileImagePath;
 
-    if (imgPath != null && imgPath.isNotEmpty && !kIsWeb) {
-      // On mobile/desktop, use file path
+    // Mobile/desktop: show file path
+    if (!kIsWeb && imgPath != null && imgPath.isNotEmpty) {
       try {
         final file = File(imgPath);
         if (file.existsSync()) {
@@ -1109,8 +1144,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundImage: FileImage(file),
           );
         }
-      } catch (e) {
-        // File doesn't exist or error reading
+      } catch (_) {
+        // ignore and fall back
       }
     }
 
@@ -1120,6 +1155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Icon(Icons.person, size: 48, color: Color(0xFF166534)),
     );
   }
+
 
   Widget _statCard({
     required String label,
