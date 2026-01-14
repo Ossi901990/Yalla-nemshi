@@ -85,6 +85,46 @@ class _WalksScreenState extends State<WalksScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  void _showNotificationsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFFBFEF8),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Notifications',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1F2933),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No notifications yet. We\'ll show walk updates here.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -108,6 +148,12 @@ class _WalksScreenState extends State<WalksScreen>
         elevation: 0,
         backgroundColor: isDark ? kDarkSurface2 : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black87,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: _showNotificationsSheet,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: isDark ? const Color(0xFFA4E4C5) : const Color(0xFF14532D),
