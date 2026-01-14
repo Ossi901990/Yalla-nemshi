@@ -21,6 +21,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _useSystemTheme = false; // coming soon (kept for UI)
   bool _walkReminders = AppPreferences.walkRemindersFallback;
   bool _nearbyAlerts = AppPreferences.nearbyAlertsFallback;
+  bool _pushWalks = AppPreferences.pushWalksFallback;
+  bool _pushChat = AppPreferences.pushChatFallback;
+  bool _pushUpdates = AppPreferences.pushUpdatesFallback;
 
   double _defaultDistanceKm = AppPreferences.defaultDistanceKmFallback;
   String _defaultGender = AppPreferences.defaultGenderFallback;
@@ -52,6 +55,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       _weeklyGoalKmLocal = await AppPreferences.getWeeklyGoalKm();
+    } catch (_) {}
+
+    try {
+      _pushWalks = await AppPreferences.getPushWalksEnabled();
+    } catch (_) {}
+
+    try {
+      _pushChat = await AppPreferences.getPushChatEnabled();
+    } catch (_) {}
+
+    try {
+      _pushUpdates = await AppPreferences.getPushUpdatesEnabled();
     } catch (_) {}
 
     if (!mounted) return;
@@ -335,7 +350,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   await _bootstrap();
                                 },
                               ),
+                              const Divider(height: 24),
 
+                              // ===== Push Notifications =====
+                              Text(
+                                'Push Notifications',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Walk activity'),
+                                subtitle: const Text(
+                                  'Get notified when someone joins your walks',
+                                ),
+                                value: _pushWalks,
+                                onChanged: (val) async {
+                                  setState(() => _pushWalks = val);
+                                  await AppPreferences.setPushWalksEnabled(val);
+                                  await _bootstrap();
+                                },
+                              ),
+
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Chat messages'),
+                                subtitle: const Text(
+                                  'Notify me of new messages in walks I joined',
+                                ),
+                                value: _pushChat,
+                                onChanged: (val) async {
+                                  setState(() => _pushChat = val);
+                                  await AppPreferences.setPushChatEnabled(val);
+                                  await _bootstrap();
+                                },
+                              ),
+
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Walk updates'),
+                                subtitle: const Text(
+                                  'Notify me when walk details change or are cancelled',
+                                ),
+                                value: _pushUpdates,
+                                onChanged: (val) async {
+                                  setState(() => _pushUpdates = val);
+                                  await AppPreferences.setPushUpdatesEnabled(val);
+                                  await _bootstrap();
+                                },
+                              ),
                               const SizedBox(height: 16),
 
                               // ===== Preferences =====

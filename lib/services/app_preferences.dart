@@ -8,14 +8,20 @@ class AppPreferences {
   static const _keyWalkReminders = 'walk_reminders_enabled';
   static const _keyNearbyAlerts = 'nearby_alerts_enabled';
   static const _keyWeeklyGoalKm = 'weekly_goal_km';
-  static const _keyUserCity = 'user_city'; // 👈 NEW
+  static const _keyUserCity = 'user_city';
+  static const _keyPushWalks = 'push_walks_enabled';
+  static const _keyPushChat = 'push_chat_enabled';
+  static const _keyPushUpdates = 'push_updates_enabled';
 
   // ===== DEFAULT VALUES (used if nothing saved yet) =====
   static const double defaultDistanceKmFallback = 3.0;
   static const String defaultGenderFallback = 'Mixed';
   static const bool walkRemindersFallback = true;
   static const bool nearbyAlertsFallback = true;
-  static const double weeklyGoalKmFallback = 10.0; // 👈 NEW
+  static const double weeklyGoalKmFallback = 10.0;
+  static const bool pushWalksFallback = true;
+  static const bool pushChatFallback = true;
+  static const bool pushUpdatesFallback = true;
 
   // ===== Distance =====
   static Future<double> getDefaultDistanceKm() async {
@@ -81,5 +87,36 @@ class AppPreferences {
   static Future<void> setUserCity(String city) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserCity, city);
+  }
+
+  // ===== Push Notifications =====
+  static Future<bool> getPushWalksEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyPushWalks) ?? pushWalksFallback;
+  }
+
+  static Future<void> setPushWalksEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPushWalks, enabled);
+  }
+
+  static Future<bool> getPushChatEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyPushChat) ?? pushChatFallback;
+  }
+
+  static Future<void> setPushChatEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPushChat, enabled);
+  }
+
+  static Future<bool> getPushUpdatesEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyPushUpdates) ?? pushUpdatesFallback;
+  }
+
+  static Future<void> setPushUpdatesEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyPushUpdates, enabled);
   }
 }

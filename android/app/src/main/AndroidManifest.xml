@@ -38,6 +38,30 @@
 
         </activity>
 
+        <!-- Firebase Cloud Messaging -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Default notification channel for FCM -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="yalla_nemshi_default_channel" />
+
+        <!-- Notification icon (optional, uses app icon by default) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
+        <!-- Notification color (optional) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@android:color/holo_blue_light" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

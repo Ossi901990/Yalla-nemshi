@@ -1,16 +1,232 @@
 // lib/services/notification_service.dart
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/app_notification.dart';
 import '../models/walk_event.dart';
 import 'notification_storage.dart';
 import 'app_preferences.dart';
+import 'crash_service.dart';
+
+/// Background message handler (must be top-level function)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('📬 Background message received: ${message.messageId}');
+  // Handle background notification here if needed
+}
 
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  // ✅ Add this so main.dart can call NotificationService.init()
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  String? _currentToken;
+
+  /// Initialize FCM and request permissions
   static Future<void> init() async {
-    // For now: no-op (later you can wire Firebase/local notifications setup here)
+    try {
+      final instance = NotificationService.instance;
+      
+      // Set background message handler
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
+      // Request permissions (iOS requires explicit request)
+      await instance._requestPermissions();
+      
+      // Get and store FCM token
+      await instance._initializeToken();
+      
+      // Listen for token refresh
+      instance._listenForTokenRefresh();
+      
+      // Listen for foreground messages
+      instance._listenForForegroundMessages();
+      
+      // Handle notification taps when app is opened from terminated state
+      instance._handleInitialMessage();
+      
+      debugPrint('✅ NotificationService initialized');
+    } catch (e, st) {
+      debugPrint('❌ NotificationService init error: $e');
+      CrashService.recordError(e, st, reason: 'NotificationService initialization failed');
+    }
+  }
+
+  /// Request notification permissions (critical for iOS)
+  Future<void> _requestPermissions() async {
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+        announcement: false,
+        carPlay: false,
+        criticalAlert: false,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('✅ Notification permissions granted');
+      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+        debugPrint('⚠️ Provisional notification permissions granted');
+      } else {
+        debugPrint('❌ Notification permissions denied');
+      }
+    } catch (e, st) {
+      debugPrint('❌ Permission request error: $e');
+      CrashService.recordError(e, st, reason: 'FCM permission request failed');
+    }
+  }
+
+  /// Get FCM token and store it in Firestore
+  Future<void> _initializeToken() async {
+    try {
+      final token = await _messaging.getToken();
+      if (token != null) {
+        _currentToken = token;
+        debugPrint('📱 FCM Token: ${token.substring(0, 20)}...');
+        await _saveTokenToFirestore(token);
+      } else {
+        debugPrint('⚠️ FCM token is null');
+      }
+    } catch (e, st) {
+      debugPrint('❌ Token initialization error: $e');
+      CrashService.recordError(e, st, reason: 'FCM token initialization failed');
+    }
+  }
+
+  /// Save FCM token to Firestore
+  Future<void> _saveTokenToFirestore(String token) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('⚠️ Cannot save token: user not logged in');
+        return;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('fcmTokens')
+          .doc(token)
+          .set({
+        'token': token,
+        'createdAt': FieldValue.serverTimestamp(),
+        'platform': defaultTargetPlatform.name,
+      }, SetOptions(merge: true));
+
+      debugPrint('✅ FCM token saved to Firestore');
+    } catch (e, st) {
+      debugPrint('❌ Token save error: $e');
+      CrashService.recordError(e, st, reason: 'Failed to save FCM token to Firestore');
+    }
+  }
+
+  /// Listen for token refresh
+  void _listenForTokenRefresh() {
+    _messaging.onTokenRefresh.listen((newToken) {
+      debugPrint('🔄 FCM token refreshed');
+      _currentToken = newToken;
+      _saveTokenToFirestore(newToken);
+    }).onError((error, stackTrace) {
+      debugPrint('❌ Token refresh error: $error');
+      CrashService.recordError(error, stackTrace, reason: 'FCM token refresh failed');
+    });
+  }
+
+  /// Listen for foreground messages
+  void _listenForForegroundMessages() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('📬 Foreground message received: ${message.notification?.title}');
+      
+      // Show local notification
+      if (message.notification != null) {
+        _showLocalNotification(message);
+      }
+      
+      // Handle data payload
+      if (message.data.isNotEmpty) {
+        _handleNotificationData(message.data);
+      }
+    }).onError((error, stackTrace) {
+      debugPrint('❌ Foreground message error: $error');
+      CrashService.recordError(error, stackTrace, reason: 'FCM foreground message handling failed');
+    });
+  }
+
+  /// Show local notification when app is in foreground
+  void _showLocalNotification(RemoteMessage message) async {
+    final notification = message.notification;
+    if (notification == null) return;
+
+    final appNotification = AppNotification(
+      id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      title: notification.title ?? 'Yalla Nemshi',
+      message: notification.body ?? '',
+      timestamp: DateTime.now(),
+      isRead: false,
+    );
+
+    await NotificationStorage.addNotification(appNotification);
+  }
+
+  /// Handle notification data payload
+  void _handleNotificationData(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    debugPrint('📦 Notification data type: $type');
+    
+    // You can add custom handling based on notification type
+    // e.g., navigate to specific screen, update UI, etc.
+  }
+
+  /// Handle initial message when app is opened from terminated state
+  void _handleInitialMessage() {
+    _messaging.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        debugPrint('🚀 App opened from notification: ${message.messageId}');
+        if (message.data.isNotEmpty) {
+          _handleNotificationData(message.data);
+        }
+      }
+    });
+
+    // Handle notification tap when app is in background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('📲 App opened from background notification: ${message.messageId}');
+      if (message.data.isNotEmpty) {
+        _handleNotificationData(message.data);
+      }
+    });
+  }
+
+  /// Get current FCM token
+  String? get currentToken => _currentToken;
+
+  /// Delete FCM token (call on logout)
+  Future<void> deleteToken() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && _currentToken != null) {
+        // Delete from Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('fcmTokens')
+            .doc(_currentToken)
+            .delete();
+        
+        debugPrint('✅ FCM token deleted from Firestore');
+      }
+      
+      // Delete token from FCM
+      await _messaging.deleteToken();
+      _currentToken = null;
+      debugPrint('✅ FCM token deleted');
+    } catch (e, st) {
+      debugPrint('❌ Token deletion error: $e');
+      CrashService.recordError(e, st, reason: 'FCM token deletion failed');
+    }
   }
 
   Future<void> scheduleWalkReminder(WalkEvent event) async {
