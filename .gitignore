@@ -53,3 +53,4 @@ app.*.map.json
 *service-account*.json
 google-services.json
 *-firebase-key.json
+secrets/
