@@ -15,12 +15,14 @@ import '../services/user_stats_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/walk_export_service.dart';
 import '../models/profile_badge.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 
 import 'badges_info_screen.dart';
 import 'edit_profile_screen.dart';
 import 'safety_tips_screen.dart';
 import 'login_screen.dart'; // for routeName
 import 'settings_screen.dart';
+import 'home_screen.dart';
 import '../services/app_preferences.dart';
 
 // ===== Design tokens (match HomeScreen) =====
@@ -71,6 +73,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _profile;
   bool _loading = true;
+  int _currentTab = 3; // Profile tab is index 3
 
   static const Color _deepGreen = Color(0xFF294630);
 
@@ -1503,6 +1506,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: AppBottomNavBar(
+        currentIndex: _currentTab,
+        onTap: (index) {
+          if (index == _currentTab) return;
+
+          if (index == 3) {
+            // Already on profile
+            return;
+          }
+
+          // Navigate back to HomeScreen with the requested tab
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(initialTab: index),
+            ),
+          );
+        },
       ),
     );
   }

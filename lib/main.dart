@@ -16,29 +16,37 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/review_walk_screen.dart';
+import 'providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔹 Load environment variables
-  await dotenv.load(fileName: ".env");
+  // 🔹 Load environment variables (only on mobile, not on web)
+  if (!kIsWeb) {
+    try {
+      await dotenv.load(fileName: ".env");
+    } catch (e) {
+      debugPrint('⚠️ .env file not found or failed to load: $e');
+      // Continue anyway - mobile uses google-services.json
+    }
+  }
 
   if (kIsWeb) {
-    // 🔹 Web: use env variables
+    // 🔹 Web: Use hardcoded Firebase config
     await Firebase.initializeApp(
-      options: FirebaseOptions(
-        apiKey: dotenv.env['FIREBASE_API_KEY'] ?? "",
-        authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN'] ?? "",
-        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? "",
-        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? "",
-        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? "",
-        appId: dotenv.env['FIREBASE_APP_ID'] ?? "",
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8lTT8",
+        authDomain: "yallanemshiapp.firebaseapp.com",
+        projectId: "yallanemshiapp",
+        storageBucket: "yallanemshiapp.firebasestorage.app",
+        messagingSenderId: "695876088604",
+        appId: "1:695876088604:web:d7b5d37c1ff68131dcc0d9",
       ),
     );
   } else {
-    // 🔹 Android (uses google-services.json)
+    // 🔹 Android/iOS (uses google-services.json)
     await Firebase.initializeApp();
   }
 
@@ -139,10 +147,10 @@ class MyApp extends StatelessWidget {
           theme: _lightTheme,
           darkTheme: _darkTheme,
 
-          // ⬇️ NEW: start at the login screen
-          initialRoute: LoginScreen.routeName,
+          // ⬇️ Use AuthStateRouter to route based on authentication state
+          home: const AuthStateRouter(),
 
-          // ⬇️ NEW: define your routes
+          // ⬇️ define your routes for named navigation
           routes: {
             LoginScreen.routeName: (context) => const LoginScreen(),
             ForgotPasswordScreen.routeName: (context) => const ForgotPasswordScreen(),
@@ -160,6 +168,40 @@ class MyApp extends StatelessWidget {
             '/home': (context) => const HomeScreen(),
           },
         );
+      },
+    );
+  }
+}
+
+/// Routes the user based on their authentication state
+class AuthStateRouter extends ConsumerWidget {
+  const AuthStateRouter({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    return authState.when(
+      data: (user) {
+        // User is logged in, show home screen
+        if (user != null) {
+          return const HomeScreen();
+        }
+        // User is not logged in, show login screen
+        return const LoginScreen();
+      },
+      loading: () {
+        // While checking auth state, show a loading screen
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
+      error: (error, stackTrace) {
+        // Error checking auth state, show login screen as fallback
+        debugPrint('Auth state error: $error');
+        return const LoginScreen();
       },
     );
   }

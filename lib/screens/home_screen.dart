@@ -22,6 +22,7 @@ import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
 import '../services/profile_storage.dart';
 import '../models/user_profile.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
@@ -72,14 +73,16 @@ const double kBtnHeight = 52;
 const EdgeInsets kBtnPadding = EdgeInsets.symmetric(vertical: kSpace2);
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final int initialTab;
+  
+  const HomeScreen({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _currentTab = 0;
+  late int _currentTab;
   void _listenToWalks() {
     _walksSub?.cancel();
 
@@ -690,6 +693,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _currentTab = widget.initialTab;
     _initStepCounter();
     _loadUserName();
     _loadProfile(); // ✅ load saved avatar
@@ -1292,35 +1296,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: isDark ? kDarkBg : const Color(0xFF4F925C),
 
       body: body,
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: AppBottomNavBar(
         currentIndex: _currentTab,
         onTap: (index) {
-          setState(() {
-            _currentTab = index;
-          });
+          if (index == 3) {
+            // Profile lives on its own screen; navigate to it directly
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => ProfileScreen(
+                  walksJoined: _walksJoined,
+                  eventsHosted: _eventsHosted,
+                  totalKm: _totalKmJoined,
+                  interestedCount: _interestedCount,
+                  weeklyKm: _weeklyKm,
+                  weeklyWalks: _weeklyWalkCount,
+                  streakDays: _streakDays,
+                  weeklyGoalKm: _weeklyGoalKm,
+                ),
+              ),
+            );
+          } else {
+            setState(() {
+              _currentTab = index;
+            });
+          }
+        },
+        onTabSpecificAction: (index) {
+          // Trigger specific actions for tabs
           if (index == 0) {
             _loadUserName();
           }
         },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: isDark ? kDarkSurface2 : Colors.white,
-        elevation: 0,
-        selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
-        unselectedItemColor: isDark ? kTextMuted : Colors.black54,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_walk),
-            label: 'Walk',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event_outlined),
-            label: 'Events',
-          ),
-        ],
       ),
     );
   }
