@@ -5,7 +5,12 @@ class UserProfile {
   final int age;
   final String gender;
   final String bio;
-  final String? profileImagePath; // local path for profile photo
+
+  // Mobile/desktop: local file path
+  final String? profileImagePath;
+
+  // Web testing: base64-encoded image bytes
+  final String? profileImageBase64;
 
   UserProfile({
     required this.name,
@@ -13,7 +18,9 @@ class UserProfile {
     required this.gender,
     required this.bio,
     this.profileImagePath,
+    this.profileImageBase64,
   });
+
 
   // Convert object → Map (for SharedPreferences)
   Map<String, dynamic> toMap() {
@@ -22,7 +29,9 @@ class UserProfile {
       'age': age,
       'gender': gender,
       'bio': bio,
-      'profileImagePath': profileImagePath,
+            'profileImagePath': profileImagePath,
+      'profileImageBase64': profileImageBase64,
+
     };
   }
 
@@ -33,17 +42,20 @@ class UserProfile {
       age: map['age'] ?? 0,
       gender: map['gender'] ?? 'Not set',
       bio: map['bio'] ?? '',
-      profileImagePath: map['profileImagePath'],
+            profileImagePath: map['profileImagePath'],
+      profileImageBase64: map['profileImageBase64'],
+
     );
   }
 
   // For updating parts of the profile (used in ProfileScreen)
-  UserProfile copyWith({
+   UserProfile copyWith({
     String? name,
     int? age,
     String? gender,
     String? bio,
     String? profileImagePath,
+    String? profileImageBase64,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -51,6 +63,7 @@ class UserProfile {
       gender: gender ?? this.gender,
       bio: bio ?? this.bio,
       profileImagePath: profileImagePath ?? this.profileImagePath,
+      profileImageBase64: profileImageBase64 ?? this.profileImageBase64,
     );
   }
 }

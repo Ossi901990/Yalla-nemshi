@@ -60,6 +60,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   bool _distanceEdited = false;
 
   String _gender = 'Mixed';
+  String _pace = 'Normal';
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
 
   // Legacy meeting point name (kept for backwards compatibility)
@@ -550,6 +551,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       return;
     }
 
+    // ✅ Refresh auth token to ensure it's valid (fixes permission-denied errors)
+    try {
+      await currentUser?.reload();
+      debugPrint('✅ Auth token refreshed');
+    } catch (e) {
+      debugPrint('⚠️ Token refresh failed: $e');
+      // Continue anyway - token might still be valid
+    }
+
     // ✅ Get host info from Firebase Auth (for new host fields)
     final hostName = currentUser?.displayName;
     final hostPhotoUrl = currentUser?.photoURL;
@@ -595,6 +605,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'dateTime': _dateTime.toIso8601String(),
       'distanceKm': effectiveDistanceKm,
       'gender': _gender,
+      'pace': _pace,
       'hostUid': uid,
       'cancelled': false,
 
@@ -655,7 +666,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             dateTime: _dateTime,
             distanceKm: (effectiveDistanceKm ?? 0),
             gender: _gender,
-            pace: 'Normal',
+            pace: _pace,
             isOwner: true,
             joined: false,
             meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
@@ -700,6 +711,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
           widget.onCreatedNavigateHome();
         } else {
           // Regular walk creation
+          debugPrint('📝 Creating walk with title: "${payload['title']}", pace: "${payload['pace']}", gender: "${payload['gender']}"');
+          debugPrint('🔐 User UID: $uid');
+          debugPrint('✅ Payload hostUid matches user UID: ${payload['hostUid'] == uid}');
+          
           final docRef = await FirebaseFirestore.instance
               .collection('walks')
               .add(payload)
@@ -736,7 +751,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             dateTime: _dateTime,
             distanceKm: (effectiveDistanceKm ?? 0),
             gender: _gender,
-            pace: 'Normal',
+            pace: _pace,
             isOwner: true,
             joined: false,
             meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
@@ -1398,6 +1413,34 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           onChanged: (val) {
                                             if (val != null) {
                                               setState(() => _gender = val);
+                                            }
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        // Pace
+                                        DropdownButtonFormField<String>(
+                                          initialValue: _pace,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Walking pace',
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem(
+                                              value: 'Relaxed',
+                                              child: Text('Relaxed (2-3 km/h)'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Normal',
+                                              child: Text('Normal (3-4 km/h)'),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: 'Brisk',
+                                              child: Text('Brisk (4+ km/h)'),
+                                            ),
+                                          ],
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setState(() => _pace = val);
                                             }
                                           },
                                         ),

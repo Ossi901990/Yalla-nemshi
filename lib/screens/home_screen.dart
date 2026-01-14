@@ -1,7 +1,11 @@
 // lib/screens/home_screen.dart
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:convert';
+import 'dart:io' show Platform, File;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:pedometer/pedometer.dart';
@@ -16,7 +20,8 @@ import '../services/firestore_sync_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
-//import '../services/profile_storage.dart';
+import '../services/profile_storage.dart';
+import '../models/user_profile.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
@@ -204,8 +209,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     if (candidate == null) {
                       candidate = e;
                     } else {
-                      final betterFuture = isFuture && !candidate.dateTime.isAfter(now);
-                      final earlierSameBucket = (isFuture == candidate.dateTime.isAfter(now)) && e.dateTime.isBefore(candidate.dateTime);
+                      final betterFuture =
+                          isFuture && !candidate.dateTime.isAfter(now);
+                      final earlierSameBucket =
+                          (isFuture == candidate.dateTime.isAfter(now)) &&
+                          e.dateTime.isBefore(candidate.dateTime);
                       if (betterFuture || earlierSameBucket) {
                         candidate = e;
                       }
@@ -409,6 +417,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Loaded from saved profile (falls back to "Walker")
   String _userName = 'Walker';
+  UserProfile? _profile;
 
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
@@ -530,8 +539,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return ed.year == d0.year && ed.month == d0.month && ed.day == d0.day;
     }).toList();
   }
-
-
 
   String _formatNotificationTime(DateTime dt) {
     final now = DateTime.now();
@@ -685,6 +692,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _initStepCounter();
     _loadUserName();
+    _loadProfile(); // ✅ load saved avatar
     _loadWeeklyGoal();
     _listenToWalks();
 
@@ -767,6 +775,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       debugPrint('❌ Error initializing step counter: $e');
       CrashService.recordError(e, st);
       // Don't fail the entire app, just skip step counter
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final p = await ProfileStorage.loadProfile();
+      if (!mounted) return;
+      setState(() => _profile = p);
+    } catch (_) {
+      // keep silent; header can fall back to default icon
     }
   }
 
@@ -855,11 +873,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return idA == idB;
       });
       if (index == -1) return;
-      
+
       final currentEvent = _events[index];
       final newJoinedUids = List<String>.from(currentEvent.joinedUserUids);
-      final newJoinedPhotos = List<String>.from(currentEvent.joinedUserPhotoUrls);
-      
+      final newJoinedPhotos = List<String>.from(
+        currentEvent.joinedUserPhotoUrls,
+      );
+
       if (willJoin) {
         if (!newJoinedUids.contains(uid)) {
           newJoinedUids.add(uid);
@@ -873,7 +893,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           newJoinedPhotos.remove(userPhotoUrl);
         }
       }
-      
+
       _events[index] = currentEvent.copyWith(
         joined: willJoin,
         joinedUserUids: newJoinedUids,
@@ -887,27 +907,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final currentUser = FirebaseAuth.instance.currentUser;
       final userPhotoUrl = currentUser?.photoURL;
 
-        // ✅ Persist to Firestore with timeout
-        final updateData = <String, dynamic>{
+      // ✅ Persist to Firestore with timeout
+      final updateData = <String, dynamic>{
         'joinedUids': willJoin
-          ? FieldValue.arrayUnion([uid])
-          : FieldValue.arrayRemove([uid]),
+            ? FieldValue.arrayUnion([uid])
+            : FieldValue.arrayRemove([uid]),
         'joinedUserUids': willJoin
-          ? FieldValue.arrayUnion([uid])
-          : FieldValue.arrayRemove([uid]),
+            ? FieldValue.arrayUnion([uid])
+            : FieldValue.arrayRemove([uid]),
         'joinedCount': willJoin
-          ? FieldValue.increment(1)
-          : FieldValue.increment(-1),
-        };
+            ? FieldValue.increment(1)
+            : FieldValue.increment(-1),
+      };
 
-        // Only include photo updates when we actually have a photo URL
-        if (userPhotoUrl != null) {
+      // Only include photo updates when we actually have a photo URL
+      if (userPhotoUrl != null) {
         updateData['joinedUserPhotoUrls'] = willJoin
-          ? FieldValue.arrayUnion([userPhotoUrl])
-          : FieldValue.arrayRemove([userPhotoUrl]);
-        }
+            ? FieldValue.arrayUnion([userPhotoUrl])
+            : FieldValue.arrayRemove([userPhotoUrl]);
+      }
 
-        await docRef.update(updateData).timeout(const Duration(seconds: 15));
+      await docRef.update(updateData).timeout(const Duration(seconds: 15));
 
       // ✅ Record walk history for tracking
       if (willJoin) {
@@ -1173,8 +1193,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // Profile icon should go directly to Profile
-  void _openProfileQuickSheet() {
-    Navigator.push(
+  Future<void> _openProfileQuickSheet() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ProfileScreen(
@@ -1190,6 +1210,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+
+    // ✅ When user returns from Profile, reload the saved profile (avatar)
+    await _loadProfile();
   }
 
   // --- UI ---
@@ -1249,6 +1272,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             streakDays: _streakDays,
             weeklyGoalKm: _weeklyGoalKm,
             userName: _userName,
+
             hasMoreWalks: _hasMoreWalks,
             isLoadingMore: _isLoadingMore,
             onLoadMore: _loadMoreWalks,
@@ -1425,20 +1449,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             padding: const EdgeInsets.all(
                               8,
                             ), // ✅ Ensures 48x48 touch target
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withAlpha(
-                                  (0.08 * 255).round(),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.person,
-                                size: 18,
-                                color: Colors.white,
-                              ),
+                            child: _HeaderAvatar(
+                              profile: _profile,
+                              size: 32,
+                              isDark: true,
                             ),
                           ),
                         ),
@@ -1556,18 +1570,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(width: 12),
                         GestureDetector(
                           onTap: _openProfileQuickSheet,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              size: 18,
-                              color: Colors.black87,
-                            ),
+                          child: _HeaderAvatar(
+                            profile: _profile,
+                            size: 32,
+                            isDark: false,
                           ),
                         ),
                       ],
@@ -1824,7 +1830,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                   // Walks for selected date
                                   Text(
-                                    DateFormat('MMMM d, y').format(_selectedDay),
+                                    DateFormat(
+                                      'MMMM d, y',
+                                    ).format(_selectedDay),
                                     style: theme.textTheme.titleMedium
                                         ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
@@ -2308,5 +2316,77 @@ class _GradientRingPainter extends CustomPainter {
         oldDelegate.trackColor != trackColor ||
         oldDelegate.startColor != startColor ||
         oldDelegate.endColor != endColor;
+  }
+}
+class _HeaderAvatar extends StatelessWidget {
+  final UserProfile? profile;
+  final double size;
+  final bool isDark;
+
+  const _HeaderAvatar({
+    required this.profile,
+    required this.size,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile;
+
+    ImageProvider? img;
+
+// 1) Base64 avatar (web testing)
+final base64Str = p?.profileImageBase64;
+if (base64Str != null && base64Str.trim().isNotEmpty) {
+  try {
+    final bytes = base64Decode(base64Str);
+    img = MemoryImage(bytes);
+  } catch (_) {
+    // ignore
+  }
+}
+
+// 2) Local file avatar path (mobile only)
+if (img == null && !kIsWeb) {
+  final path = p?.profileImagePath;
+  if (path != null && path.trim().isNotEmpty) {
+    final f = File(path);
+    if (f.existsSync()) {
+      img = FileImage(f);
+    }
+  }
+}
+
+
+    // 3) Fallback to Firebase photoURL
+    if (img == null) {
+      final url = FirebaseAuth.instance.currentUser?.photoURL;
+      if (url != null && url.trim().isNotEmpty) {
+        img = NetworkImage(url);
+      }
+    }
+
+    // 4) Final fallback: icon
+    if (img == null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
+        ),
+        child: Icon(
+          Icons.person,
+          size: size * 0.55,
+          color: isDark ? Colors.white : Colors.black87,
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
+      backgroundImage: img,
+    );
   }
 }
