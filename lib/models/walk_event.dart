@@ -38,6 +38,29 @@ class WalkEvent {
   /// Whether the host has cancelled this walk.
   final bool cancelled;
 
+  // ===== CP-4: Walk Control & Tracking Fields =====
+  /// Expected duration of the walk in minutes (host sets when creating walk)
+  final int? plannedDurationMinutes;
+
+  /// Current status of the walk (open | starting | active | completed)
+  /// open: accepting participants, waiting to start
+  /// starting: host clicked "Start Walk", awaiting confirmations
+  /// active: walk is in progress
+  /// completed: walk has finished
+  final String status;
+
+  /// Timestamp when the walk actually started (when host pressed "Start Walk")
+  final DateTime? startedAt;
+
+  /// UID of the user who started the walk (should be hostUid)
+  final String? startedByUid;
+
+  /// Timestamp when the walk actually ended (when host pressed "End Walk")
+  final DateTime? completedAt;
+
+  /// Actual duration in minutes (calculated from startedAt to completedAt)
+  final int? actualDurationMinutes;
+
   /// Optional: tags for a walk, e.g. ["Scenic", "Dog friendly"] (for future use)
   final List<String> tags;
 
@@ -106,6 +129,12 @@ class WalkEvent {
     this.endLng,
     this.description,
     this.cancelled = false,
+    this.plannedDurationMinutes,  // CP-4
+    this.status = 'open',  // CP-4
+    this.startedAt,  // CP-4
+    this.startedByUid,  // CP-4
+    this.completedAt,  // CP-4
+    this.actualDurationMinutes,  // CP-4
     List<String>? tags,
     this.comfortLevel,
     this.recurringRule,
@@ -149,6 +178,12 @@ class WalkEvent {
     double? endLng,
     String? description,
     bool? cancelled,
+    int? plannedDurationMinutes,  // CP-4
+    String? status,  // CP-4
+    DateTime? startedAt,  // CP-4
+    String? startedByUid,  // CP-4
+    DateTime? completedAt,  // CP-4
+    int? actualDurationMinutes,  // CP-4
     List<String>? tags,
     String? comfortLevel,
     String? recurringRule,
@@ -159,16 +194,17 @@ class WalkEvent {
     RecurrenceRule? recurrence,
     bool? isRecurringTemplate,
     DateTime? recurringEndDate,
-    List<String>? photoUrls,    String? hostName,
+    List<String>? photoUrls,
+    String? hostName,
     String? hostPhotoUrl,
     List<String>? joinedUserUids,
     List<String>? joinedUserPhotoUrls,
-    int? joinedCount,  }) {
+    int? joinedCount,
+  }) {
     return WalkEvent(
       id: id ?? this.id,
       firestoreId: firestoreId ?? this.firestoreId,
       hostUid: hostUid ?? this.hostUid,
-
       title: title ?? this.title,
       dateTime: dateTime ?? this.dateTime,
       distanceKm: distanceKm ?? this.distanceKm,
@@ -186,6 +222,12 @@ class WalkEvent {
       endLng: endLng ?? this.endLng,
       description: description ?? this.description,
       cancelled: cancelled ?? this.cancelled,
+      plannedDurationMinutes: plannedDurationMinutes ?? this.plannedDurationMinutes,  // CP-4
+      status: status ?? this.status,  // CP-4
+      startedAt: startedAt ?? this.startedAt,  // CP-4
+      startedByUid: startedByUid ?? this.startedByUid,  // CP-4
+      completedAt: completedAt ?? this.completedAt,  // CP-4
+      actualDurationMinutes: actualDurationMinutes ?? this.actualDurationMinutes,  // CP-4
       tags: tags ?? this.tags,
       comfortLevel: comfortLevel ?? this.comfortLevel,
       recurringRule: recurringRule ?? this.recurringRule,

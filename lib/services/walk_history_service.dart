@@ -273,4 +273,162 @@ class WalkHistoryService {
       rethrow;
     }
   }
+
+  // ===== CP-4: Walk Control Methods =====
+
+  /// Confirm user's participation when walk starts
+  /// Updates status to "actively_walking" and records confirmation time
+  Future<void> confirmParticipation(String walkId) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) throw Exception('User not authenticated');
+
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('walks')
+          .doc(walkId)
+          .update({
+        'status': 'actively_walking',
+        'confirmedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      CrashService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'WalkHistoryService.confirmParticipation error',
+      );
+      rethrow;
+    }
+  }
+
+  /// Mark user's participation as completed
+  /// Called when walk officially ends by host
+  Future<void> markParticipationComplete(
+    String walkId, {
+    int? actualDurationMinutes,
+  }) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) throw Exception('User not authenticated');
+
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('walks')
+          .doc(walkId)
+          .update({
+        'status': 'completed',
+        'completedAt': Timestamp.now(),
+        'actualDurationMinutes': actualDurationMinutes,
+      });
+    } catch (e) {
+      CrashService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'WalkHistoryService.markParticipationComplete error',
+      );
+      rethrow;
+    }
+  }
+
+  /// Mark user's participation as declined when walk starts
+  /// User didn't confirm when prompted
+  Future<void> declineParticipation(String walkId) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) throw Exception('User not authenticated');
+
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('walks')
+          .doc(walkId)
+          .update({
+        'status': 'declined',
+        'declinedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      CrashService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'WalkHistoryService.declineParticipation error',
+      );
+      rethrow;
+    }
+  }
+
+  /// User leaves walk early
+  /// Sets status to "completed_early" and records actual duration
+  Future<void> leaveWalkEarly(String walkId) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) throw Exception('User not authenticated');
+
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('walks')
+          .doc(walkId)
+          .update({
+        'status': 'completed_early',
+        'completedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      CrashService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'WalkHistoryService.leaveWalkEarly error',
+      );
+      rethrow;
+    }
+  }
+
+  /// Get user's walk statistics from persisted stats document
+  /// Returns total walks, distance, duration, etc.
+  Future<Map<String, dynamic>> getUserWalkStats(String userId) async {
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('stats')
+          .doc('walkStats')
+          .get();
+
+      if (!doc.exists) {
+        // Return default stats if document doesn't exist yet
+        return {
+          'totalWalksCompleted': 0,
+          'totalWalksJoined': 0,
+          'totalWalksHosted': 0,
+          'totalDistanceKm': 0.0,
+          'totalDuration': 0, // in seconds
+          'totalParticipants': 0,
+          'averageDistancePerWalk': 0.0,
+          'averageDurationPerWalk': 0, // in seconds
+          'lastWalkDate': null,
+        };
+      }
+
+      return doc.data() ?? {};
+    } catch (e) {
+      CrashService.recordError(
+        e,
+        StackTrace.current,
+        reason: 'WalkHistoryService.getUserWalkStats error',
+      );
+      return {};
+    }
+  }
+
+  /// Watch user's walk statistics in real-time
+  Stream<Map<String, dynamic>> watchUserWalkStats(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('stats')
+        .doc('walkStats')
+        .snapshots()
+        .map((doc) => doc.data() ?? {});
+  }
 }

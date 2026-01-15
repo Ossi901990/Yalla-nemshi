@@ -8,6 +8,8 @@ import '../models/walk_event.dart';
 import '../services/review_service.dart';
 import '../services/recurring_walk_service.dart';
 import '../services/host_rating_service.dart';
+import '../services/walk_control_service.dart';
+import '../services/walk_history_service.dart';
 import '../widgets/review_widgets.dart';
 
 class EventDetailsScreen extends StatefulWidget {
@@ -341,6 +343,240 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
             'Thank you. Your report was submitted: $selectedReason',
           ),
         ),
+      );
+    }
+  }
+
+  // ===== CP-4: Host Control Methods =====
+
+  /// Build host control buttons (Start/End walk)
+  Widget _buildHostControlButtons(
+    BuildContext context,
+    WalkEvent event,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Column(
+      children: [
+        // Show start button if walk hasn't started
+        if (event.status == 'open') ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _startWalk(context, event),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Start Walk'),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        // Show end button if walk is starting or in progress
+        if (event.status == 'starting' || event.status == 'active') ...[
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => _endWalk(context, event),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                backgroundColor: Colors.orange[600],
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.stop_circle_outlined),
+              label: const Text('End Walk'),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        // Show participant count if walk has started
+        if (event.status == 'starting' || event.status == 'active') ...[
+          FutureBuilder<int>(
+            future: WalkControlService.instance.getActiveParticipantCount(event.firestoreId),
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withAlpha((0.06 * 255).round())
+                      : Colors.black.withAlpha((0.05 * 255).round()),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withAlpha((0.18 * 255).round())
+                        : Colors.black.withAlpha((0.12 * 255).round()),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.group,
+                      color: Colors.green,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$count participants confirmed',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+
+  /// Build participant confirmation button (shown when walk starts)
+  Widget _buildParticipantConfirmationButton(
+    BuildContext context,
+    WalkEvent event,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => _confirmParticipation(context, event),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Confirm - I\'m Joining Now'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _declineParticipation(context, event),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: const Icon(Icons.cancel_outlined),
+            label: const Text('Decline - I\'m Not Coming'),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // ===== CP-4: Walk Control Actions =====
+
+  Future<void> _startWalk(BuildContext context, WalkEvent event) async {
+    try {
+      await WalkControlService.instance.startWalk(event.firestoreId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Walk started! Sending confirmation prompts...')),
+      );
+      // Refresh the screen
+      setState(() {});
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error starting walk: $e')),
+      );
+    }
+  }
+
+  Future<void> _endWalk(BuildContext context, WalkEvent event) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End this walk?'),
+        content: const Text(
+          'All participants will be marked as completed. '
+          'Their walk statistics will be calculated and saved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep walking'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End Walk'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await WalkControlService.instance.endWalk(event.firestoreId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Walk ended! Stats calculated.')),
+      );
+      // Close the dialog
+      Navigator.pop(context);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error ending walk: $e')),
+      );
+    }
+  }
+
+  Future<void> _confirmParticipation(BuildContext context, WalkEvent event) async {
+    try {
+      await WalkHistoryService.instance.confirmParticipation(event.firestoreId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Confirmed! You\'re walking with us!')),
+      );
+      setState(() {});
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error confirming: $e')),
+      );
+    }
+  }
+
+  Future<void> _declineParticipation(BuildContext context, WalkEvent event) async {
+    try {
+      await WalkHistoryService.instance.declineParticipation(event.firestoreId);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Declined. You can join another time!')),
+      );
+      setState(() {});
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error declining: $e')),
       );
     }
   }
@@ -1041,6 +1277,24 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
+                          ],
+
+                          // CP-4: Host walk control buttons (start/end walk)
+                          if (event.isOwner && !event.cancelled) ...[
+                            _buildHostControlButtons(context, event, theme, isDark),
+                          ],
+
+                          // CP-4: Participant confirmation button (shown when walk is starting)
+                          if (!event.isOwner &&
+                              event.joined &&
+                              !event.cancelled &&
+                              event.status == 'starting') ...[
+                            _buildParticipantConfirmationButton(
+                              context,
+                              event,
+                              theme,
+                              isDark,
+                            ),
                           ],
 
                           // ✅ Reviews Section

@@ -2,15 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Model representing a user's participation in a walk
 /// Stored at: /users/{userId}/walks/{walkId}
+/// CP-4: Enhanced with walk start confirmation and completion tracking
 class WalkParticipation {
   final String userId;
   final String walkId;
-  final DateTime joinedAt;
-  final bool completed; // User marked walk as completed
+  final DateTime joinedAt;  // When they first joined the walk
+  final DateTime? confirmedAt;  // CP-4: When they confirmed at walk start prompt
+  final String status;  // CP-4: open | starting | actively_walking | declined | completed | completed_early
+  final DateTime? completedAt;  // CP-4: When walk was marked complete
+  final int? actualDurationMinutes;  // CP-4: Actual duration in minutes (confirmedAt → completedAt)
+  final bool completed; // User marked walk as completed (deprecated - use status)
   final double? actualDistanceKm; // Distance user actually walked
-  final Duration? actualDuration; // How long user walked
-  final bool leftEarly; // User left before end
-  final DateTime? leftAt; // When user left
+  final Duration? actualDuration; // How long user walked (deprecated - use actualDurationMinutes)
+  final bool leftEarly; // User left before end (deprecated - use status == 'completed_early')
+  final DateTime? leftAt; // When user left (same as completedAt when status == 'completed_early')
   final bool hostCancelled; // Host cancelled this walk
   final String? notes; // User's notes about this walk
 
@@ -18,6 +23,10 @@ class WalkParticipation {
     required this.userId,
     required this.walkId,
     required this.joinedAt,
+    this.confirmedAt,
+    this.status = 'open',  // CP-4: Default status
+    this.completedAt,
+    this.actualDurationMinutes,
     this.completed = false,
     this.actualDistanceKm,
     this.actualDuration,
@@ -34,6 +43,10 @@ class WalkParticipation {
       userId: data['userId'] ?? '',
       walkId: doc.id,
       joinedAt: (data['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      confirmedAt: (data['confirmedAt'] as Timestamp?)?.toDate(),  // CP-4
+      status: data['status'] ?? 'open',  // CP-4
+      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),  // CP-4
+      actualDurationMinutes: data['actualDurationMinutes'] as int?,  // CP-4
       completed: data['completed'] ?? false,
       actualDistanceKm: (data['actualDistanceKm'] as num?)?.toDouble(),
       actualDuration: data['actualDuration'] != null
@@ -51,6 +64,10 @@ class WalkParticipation {
     return {
       'userId': userId,
       'joinedAt': Timestamp.fromDate(joinedAt),
+      'confirmedAt': confirmedAt != null ? Timestamp.fromDate(confirmedAt!) : null,  // CP-4
+      'status': status,  // CP-4
+      'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,  // CP-4
+      'actualDurationMinutes': actualDurationMinutes,  // CP-4
       'completed': completed,
       'actualDistanceKm': actualDistanceKm,
       'actualDuration': actualDuration?.inSeconds,
@@ -66,6 +83,10 @@ class WalkParticipation {
     String? userId,
     String? walkId,
     DateTime? joinedAt,
+    DateTime? confirmedAt,  // CP-4
+    String? status,  // CP-4
+    DateTime? completedAt,  // CP-4
+    int? actualDurationMinutes,  // CP-4
     bool? completed,
     double? actualDistanceKm,
     Duration? actualDuration,
@@ -78,6 +99,10 @@ class WalkParticipation {
       userId: userId ?? this.userId,
       walkId: walkId ?? this.walkId,
       joinedAt: joinedAt ?? this.joinedAt,
+      confirmedAt: confirmedAt ?? this.confirmedAt,  // CP-4
+      status: status ?? this.status,  // CP-4
+      completedAt: completedAt ?? this.completedAt,  // CP-4
+      actualDurationMinutes: actualDurationMinutes ?? this.actualDurationMinutes,  // CP-4
       completed: completed ?? this.completed,
       actualDistanceKm: actualDistanceKm ?? this.actualDistanceKm,
       actualDuration: actualDuration ?? this.actualDuration,

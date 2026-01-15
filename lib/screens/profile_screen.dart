@@ -346,6 +346,148 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// CP-4: Build walk statistics section showing lifetime stats
+  Widget _buildWalkStatsSection(BuildContext context, String userId) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return FutureBuilder<Map<String, dynamic>>(
+      future: WalkHistoryService.instance.getUserWalkStats(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+            elevation: isDark ? 0.0 : 0.5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: (isDark ? Colors.white : Colors.black)
+                    .withAlpha((0.08 * 255).round()),
+              ),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                height: 40,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          );
+        }
+
+        final stats = snapshot.data ?? {};
+        final totalWalks = stats['totalWalksCompleted'] as int? ?? 0;
+        final totalDistance = stats['totalDistanceKm'] as double? ?? 0.0;
+        final totalSeconds = stats['totalDuration'] as int? ?? 0;
+        final avgDistance = stats['averageDistancePerWalk'] as double? ?? 0.0;
+
+        // Convert total seconds to hours:minutes
+        final totalHours = totalSeconds ~/ 3600;
+        final totalMinutes = (totalSeconds % 3600) ~/ 60;
+        final timeStr = totalHours > 0
+            ? '$totalHours h ${totalMinutes}m'
+            : '${totalMinutes}m';
+
+        if (totalWalks == 0) {
+          return Card(
+            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+            elevation: isDark ? 0.0 : 0.5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: (isDark ? Colors.white : Colors.black)
+                    .withAlpha((0.08 * 255).round()),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No completed walks yet. Start walking to see your lifetime stats!',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.textTheme.bodySmall?.color?.withAlpha(150),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Lifetime stats',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+              elevation: isDark ? 0.0 : 0.5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withAlpha((0.08 * 255).round()),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _statCard(
+                            label: 'Total walks',
+                            value: totalWalks.toString(),
+                            icon: Icons.check_circle,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _statCard(
+                            label: 'Distance',
+                            value: '${totalDistance.toStringAsFixed(1)} km',
+                            icon: Icons.route,
+                            compact: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _statCard(
+                            label: 'Time',
+                            value: timeStr,
+                            icon: Icons.timer,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _statCard(
+                            label: 'Avg distance',
+                            value: '${avgDistance.toStringAsFixed(1)} km',
+                            icon: Icons.trending_up,
+                            compact: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Build past walks section showing recent completed walks
   Widget _buildPastWalksSection(BuildContext context) {
     final theme = Theme.of(context);
@@ -1310,6 +1452,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 24),
 
+                          // CP-4: Lifetime Walk Stats
+                          _buildWalkStatsSection(
+                            context,
+                            FirebaseAuth.instance.currentUser?.uid ?? '',
+                          ),
+
+                          const SizedBox(height: 24),
+
                           // Host Rating (only if user has hosted walks)
                           if (widget.eventsHosted > 0)
                             Column(
@@ -1573,6 +1723,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required String value,
     required IconData icon,
+    bool compact = false,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -1590,23 +1741,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: EdgeInsets.symmetric(
+            vertical: compact ? 10 : 12,
+            horizontal: compact ? 8 : 8,
+          ),
           child: Column(
             children: [
-              Icon(icon, color: isDark ? Colors.white : null),
+              Icon(
+                icon,
+                color: isDark ? Colors.white : null,
+                size: compact ? 18 : 24,
+              ),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : null,
+                  fontSize: compact ? 13 : null,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: isDark ? Colors.white70 : null,
+                  fontSize: compact ? 11 : null,
                 ),
                 textAlign: TextAlign.center,
               ),
