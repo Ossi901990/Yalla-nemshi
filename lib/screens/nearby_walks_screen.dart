@@ -155,7 +155,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
       // ✅ Match HomeScreen background colors
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF1ABFC4),
+          : const Color(0xFFFBFEF8),
 
       body: Column(
         children: [
@@ -233,9 +233,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                               color: isDark ? Colors.white70 : Colors.black54,
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          _buildCompactFilters(context),
                           const SizedBox(height: 12),
-                          _buildFiltersCard(context),
-                          const SizedBox(height: 8),
                           Expanded(
                             child: upcoming.isEmpty
                                 ? Center(
@@ -347,7 +347,329 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     );
   }
 
-  // ===== FILTER CARD =====
+  // ===== COMPACT HORIZONTAL FILTERS =====
+
+  Widget _buildCompactFilters(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          // Date filter chips (horizontal scroll)
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildCompactChip(
+                  context,
+                  label: 'All dates',
+                  icon: Icons.calendar_today,
+                  selected: _dateFilter == _DateFilter.all,
+                  onTap: () {
+                    setState(() => _dateFilter = _DateFilter.all);
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildCompactChip(
+                  context,
+                  label: 'Today',
+                  selected: _dateFilter == _DateFilter.today,
+                  onTap: () {
+                    setState(() => _dateFilter = _DateFilter.today);
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildCompactChip(
+                  context,
+                  label: 'This week',
+                  selected: _dateFilter == _DateFilter.thisWeek,
+                  onTap: () {
+                    setState(() => _dateFilter = _DateFilter.thisWeek);
+                  },
+                ),
+                const SizedBox(width: 8),
+                // Interested toggle
+                _buildCompactChip(
+                  context,
+                  label: 'Interested',
+                  icon: _interestedOnly ? Icons.favorite : Icons.favorite_border,
+                  selected: _interestedOnly,
+                  onTap: () {
+                    setState(() => _interestedOnly = !_interestedOnly);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // More filters button (opens bottom sheet)
+          _buildFilterButton(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactChip(
+    BuildContext context, {
+    required String label,
+    IconData? icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bg = selected
+        ? const Color(0xFF1ABFC4)
+        : (isDark
+              ? Colors.white.withAlpha((0.08 * 255).round())
+              : Colors.white);
+
+    final textColor = selected
+        ? Colors.white
+        : (isDark ? Colors.white : const Color(0xFF374151));
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(
+          horizontal: icon != null ? 12 : 16,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(kRadiusPill),
+          border: selected
+              ? null
+              : Border.all(
+                  color: isDark
+                      ? Colors.white.withAlpha((0.15 * 255).round())
+                      : Colors.black.withAlpha((0.1 * 255).round()),
+                  width: 1,
+                ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF1ABFC4).withAlpha((0.3 * 255).round()),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: textColor),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                color: textColor,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Show badge if distance filter is active
+    final hasDistanceFilter = _distanceFilter != _DistanceFilter.all;
+
+    return GestureDetector(
+      onTap: () => _showDistanceFilterSheet(context),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: hasDistanceFilter
+              ? const Color(0xFF1ABFC4)
+              : (isDark
+                    ? Colors.white.withAlpha((0.08 * 255).round())
+                    : Colors.white),
+          borderRadius: BorderRadius.circular(kRadiusPill),
+          border: hasDistanceFilter
+              ? null
+              : Border.all(
+                  color: isDark
+                      ? Colors.white.withAlpha((0.15 * 255).round())
+                      : Colors.black.withAlpha((0.1 * 255).round()),
+                  width: 1,
+                ),
+        ),
+        child: Stack(
+          children: [
+            Center(
+              child: Icon(
+                Icons.tune,
+                size: 20,
+                color: hasDistanceFilter
+                    ? Colors.white
+                    : (isDark ? Colors.white : const Color(0xFF374151)),
+              ),
+            ),
+            if (hasDistanceFilter)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF00D97E),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===== DISTANCE FILTER BOTTOM SHEET =====
+
+  void _showDistanceFilterSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? kDarkSurface : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(kRadiusCard),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(kSpace2, kSpace2, kSpace2, kSpace3),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withAlpha((0.2 * 255).round())
+                            : Colors.black.withAlpha((0.1 * 255).round()),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Text(
+                    'Distance',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Distance options
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildFilterChip(
+                        context,
+                        label: 'All distances',
+                        selected: _distanceFilter == _DistanceFilter.all,
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.all);
+                          setModalState(() {});
+                        },
+                        showCheck: true,
+                      ),
+                      _buildFilterChip(
+                        context,
+                        label: 'Under 3 km',
+                        selected: _distanceFilter == _DistanceFilter.short,
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.short);
+                          setModalState(() {});
+                        },
+                      ),
+                      _buildFilterChip(
+                        context,
+                        label: '3–6 km',
+                        selected: _distanceFilter == _DistanceFilter.medium,
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.medium);
+                          setModalState(() {});
+                        },
+                      ),
+                      _buildFilterChip(
+                        context,
+                        label: 'Over 6 km',
+                        selected: _distanceFilter == _DistanceFilter.long,
+                        onTap: () {
+                          setState(() => _distanceFilter = _DistanceFilter.long);
+                          setModalState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Apply button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1ABFC4),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(kRadiusPill),
+                        ),
+                      ),
+                      child: const Text(
+                        'Apply filters',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ===== OLD FILTER CARD (KEPT FOR _buildFilterChip) =====
 
   Widget _buildFiltersCard(BuildContext context) {
     final theme = Theme.of(context);

@@ -1155,7 +1155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : _deepGreen,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ) ??
                                 const TextStyle(
                                   fontFamily: 'Poppins',
@@ -1224,7 +1224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 letterSpacing: -0.2,
                                                 color: isDark
                                                     ? Colors.white
-                                                    : _deepGreen,
+                                                    : Colors.black,
                                               ) ??
                                               const TextStyle(
                                                 fontFamily: 'Poppins',
@@ -1353,7 +1353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : _deepGreen,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ) ??
                                 const TextStyle(
                                   fontFamily: 'Poppins',
@@ -1536,7 +1536,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : _deepGreen,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ) ??
                                 const TextStyle(
                                   fontFamily: 'Poppins',
@@ -1616,7 +1616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : _deepGreen,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ) ??
                                 const TextStyle(
                                   fontFamily: 'Poppins',
