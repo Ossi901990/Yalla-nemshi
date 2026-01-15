@@ -43,9 +43,6 @@ const kDarkBg = Color(0xFF071B26); // primary background
 const kDarkSurface = Color(0xFF0C2430); // cards / sheets
 const kDarkSurface2 = Color(0xFF0E242E); // nav / secondary surfaces
 
-const kMint = Color(0xFF8BD5BA); // primary accent
-const kMintBright = Color(0xFFA4E4C5); // highlight accent
-
 const kTextPrimary = Color(0xFFD9F5EA); // big text
 const kTextSecondary = Color(0xFF9BB9B1); // normal text
 const kTextMuted = Color(0xFF6A8580); // hints / placeholders
@@ -119,6 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 debugPrint(
                   'WALKS SNAP: docs=${snap.docs.length} uid=$currentUid city=$userCity',
                 );
+
 
                 // Track last document for pagination
                 if (snap.docs.isNotEmpty) {
@@ -606,12 +604,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Color numberColor;
 
     if (isSelected) {
-      bg = isDark ? const Color(0xFF2E7D32) : const Color(0xFF14532D);
+      bg = isDark ? const Color(0xFF00D97E) : const Color(0xFF1ABFC4);
       border = Colors.transparent;
       labelColor = Colors.white.withAlpha((0.9 * 255).round());
       numberColor = Colors.white;
     } else if (hasWalk) {
-      bg = isDark ? const Color(0xFF9BD77A) : const Color(0xFF9BD77A);
+      bg = isDark ? const Color(0xFF00D97E) : const Color(0xFF00D97E);
       border = Colors.transparent;
       labelColor = isDark ? Colors.black87 : Colors.black87;
       numberColor = Colors.black87;
@@ -622,7 +620,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       labelColor = isDark ? Colors.white70 : Colors.black54;
       numberColor = isDark ? Colors.white : Colors.black87;
     } else {
-      bg = isDark ? Colors.white10 : const Color(0xFFEFE6D9);
+      bg = isDark ? Colors.white10 : Colors.white;
       border = Colors.transparent;
       labelColor = isDark ? Colors.white70 : Colors.black54;
       numberColor = isDark ? Colors.white : Colors.black87;
@@ -648,7 +646,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     color: isDark
                         ? Colors.white.withAlpha((0.18 * 255).round())
                         : const Color(
-                            0xFF2E7D32,
+                            0xFF00D97E,
                           ).withAlpha((0.55 * 255).round()),
                     width: 1.4,
                   )
@@ -665,6 +663,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text(
                 dowLetter(day.weekday),
                 style: TextStyle(
+                  fontFamily: 'Inter',
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   height: 1.0,
@@ -675,6 +674,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text(
                 '${day.day}',
                 style: TextStyle(
+                  fontFamily: 'Inter',
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                   height: 1.0,
@@ -694,7 +694,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _currentTab = widget.initialTab;
-    _initStepCounter();
+    if (!kIsWeb) {
+      _initStepCounter();
+    }
     _loadUserName();
     _loadProfile(); // ✅ load saved avatar
     _loadWeeklyGoal();
@@ -757,6 +759,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _initStepCounter() async {
+    if (kIsWeb) return; // Pedometer plugin is native-only
+
     // Only try on Android
     if (!Platform.isAndroid) return;
 
@@ -1069,7 +1073,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFFFCFEF9),
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusCard)),
       ),
@@ -1156,6 +1160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontFamily: 'Inter',
                           color: Colors.red,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1171,11 +1176,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     leading: const Icon(
                       Icons.circle,
                       size: 10,
-                      color: Colors.green,
+                      color: Color(0xFF00D97E),
                     ),
                     title: Text(
                       n.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: Text(n.message),
                     trailing: Text(
@@ -1238,8 +1246,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // ✅ Force the phone status-bar area to match our header color
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
-        // ✅ Match the TOP of your gradient bar: Color(0xFF294630)
-        statusBarColor: isDark ? Colors.transparent : const Color(0xFF294630),
+        // ✅ Match the TOP of your gradient bar: Color(0xFF1ABFC4)
+        statusBarColor: isDark ? Colors.transparent : const Color(0xFF1ABFC4),
         statusBarIconBrightness: Brightness.light, // Android icons
         statusBarBrightness: Brightness.dark, // iOS text/icons
       ),
@@ -1293,7 +1301,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
-      backgroundColor: isDark ? kDarkBg : const Color(0xFF4F925C),
+      backgroundColor: isDark ? kDarkBg : const Color(0xFF1ABFC4),
 
       body: body,
       bottomNavigationBar: AppBottomNavBar(
@@ -1475,7 +1483,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -1508,15 +1516,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Yalla Nemshi',
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontFamily: 'Poppins',
                                 color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
                               ) ??
                               const TextStyle(
+                                fontFamily: 'Poppins',
                                 color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                                letterSpacing: -0.2,
                               ),
                         ),
                       ],
@@ -1525,52 +1537,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       children: [
                         GestureDetector(
                           onTap: _openNotificationsSheet,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white24,
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_none,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
-                              if (_unreadNotifCount > 0)
-                                Positioned(
-                                  right: -2,
-                                  top: -2,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red,
-                                    ),
-                                    child: Text(
-                                      _unreadNotifCount > 99
-                                          ? '99+'
-                                          : '$_unreadNotifCount',
-                                      style:
-                                          Theme.of(
-                                            context,
-                                          ).textTheme.labelSmall?.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                          ) ??
-                                          const TextStyle(
-                                            fontSize: 9,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white24,
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_none,
+                                    color: Colors.white,
+                                    size: 18,
                                   ),
                                 ),
-                            ],
+                                if (_unreadNotifCount > 0)
+                                  Positioned(
+                                    right: -2,
+                                    top: -2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red,
+                                      ),
+                                      child: Text(
+                                        _unreadNotifCount > 99
+                                            ? '99+'
+                                            : '$_unreadNotifCount',
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ) ??
+                                            const TextStyle(
+                                              fontSize: 9,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1595,7 +1607,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: isDark ? kDarkBg : const Color(0xFFF7F3EA),
+              color: isDark ? kDarkBg : const Color(0xFF1ABFC4),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(kRadiusCard),
                 topRight: Radius.circular(kRadiusCard),
@@ -1618,11 +1630,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Color(0xFF041016), // bottom
                         ],
                       )
-                    : const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFFF7F3EA), Color(0xFFEEE6DA)],
-                      ),
+                    : null,
+                color: isDark ? null : const Color(0xFFF7F9F2),
               ),
 
               child: CustomScrollView(
@@ -1678,12 +1687,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               overflow: TextOverflow.ellipsis,
                                               style: theme.textTheme.titleLarge
                                                   ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
+                                                    fontFamily: 'Poppins',
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: -0.2,
                                                     color: isDark
                                                         ? kTextPrimary
-                                                        : const Color(
-                                                            0xFF14532D,
-                                                          ),
+                                                        : const Color(0xFF1A2332),
+                                                  ) ??
+                                                  const TextStyle(
+                                                    fontFamily: 'Poppins',
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: -0.2,
+                                                    color: Color(0xFF1A2332),
                                                   ),
                                             ),
 
@@ -1705,31 +1722,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Text(
                                     'Ready to walk?',
                                     style: theme.textTheme.headlineSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                        ?.copyWith(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.2,
+                                        ) ??
+                                        const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.2,
+                                        ),
                                   ),
                                   SizedBox(height: kSpace1),
                                   Text(
                                     'Start a walk now or join others nearby. Your steps, your pace.',
-                                    style: theme.textTheme.bodyMedium,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontFamily: 'Inter',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.55,
+                                          color: const Color(0xFF2F2F2F),
+                                        ) ??
+                                        const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.55,
+                                          color: Color(0xFF2F2F2F),
+                                        ),
                                   ),
                                   SizedBox(height: kSpace2),
                                   SizedBox(
                                     width: double.infinity,
-                                    height: kBtnHeight,
+                                    height: 58,
                                     child: FilledButton.icon(
                                       onPressed: _openCreateWalk,
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: kMintBright,
-                                        foregroundColor: kOnMint,
-                                        padding: kBtnPadding,
+                                        backgroundColor: const Color(0xFF1ABFC4),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             kRadiusPill,
                                           ),
                                         ),
                                         textStyle: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
+                                          fontFamily: 'Poppins',
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: -0.2,
                                         ),
                                       ),
                                       icon: const Icon(
@@ -1992,7 +2037,7 @@ class _WeeklySummaryCard extends StatelessWidget {
                     kmGoal <= 0 ? '--' : '$percent%',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: isDark ? kTextPrimary : const Color(0xFF14532D),
+                      color: isDark ? kTextPrimary : const Color(0xFF1A2332),
                     ),
                   ),
                 ),
@@ -2006,8 +2051,8 @@ class _WeeklySummaryCard extends StatelessWidget {
               builder: (context, c) {
                 final trackColor = isDark ? kDarkSurface2 : Colors.black12;
                 final fillColor = isDark
-                    ? kMintBright
-                    : const Color(0xFF14532D);
+                    ? const Color(0xFF1ABFC4)
+                    : const Color(0xFF1ABFC4);
 
                 return Container(
                   height: 14,
@@ -2058,7 +2103,7 @@ class _WeeklySummaryCard extends StatelessWidget {
               motivationText(progress),
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: isDark ? kTextPrimary : const Color(0xFF14532D),
+                color: isDark ? kTextPrimary : const Color(0xFF1A2332),
               ),
             ),
             const SizedBox(height: 4),
@@ -2189,7 +2234,7 @@ class _StepsRing extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (context, animatedProgress, _) {
         // Base ring color at full progress
-        final Color base = isDark ? kMintBright : const Color(0xFF14532D);
+        final Color base = isDark ? const Color(0xFF1ABFC4) : const Color(0xFF1ABFC4);
 
         // Very light color at 0 progress (so the start is almost white)
         final Color veryLight = isDark

@@ -218,7 +218,10 @@ class _MapPickScreenState extends State<MapPickScreen> {
                 child: Center(
                   child: Text(
                     hintText,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      color: Colors.white,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

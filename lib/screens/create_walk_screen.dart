@@ -1,4 +1,4 @@
-// lib/screens/create_walk_screen.dart
+﻿// lib/screens/create_walk_screen.dart
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -311,6 +311,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     fontWeight: FontWeight.w600,
                   ) ??
                   const TextStyle(
+                    fontFamily: 'Inter',
                     color: Colors.white70,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -324,6 +325,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     letterSpacing: 0.5,
                   ) ??
                   const TextStyle(
+                    fontFamily: 'Poppins',
                     color: Colors.white,
                     fontSize: 34,
                     fontWeight: FontWeight.w600,
@@ -338,6 +340,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     fontWeight: FontWeight.w500,
                   ) ??
                   const TextStyle(
+                    fontFamily: 'Inter',
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
@@ -351,6 +354,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     fontWeight: FontWeight.w600,
                   ) ??
                   const TextStyle(
+                    fontFamily: 'Inter',
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -362,7 +366,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ) ??
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 10,
@@ -374,7 +382,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ) ??
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
@@ -704,7 +716,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               content: Text(
                 'Recurring walk created! ${recurrence.getDescription()}',
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: const Color(0xFF00D97E),
             ),
           );
 
@@ -834,7 +846,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       resizeToAvoidBottomInset: true,
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF4F925C),
+          : const Color(0xFF1ABFC4),
       body: Column(
         children: [
           // ===== HOME-STYLE HEADER (no bar) =====
@@ -854,8 +866,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : Colors.white,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -917,9 +930,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                               ? Colors.white.withAlpha((0.06 * 255).round())
                               : Colors.white,
                           labelStyle: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white70 : Colors.black87,
                           ),
                           hintStyle: TextStyle(
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
                             color: isDark ? Colors.white54 : Colors.black54,
                           ),
                           border: OutlineInputBorder(
@@ -941,7 +958,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             borderSide: BorderSide(
                               color: isDark
                                   ? Colors.white.withAlpha((0.35 * 255).round())
-                                  : const Color(0xFF294630),
+                                  : const Color(0xFF1A2332),
                               width: 1.2,
                             ),
                           ),
@@ -960,16 +977,19 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             Text(
                               'Create walk',
                               style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
                                 color: isDark
                                     ? Colors.white
-                                    : const Color(0xFF294630),
+                                    : const Color(0xFF1A2332),
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Set your walk details and invite others to join.',
                               style: theme.textTheme.bodySmall?.copyWith(
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white70 : Colors.black54,
                               ),
                             ),
@@ -1035,10 +1055,20 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             ),
                                             labelColor: isDark
                                                 ? Colors.white
-                                                : const Color(0xFF294630),
+                                                : const Color(0xFF1A2332),
                                             unselectedLabelColor: isDark
                                                 ? Colors.white70
                                                 : Colors.black54,
+                                            labelStyle: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                            unselectedLabelStyle: const TextStyle(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
                                             tabs: const [
                                               Tab(text: 'Point to point'),
                                               Tab(text: 'Loop'),
@@ -1095,7 +1125,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                 size: 18,
                                                 color: isDark
                                                     ? Colors.white70
-                                                    : const Color(0xFF294630),
+                                                    : const Color(0xFF1A2332),
                                               ),
                                               const SizedBox(width: 10),
                                               Expanded(
@@ -1110,6 +1140,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                       .textTheme
                                                       .bodyMedium
                                                       ?.copyWith(
+                                                        fontFamily: 'Inter',
+                                                        fontWeight:
+                                                            FontWeight.w700,
                                                         color: isDark
                                                             ? Colors.white
                                                             : Colors.black87,
@@ -1121,7 +1154,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: isDark
                                                       ? Colors.white70
-                                                      : const Color(0xFF294630),
+                                                      : const Color(0xFF1A2332),
                                                 ),
                                                 child: const Text('Change'),
                                               ),
@@ -1137,8 +1170,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Route',
-                                              style:
-                                                  theme.textTheme.titleMedium,
+                                              style: theme
+                                                  .textTheme.titleMedium
+                                                  ?.copyWith(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 12),
@@ -1148,7 +1188,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Visibility',
-                                              style: theme.textTheme.titleSmall,
+                                              style: theme
+                                                  .textTheme.titleSmall
+                                                  ?.copyWith(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -1196,6 +1244,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   : 'Visible in Nearby walks. Others can request to join.',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight:
+                                                        FontWeight.w600,
                                                     color: isDark
                                                         ? Colors.white70
                                                         : Colors.black54,
@@ -1215,6 +1266,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               overflow: TextOverflow.ellipsis,
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight:
+                                                        FontWeight.w600,
                                                     color: isDark
                                                         ? Colors.white54
                                                         : Colors.black54,
@@ -1228,8 +1282,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Loop walk',
-                                              style:
-                                                  theme.textTheme.titleMedium,
+                                              style: theme
+                                                  .textTheme.titleMedium
+                                                  ?.copyWith(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -1306,6 +1367,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               'Duration and distance update each other automatically.',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight:
+                                                        FontWeight.w600,
                                                     color: isDark
                                                         ? Colors.white70
                                                         : Colors.black54,
@@ -1319,8 +1383,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             alignment: Alignment.centerLeft,
                                             child: Text(
                                               'Free walk',
-                                              style:
-                                                  theme.textTheme.titleMedium,
+                                              style: theme
+                                                  .textTheme.titleMedium
+                                                  ?.copyWith(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -1330,6 +1401,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               'No destination. Walk freely and end whenever you want.',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight:
+                                                        FontWeight.w600,
                                                     color: isDark
                                                         ? Colors.white70
                                                         : Colors.black54,
@@ -1451,7 +1525,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           contentPadding: EdgeInsets.zero,
                                           title: Text(
                                             'Date & time',
-                                            style: theme.textTheme.titleMedium,
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF1A2332),
+                                            ),
                                           ),
                                           subtitle: Text(
                                             _formatDateTime(_dateTime),
@@ -1459,6 +1540,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             overflow: TextOverflow.ellipsis,
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(
+                                                  fontFamily: 'Inter',
+                                                  fontWeight: FontWeight.w600,
                                                   color: isDark
                                                       ? Colors.white70
                                                       : Colors.black54,
@@ -1530,8 +1613,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                     style: theme.textTheme
                                                         .titleSmall
                                                         ?.copyWith(
+                                                          fontFamily:
+                                                              'Poppins',
                                                           fontWeight:
-                                                              FontWeight.w600,
+                                                              FontWeight.w700,
+                                                          color: isDark
+                                                              ? Colors.white
+                                                              : const Color(
+                                                                  0xFF1A2332,
+                                                                ),
                                                         ),
                                                   ),
                                                   if (_selectedPhotos
@@ -1542,6 +1632,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                           theme.textTheme
                                                               .labelSmall
                                                               ?.copyWith(
+                                                                fontFamily:
+                                                                    'Inter',
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
                                                                 color: Colors
                                                                     .grey,
                                                               ),
@@ -1574,6 +1669,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                               .textTheme
                                                               .bodySmall
                                                               ?.copyWith(
+                                                                fontFamily:
+                                                                    'Inter',
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
                                                                 color: Colors
                                                                     .grey[600],
                                                               ),
@@ -1718,8 +1818,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                         .textTheme
                                                         .titleSmall
                                                         ?.copyWith(
+                                                          fontFamily:
+                                                              'Poppins',
                                                           fontWeight:
-                                                              FontWeight.w600,
+                                                              FontWeight.w700,
+                                                          color: isDark
+                                                              ? Colors.white
+                                                              : const Color(
+                                                                  0xFF1A2332,
+                                                                ),
                                                         ),
                                                   ),
                                                   const Spacer(),
@@ -1788,6 +1895,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                         .textTheme
                                                         .bodySmall
                                                         ?.copyWith(
+                                                          fontFamily: 'Inter',
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                           color: isDark
                                                               ? Colors.white70
                                                               : Colors.black87,
@@ -1842,6 +1952,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                         .textTheme
                                                         .bodySmall
                                                         ?.copyWith(
+                                                          fontFamily: 'Inter',
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                           color: isDark
                                                               ? Colors.white70
                                                               : Colors.black87,
@@ -1856,7 +1969,17 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                     'End date (optional)',
                                                     style: theme
                                                         .textTheme
-                                                        .bodyMedium,
+                                                        .bodyMedium
+                                                        ?.copyWith(
+                                                      fontFamily: 'Poppins',
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : const Color(
+                                                              0xFF1A2332,
+                                                            ),
+                                                    ),
                                                   ),
                                                   subtitle: Text(
                                                     _recurringEndDate != null
@@ -1917,7 +2040,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                     BorderRadius.circular(16),
                                               ),
                                               backgroundColor: const Color(
-                                                0xFF14532D,
+                                                0xFF1A2332,
                                               ),
                                               foregroundColor: Colors.white,
                                             ),
@@ -1927,6 +2050,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   : 'Create loop walk',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 16,
+                                              ),
                                             ),
                                           ),
                                         ),

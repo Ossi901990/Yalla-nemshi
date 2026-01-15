@@ -29,7 +29,7 @@ class BadgesInfoScreen extends StatelessWidget {
             title: Text(b.title),
             subtitle: Text(b.description),
             trailing: b.achieved
-                ? const Icon(Icons.check_circle, color: Colors.green)
+                ? const Icon(Icons.check_circle, color: Color(0xFF00D97E))
                 : null,
           );
         },

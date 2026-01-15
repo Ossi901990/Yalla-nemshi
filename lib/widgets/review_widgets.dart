@@ -292,7 +292,7 @@ class RatingStatsWidget extends StatelessWidget {
     switch (rating) {
       case 5:
       case 4:
-        return Colors.green;
+        return const Color(0xFF00D97E);
       case 3:
         return Colors.amber;
       case 2:

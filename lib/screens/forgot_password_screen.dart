@@ -68,9 +68,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           SnackBar(
             content: Text(
               'Password reset link sent to ${_emailController.text}',
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: Colors.white,
+              ),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: const Color(0xFF00D97E),
             duration: const Duration(seconds: 4),
           ),
         );
@@ -137,7 +140,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         backgroundColor: isDark
             ? const Color(0xFF1B2624)
-            : const Color(0xFF294630),
+            : const Color(0xFF1ABFC4),
         elevation: 0,
         centerTitle: true,
       ),
@@ -269,10 +272,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
+                    color: const Color(0xFF00D97E).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.green.withValues(alpha: 0.3),
+                      color: const Color(0xFF00D97E).withValues(alpha: 0.3),
                     ),
                   ),
                   child: Column(
@@ -280,7 +283,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       Icon(
                         Icons.check_circle_outline,
                         size: 64,
-                        color: Colors.green,
+                        color: const Color(0xFF00D97E),
                       ),
                       const SizedBox(height: 16),
                       Text(

@@ -127,7 +127,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const kDarkBg = Color(0xFF071B26);
 
     return Scaffold(
-      backgroundColor: isDark ? kDarkBg : const Color(0xFF4F925C),
+      backgroundColor: isDark ? kDarkBg : const Color(0xFF1ABFC4),
       body: body,
       bottomNavigationBar: AppBottomNavBar(
         currentIndex: _currentTab,

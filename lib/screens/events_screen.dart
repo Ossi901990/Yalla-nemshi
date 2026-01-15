@@ -12,7 +12,21 @@ class EventsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFFF7F9F2),
       appBar: AppBar(
-        title: const Text('Events'),
+        title: Text(
+          'Events',
+          style: theme.textTheme.titleLarge?.copyWith(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ) ??
+              const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+        ),
         elevation: 0,
         backgroundColor: isDark ? const Color(0xFF0E242E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black87,
@@ -29,14 +43,38 @@ class EventsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Events Coming Soon',
-              style: theme.textTheme.titleLarge,
+              style: theme.textTheme.titleLarge?.copyWith(
+                    fontFamily: 'Poppins',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    color: isDark ? Colors.white : const Color(0xFF1F2933),
+                  ) ??
+                  const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    color: Color(0xFF1F2933),
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'This feature will be available soon',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: isDark ? Colors.white60 : Colors.black54,
-              ),
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.45,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ) ??
+                  TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.45,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
             ),
           ],
         ),

@@ -11,7 +11,6 @@ import 'services/profile_migration_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/privacy_policy_screen.dart';
 import 'screens/terms_screen.dart';
-import 'theme_controller.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
@@ -137,37 +136,26 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: ThemeController.instance.themeMode,
-      builder: (context, mode, _) {
-        return MaterialApp(
-          title: 'Yalla Nemshi',
-          debugShowCheckedModeBanner: false,
-          themeMode: mode, // still using your ThemeController
-          theme: _lightTheme,
-          darkTheme: _darkTheme,
-
-          // ⬇️ Use AuthStateRouter to route based on authentication state
-          home: const AuthStateRouter(),
-
-          // ⬇️ define your routes for named navigation
-          routes: {
-            LoginScreen.routeName: (context) => const LoginScreen(),
-            ForgotPasswordScreen.routeName: (context) => const ForgotPasswordScreen(),
-            ReviewWalkScreen.routeName: (context) {
-              final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-              return ReviewWalkScreen(
-                walk: args?['walk'],
-                userId: args?['userId'],
-                userName: args?['userName'],
-              );
-            },
-            PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
-            TermsScreen.routeName: (context) => const TermsScreen(),
-            SignupScreen.routeName: (context) => const SignupScreen(),
-            '/home': (context) => const HomeScreen(),
-          },
-        );
+    return MaterialApp(
+      title: 'Yalla Nemshi',
+      debugShowCheckedModeBanner: false,
+      theme: _lightTheme,
+      home: const AuthStateRouter(),
+      routes: {
+        LoginScreen.routeName: (context) => const LoginScreen(),
+        ForgotPasswordScreen.routeName: (context) => const ForgotPasswordScreen(),
+        ReviewWalkScreen.routeName: (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return ReviewWalkScreen(
+            walk: args?['walk'],
+            userId: args?['userId'],
+            userName: args?['userName'],
+          );
+        },
+        PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
+        TermsScreen.routeName: (context) => const TermsScreen(),
+        SignupScreen.routeName: (context) => const SignupScreen(),
+        '/home': (context) => const HomeScreen(),
       },
     );
   }
@@ -211,9 +199,10 @@ class AuthStateRouter extends ConsumerWidget {
 final ThemeData _lightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
+    fontFamily: 'Poppins',
   colorScheme: const ColorScheme.light(
-    primary: Color(0xFF4F925C),
-    secondary: Color(0xFF294630),
+    primary: Color(0xFF1ABFC4),
+    secondary: Color(0xFF1A2332),
     surface: Color(0xFFFBFEF8),
     onSurface: Colors.black87,
     onPrimary: Colors.white,
@@ -221,56 +210,117 @@ final ThemeData _lightTheme = ThemeData(
   ),
   scaffoldBackgroundColor: const Color(0xFFF7F9F2),
   cardColor: const Color(0xFFFBFEF8),
-  // ✅ Add text theme for accessibility text scaling
+  // ✅ Professional typography system - Poppins for headlines, Inter for body
   textTheme: const TextTheme(
-    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-    displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-    displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-    headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-    headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-    headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-    titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    titleMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-    titleSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-    bodyLarge: TextStyle(fontSize: 16),
-    bodyMedium: TextStyle(fontSize: 14),
-    bodySmall: TextStyle(fontSize: 12),
-    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-    labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-    labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-  ),
-);
-
-/// DARK THEME  🌙
-final ThemeData _darkTheme = ThemeData(
-  useMaterial3: true,
-  brightness: Brightness.dark,
-  colorScheme: const ColorScheme.dark(
-    primary: Color(0xFF4F925C), // same green accent
-    secondary: Color(0xFF294630), // main scaffold background
-    surface: Color(0xFF0D1611), // main sheet background
-    onPrimary: Colors.white,
-    onSecondary: Colors.white, // main readable text
-    onSurface: Color(0xFFA9B9AE), // secondary text
-  ),
-  scaffoldBackgroundColor: const Color(0xFF050A08),
-  cardColor: const Color(0xFF151F18),
-  // ✅ Add text theme for accessibility text scaling
-  textTheme: const TextTheme(
-    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-    displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-    displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-    headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-    headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-    headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-    titleLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-    titleMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-    titleSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-    bodyLarge: TextStyle(fontSize: 16),
-    bodyMedium: TextStyle(fontSize: 14),
-    bodySmall: TextStyle(fontSize: 12),
-    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-    labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-    labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+    // === DISPLAY STYLES (Large headlines) ===
+    displayLarge: TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 32,
+      fontWeight: FontWeight.bold, // 700
+      letterSpacing: -0.5,
+      height: 1.2,
+    ),
+    displayMedium: TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 28,
+      fontWeight: FontWeight.bold, // 700
+      letterSpacing: -0.3,
+      height: 1.25,
+    ),
+    displaySmall: TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 24,
+      fontWeight: FontWeight.bold, // 700
+      letterSpacing: 0,
+      height: 1.3,
+    ),
+    // === HEADLINE STYLES (Subheadings) ===
+    headlineLarge: TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 22,
+      fontWeight: FontWeight.w600, // SemiBold
+      letterSpacing: 0,
+      height: 1.3,
+    ),
+    headlineMedium: TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+      height: 1.4,
+    ),
+    headlineSmall: TextStyle(
+      fontFamily: 'Poppins',
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0,
+      height: 1.4,
+    ),
+    // === TITLE STYLES (Section titles) ===
+    titleLarge: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.15,
+      height: 1.5,
+    ),
+    titleMedium: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 14,
+      fontWeight: FontWeight.w500, // Medium
+      letterSpacing: 0.1,
+      height: 1.5,
+    ),
+    titleSmall: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.1,
+      height: 1.5,
+    ),
+    // === BODY STYLES (Main text) ===
+    bodyLarge: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 16,
+      fontWeight: FontWeight.normal, // 400
+      letterSpacing: 0.15,
+      height: 1.5,
+    ),
+    bodyMedium: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 14,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.25,
+      height: 1.5,
+    ),
+    bodySmall: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 12,
+      fontWeight: FontWeight.normal,
+      letterSpacing: 0.4,
+      height: 1.5,
+    ),
+    // === LABEL STYLES (Tags, badges) ===
+    labelLarge: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.1,
+      height: 1.43,
+    ),
+    labelMedium: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5,
+      height: 1.33,
+    ),
+    labelSmall: TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5,
+      height: 1.45,
+    ),
   ),
 );

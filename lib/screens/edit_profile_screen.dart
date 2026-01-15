@@ -32,8 +32,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   static const _kDarkBase = Color(0xFF071B26);
   static const _kDarkSurface = Color(0xFF0C2430);
   static const _kLightBase = Color(0xFFF7F9F2);
-  static const _kLightHeaderTop = Color(0xFF294630);
-  static const _kLightHeaderBottom = Color(0xFF4F925C);
+  static const _kLightHeaderTop = Color(0xFF1ABFC4);
+  static const _kLightHeaderBottom = Color(0xFF1ABFC4);
 
   @override
   void initState() {
@@ -186,6 +186,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                       ) ?? const TextStyle(
+                        fontFamily: 'Poppins',
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 24,
@@ -451,7 +452,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  backgroundColor: const Color(0xFF14532D),
+                                  backgroundColor: const Color(0xFF1A2332),
                                   foregroundColor: Colors.white,
                                 ),
                                 child: const Text('Save'),

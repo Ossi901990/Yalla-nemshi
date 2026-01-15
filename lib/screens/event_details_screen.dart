@@ -124,7 +124,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           children: [
             Text(
               emoji,
-              style: const TextStyle(fontSize: 14),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+              ),
             ),
             const SizedBox(width: 4),
             Text(
@@ -369,7 +372,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                backgroundColor: Colors.green[600],
+                backgroundColor: const Color(0xFF00D97E),
                 foregroundColor: Colors.white,
               ),
               icon: const Icon(Icons.play_arrow),
@@ -424,7 +427,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                   children: [
                     Icon(
                       Icons.group,
-                      color: Colors.green,
+                      color: const Color(0xFF00D97E),
                       size: 16,
                     ),
                     const SizedBox(width: 8),
@@ -463,7 +466,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              backgroundColor: Colors.green[600],
+              backgroundColor: const Color(0xFF00D97E),
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.check_circle),
@@ -602,7 +605,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF4F925C),
+          : const Color(0xFF1ABFC4),
       body: Column(
         children: [
           // ===== HEADER (match Home/Nearby sizing) =====
@@ -647,7 +650,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -1227,7 +1230,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                backgroundColor: const Color(0xFF14532D),
+                                backgroundColor: const Color(0xFF00D97E),
                                 foregroundColor: Colors.white,
                               ),
                               icon: Icon(

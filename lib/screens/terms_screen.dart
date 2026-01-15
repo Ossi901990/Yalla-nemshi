@@ -13,7 +13,7 @@ class TermsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF4F925C),
+          : const Color(0xFF1ABFC4),
       body: Column(
         children: [
           // ===== HEADER =====
@@ -65,7 +65,7 @@ class TermsScreen extends StatelessWidget {
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),

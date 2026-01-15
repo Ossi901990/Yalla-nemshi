@@ -155,7 +155,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
       // ✅ Match HomeScreen background colors
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF4F925C),
+          : const Color(0xFF1ABFC4),
 
       body: Column(
         children: [
@@ -535,7 +535,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
         : (isDark ? Colors.white.withAlpha((0.06 * 255).round()) : Colors.white);
 
     final border = selected
-        ? (isDark ? Colors.white.withAlpha((0.18 * 255).round()) : const Color(0xFF4F925C))
+        ? (isDark ? Colors.white.withAlpha((0.18 * 255).round()) : const Color(0xFF1ABFC4))
         : (isDark
               ? Colors.white.withAlpha((0.12 * 255).round())
               : Colors.grey.withAlpha((0.30 * 255).round()));
@@ -574,6 +574,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                     fontWeight: FontWeight.w600,
                     color: textColor,
                   ) ?? TextStyle(
+                    fontFamily: 'Inter',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: textColor,
@@ -649,6 +650,7 @@ class _NearbyWalkCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF1F2933),
                   ) ?? const TextStyle(
+                    fontFamily: 'Inter',
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1F2933),
@@ -722,6 +724,7 @@ class _NearbyWalkCard extends StatelessWidget {
                                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                 ) ?? const TextStyle(
+                                  fontFamily: 'Inter',
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -794,7 +797,7 @@ class _NearbyWalkCard extends StatelessWidget {
                           ? Icons.check_circle
                           : Icons.add_circle_outline,
                       color: event.joined
-                          ? const Color(0xFF2E7D32)
+                          ? const Color(0xFF00D97E)
                           : (isDark ? Colors.white70 : const Color(0xFF374151)),
                       size: 22,
                     ),

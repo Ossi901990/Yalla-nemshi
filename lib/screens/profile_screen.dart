@@ -75,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   int _currentTab = 3; // Profile tab is index 3
 
-  static const Color _deepGreen = Color(0xFF294630);
+  static const Color _deepGreen = Color(0xFF1ABFC4);
 
   late double _weeklyGoalKmLocal;
 
@@ -190,7 +190,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
                   'Remove photo',
-                  style: TextStyle(color: Colors.red),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: Colors.red,
+                  ),
                 ),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -299,7 +302,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Stars
                     Text(
                       HostRatingService.getRatingEmoji(rating),
-                      style: const TextStyle(fontSize: 20),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     // Rating value and tier
@@ -417,8 +423,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               'Lifetime stats',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontFamily: 'Poppins',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                    color: isDark ? Colors.white : _deepGreen,
+                  ) ??
+                  const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
             ),
             const SizedBox(height: 8),
             Card(
@@ -585,7 +601,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Icon(
                             Icons.check_circle,
                             size: 20,
-                            color: Colors.green[600],
+                            color: const Color(0xFF00D97E),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -837,7 +853,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF4F925C),
+          : const Color(0xFF1ABFC4),
 
       body: Column(
         children: [
@@ -965,7 +981,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -1135,16 +1151,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'My profile',
                             style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : _deepGreen,
-                            ),
+                                  fontFamily: 'Poppins',
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                  color: isDark ? Colors.white : _deepGreen,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Track your progress and edit your walking details.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.5,
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ) ??
+                                TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.5,
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ),
                           ),
                           const SizedBox(height: 24),
 
@@ -1182,7 +1218,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: theme.textTheme.titleLarge
                                               ?.copyWith(
-                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'Poppins',
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: -0.2,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : _deepGreen,
+                                              ) ??
+                                              const TextStyle(
+                                                fontFamily: 'Poppins',
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: -0.2,
                                               ),
                                         ),
                                       ),
@@ -1207,9 +1255,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   _walkerLevel,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: const Color(0xFF4F925C),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                        fontFamily: 'Inter',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1ABFC4),
+                                      ) ??
+                                      const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1ABFC4),
+                                      ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -1218,8 +1274,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       : 'Add a short bio about you',
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.textTheme.bodySmall?.color,
-                                  ),
+                                        fontFamily: 'Inter',
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.45,
+                                        color: theme.textTheme.bodySmall?.color,
+                                      ) ??
+                                      TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.45,
+                                        color: theme.textTheme.bodySmall?.color,
+                                      ),
                                 ),
                               ],
                             ),
@@ -1240,6 +1307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       .withAlpha((0.12 * 255).round()),
                                 ),
                                 labelStyle: TextStyle(
+                                  fontFamily: 'Inter',
                                   color: isDark ? Colors.white : Colors.black87,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1281,8 +1349,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'This week',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                                  fontFamily: 'Poppins',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                  color: isDark ? Colors.white : _deepGreen,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Card(
@@ -1314,12 +1392,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
                                           '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
                                           style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : null,
-                                              ),
+                                                  ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w700,
+                                                    height: 1.45,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : null,
+                                                  ) ??
+                                                  TextStyle(
+                                                    fontFamily: 'Inter',
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w700,
+                                                    height: 1.45,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : null,
+                                                  ),
                                         ),
                                       ),
                                       const SizedBox(width: 10),
@@ -1341,12 +1431,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         child: Text(
                                           '${(weeklyProgress * 100).round()}%',
                                           style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w800,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : null,
-                                              ),
+                                                  ?.copyWith(
+                                                    fontFamily: 'Poppins',
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w800,
+                                                    letterSpacing: -0.1,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : null,
+                                                  ) ??
+                                                  TextStyle(
+                                                    fontFamily: 'Poppins',
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w800,
+                                                    letterSpacing: -0.1,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : null,
+                                                  ),
                                         ),
                                       ),
                                     ],
@@ -1382,8 +1484,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             width: fillW,
                                             decoration: BoxDecoration(
                                               color: isDark
-                                                  ? const Color(0xFF9BD77A)
-                                                  : const Color(0xFF4F925C),
+                                                  ? const Color(0xFF1ABFC4)
+                                                  : const Color(0xFF1ABFC4),
                                               borderRadius:
                                                   BorderRadius.circular(999),
                                             ),
@@ -1401,10 +1503,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       streakDays: widget.streakDays,
                                     ),
                                     style: theme.textTheme.bodySmall?.copyWith(
+                                      fontFamily: 'Inter',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.4,
                                       color: isDark
                                           ? Colors.white70
                                           : Colors.black54,
+                                    ) ??
+                                    TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w600,
+                                      height: 1.4,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
                                     ),
                                   ),
                                 ],
@@ -1418,8 +1532,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'Your stats',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                                  fontFamily: 'Poppins',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                  color: isDark ? Colors.white : _deepGreen,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -1446,7 +1570,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Center(
                             child: Text(
                               'Marked as interested: ${widget.interestedCount}',
-                              style: theme.textTheme.bodySmall,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        isDark ? Colors.white70 : Colors.black54,
+                                  ) ??
+                                  const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                             ),
                           ),
 
@@ -1477,8 +1612,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'Badges',
                             style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                                  fontFamily: 'Poppins',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                  color: isDark ? Colors.white : _deepGreen,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Card(
@@ -1508,11 +1653,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Text(
                                       'Badges will appear here as you walk more.',
                                       style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: isDark
-                                                ? Colors.white70
-                                                : null,
-                                          ),
+                                              ?.copyWith(
+                                                fontFamily: 'Inter',
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                height: 1.4,
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : null,
+                                              ) ??
+                                              TextStyle(
+                                                fontFamily: 'Inter',
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                height: 1.4,
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : null,
+                                              ),
                                     )
                                   else ...[
                                     Wrap(

@@ -144,7 +144,21 @@ class _WalksScreenState extends State<WalksScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Walks'),
+        title: Text(
+          'Walks',
+          style: theme.textTheme.titleLarge?.copyWith(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ) ??
+              const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+        ),
         elevation: 0,
         backgroundColor: isDark ? kDarkSurface2 : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black87,
@@ -156,9 +170,21 @@ class _WalksScreenState extends State<WalksScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: isDark ? const Color(0xFFA4E4C5) : const Color(0xFF14532D),
-          labelColor: isDark ? const Color(0xFFA4E4C5) : const Color(0xFF14532D),
+          indicatorColor: const Color(0xFF1ABFC4),
+          labelColor: const Color(0xFF1ABFC4),
           unselectedLabelColor: isDark ? kTextMuted : Colors.black54,
+          labelStyle: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.1,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.1,
+          ),
           tabs: const [
             Tab(text: 'My Walks'),
             Tab(text: 'Nearby Walks'),
@@ -210,8 +236,8 @@ class _WalksScreenState extends State<WalksScreen>
                 );
               },
               backgroundColor: isDark
-                  ? const Color(0xFF4F925C)
-                  : const Color(0xFF4F925C),
+                  ? const Color(0xFF1ABFC4)
+                  : const Color(0xFF1ABFC4),
               child: const Icon(Icons.add),
             )
           : null,
@@ -249,14 +275,37 @@ class _MyWalksTab extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'No walks yet',
-                style: theme.textTheme.titleLarge,
+                style: theme.textTheme.titleLarge?.copyWith(
+                      fontFamily: 'Poppins',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                      color: isDark ? kTextPrimary : Colors.black87,
+                    ) ??
+                    const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Create or join a walk to get started',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? kTextSecondary : Colors.black54,
-                ),
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      height: 1.45,
+                      color: isDark ? kTextSecondary : Colors.black54,
+                    ) ??
+                    TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      height: 1.45,
+                      color: isDark ? kTextSecondary : Colors.black54,
+                    ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -315,15 +364,34 @@ class _WalkCard extends StatelessWidget {
               Text(
                 event.title,
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontFamily: 'Poppins',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.1,
+                      color: isDark ? kTextPrimary : Colors.black87,
+                    ) ??
+                    const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.1,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 '${event.distanceKm} km • ${_formatDate(event.dateTime)}',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: isDark ? kTextSecondary : Colors.black54,
-                ),
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? kTextSecondary : Colors.black54,
+                    ) ??
+                    TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? kTextSecondary : Colors.black54,
+                    ),
               ),
             ],
           ),

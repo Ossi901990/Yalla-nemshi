@@ -200,14 +200,37 @@ class _SignupScreenState extends State<SignupScreen> {
                       "Create account",
                       style: Theme.of(
                         context,
-                      ).textTheme.displaySmall?.copyWith(color: kPrimaryText),
+                      ).textTheme.displaySmall?.copyWith(
+                            fontFamily: 'Poppins',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: kPrimaryText) ??
+                          const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: kPrimaryText,
+                          ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       "Join Yalla Nemshi and start walking with others.",
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: kSecondaryText.withAlpha((0.7 * 255).round()),
-                      ),
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.55,
+                        color: kSecondaryText.withAlpha((0.78 * 255).round()),
+                      ) ??
+                          TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.55,
+                            color: kSecondaryText.withAlpha((0.78 * 255).round()),
+                          ),
                     ),
                   ],
                 ),
@@ -407,10 +430,14 @@ class _SignupScreenState extends State<SignupScreen> {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: const TextStyle(color: kPrimaryText),
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            color: kPrimaryText,
+          ),
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(
+              fontFamily: 'Inter',
               color: kHintText.withAlpha((0.5 * 255).round()),
             ),
             prefixIcon: Icon(
@@ -460,7 +487,7 @@ class _GradientButton extends StatelessWidget {
       ),
       child: SizedBox(
         width: double.infinity,
-        height: 48,
+        height: 52,
         child: TextButton(
           onPressed: onPressed,
           style: TextButton.styleFrom(
@@ -469,7 +496,22 @@ class _GradientButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
             ),
           ),
-          child: Text(text, style: Theme.of(context).textTheme.labelLarge),
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontFamily: 'Poppins',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.1,
+                ) ??
+                const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.1,
+                  color: Colors.white,
+                ),
+          ),
         ),
       ),
     );

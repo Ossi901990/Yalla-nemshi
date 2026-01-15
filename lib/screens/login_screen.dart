@@ -279,15 +279,41 @@ class _LoginScreenState extends State<LoginScreen> {
                             Text(
                               'Welcome back!',
                               style: Theme.of(context).textTheme.displayMedium
-                                  ?.copyWith(color: kPrimaryText),
+                                  ?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                    color: kPrimaryText,
+                                  ) ??
+                                  const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                    color: kPrimaryText,
+                                  ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
                             Text(
                               'Log in to continue walking with Yalla Nemshi',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.55,
                                     color: kSecondaryText.withAlpha(
-                                      (0.7 * 255).round(),
+                                      (0.78 * 255).round(),
+                                    ),
+                                  ) ??
+                                  TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.55,
+                                    color: kSecondaryText.withAlpha(
+                                      (0.78 * 255).round(),
                                     ),
                                   ),
                             ),
@@ -500,10 +526,14 @@ class _LoginScreenState extends State<LoginScreen> {
           keyboardType: keyboardType,
           enabled: !_isLoading,
           validator: validator,
-          style: const TextStyle(color: kPrimaryText),
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            color: kPrimaryText,
+          ),
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(
+              fontFamily: 'Inter',
               color: kHintText.withAlpha((0.5 * 255).round()),
             ),
             prefixIcon: Icon(
@@ -530,7 +560,11 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Colors.red, width: 1.3),
             ),
-            errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+            errorStyle: const TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.red,
+              fontSize: 12,
+            ),
           ),
         ),
       ],
@@ -568,7 +602,7 @@ class _GradientButton extends StatelessWidget {
       ),
       child: SizedBox(
         width: double.infinity,
-        height: 48,
+        height: 52,
         child: TextButton(
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
@@ -589,7 +623,22 @@ class _GradientButton extends StatelessWidget {
                     ),
                   ),
                 )
-              : Text(text, style: Theme.of(context).textTheme.labelLarge),
+              : Text(
+                  text,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontFamily: 'Poppins',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.1,
+                      ) ??
+                      const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.1,
+                        color: Colors.white,
+                      ),
+                ),
         ),
       ),
     );

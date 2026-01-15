@@ -89,7 +89,7 @@ class _ReviewWalkScreenState extends State<ReviewWalkScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Thank you for your review!'),
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF00D97E),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -146,7 +146,7 @@ class _ReviewWalkScreenState extends State<ReviewWalkScreen> {
         ),
         backgroundColor: isDark
             ? const Color(0xFF1B2624)
-            : const Color(0xFF294630),
+            : const Color(0xFF1ABFC4),
         elevation: 0,
         centerTitle: true,
       ),

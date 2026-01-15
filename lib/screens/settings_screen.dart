@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_preferences.dart';
-import '../providers/theme_provider.dart';
 import 'safety_tips_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
@@ -18,7 +17,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _loading = true;
 
-  bool _useSystemTheme = false; // coming soon (kept for UI)
   bool _walkReminders = AppPreferences.walkRemindersFallback;
   bool _nearbyAlerts = AppPreferences.nearbyAlertsFallback;
   bool _pushWalks = AppPreferences.pushWalksFallback;
@@ -85,8 +83,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         inactiveTrackColor: (isDark ? Colors.white : Colors.black).withAlpha(
           (0.14 * 255).round(),
         ),
-        activeTrackColor: const Color(0xFF9BD77A),
-        thumbColor: const Color(0xFF9BD77A),
+        activeTrackColor: const Color(0xFF1ABFC4),
+        thumbColor: const Color(0xFF1ABFC4),
         overlayColor: Colors.transparent,
 
         // ✅ remove dots/tick marks even with divisions
@@ -115,7 +113,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       // ✅ fixes the green-corner “bleed” in light mode
       backgroundColor: isDark
           ? const Color(0xFF071B26)
-          : const Color(0xFF4F925C),
+          : const Color(0xFF1ABFC4),
       body: Column(
         children: [
           // ===== HEADER (match Home/Nearby) =====
@@ -150,6 +148,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                           ) ?? const TextStyle(
+                            fontFamily: 'Poppins',
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 24,
@@ -167,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF294630), Color(0xFF4F925C)],
+                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -258,58 +257,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: ListView(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                             children: [
-                              // ===== Appearance =====
-                              Text(
-                                'Appearance',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: Icon(
-                                  isDark
-                                      ? Icons.dark_mode_outlined
-                                      : Icons.light_mode_outlined,
-                                ),
-                                title: const Text('Dark mode'),
-                                subtitle: Text(
-                                  isDark
-                                      ? 'Using dark theme'
-                                      : 'Using light theme',
-                                ),
-                                trailing: Switch(
-                                  value: isDark,
-                                  onChanged: (value) {
-                                    _useSystemTheme = false;
-                                    ref
-                                        .read(themeModeProvider.notifier)
-                                        .toggleTheme();
-                                  },
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(
-                                  Icons.phone_iphone_outlined,
-                                ),
-                                title: const Text('Use system theme'),
-                                subtitle: const Text(
-                                  'Coming soon – follow device setting',
-                                ),
-                                trailing: Switch(
-                                  value: _useSystemTheme,
-                                  onChanged: null,
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
                               // ===== Notifications =====
                               Text(
                                 'Notifications',
@@ -676,7 +623,7 @@ class _TermsPrivacyDialog extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F925C),
+                  backgroundColor: const Color(0xFF1ABFC4),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -693,6 +640,7 @@ class _TermsPrivacyDialog extends StatelessWidget {
                 child: const Text(
                   'Privacy Policy',
                   style: TextStyle(
+                    fontFamily: 'Inter',
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
@@ -704,7 +652,7 @@ class _TermsPrivacyDialog extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F925C),
+                  backgroundColor: const Color(0xFF1ABFC4),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -719,6 +667,7 @@ class _TermsPrivacyDialog extends StatelessWidget {
                 child: const Text(
                   'Terms of Service',
                   style: TextStyle(
+                    fontFamily: 'Inter',
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
@@ -733,6 +682,7 @@ class _TermsPrivacyDialog extends StatelessWidget {
                 child: Text(
                   'Close',
                   style: TextStyle(
+                    fontFamily: 'Inter',
                     color: isDark ? Colors.white70 : Colors.black54,
                     fontWeight: FontWeight.w600,
                   ),

@@ -25,7 +25,6 @@ class AppBottomNavBar extends StatelessWidget {
 
     // Import the color constants from home_screen
     const kDarkSurface2 = Color(0xFF0E242E);
-    const kMintBright = Color(0xFFA4E4C5);
     const kTextMuted = Color(0xFF6A8580);
 
     return BottomNavigationBar(
@@ -38,7 +37,7 @@ class AppBottomNavBar extends StatelessWidget {
       type: BottomNavigationBarType.fixed,
       backgroundColor: isDark ? kDarkSurface2 : Colors.white,
       elevation: 0,
-      selectedItemColor: isDark ? kMintBright : const Color(0xFF14532D),
+      selectedItemColor: isDark ? const Color(0xFF1ABFC4) : const Color(0xFF1A2332),
       unselectedItemColor: isDark ? kTextMuted : Colors.black54,
       items: const [
         BottomNavigationBarItem(
