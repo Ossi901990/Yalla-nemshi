@@ -1,12 +1,12 @@
-/// ============================================
-/// YALLA NEMSHI - DESIGN TOKENS (v2 - Hybrid Approach)
-/// ============================================
-/// Color Strategy: Active, Connected, Explored
-/// Primary: Teal (movement, trust, connection)
-/// Secondary: Coral (urgency, alerts, private)
-/// Accent: Lime (success, join, go)
-/// Base: Green (secondary, nature, heritage)
-/// ============================================
+// ============================================
+// YALLA NEMSHI - DESIGN TOKENS (v2 - Hybrid Approach)
+// ============================================
+// Color Strategy: Active, Connected, Explored
+// Primary: Teal (movement, trust, connection)
+// Secondary: Coral (urgency, alerts, private)
+// Accent: Lime (success, join, go)
+// Base: Green (secondary, nature, heritage)
+// ============================================
 
 import 'package:flutter/material.dart';
 

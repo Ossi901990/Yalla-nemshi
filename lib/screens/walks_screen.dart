@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../models/walk_event.dart';
 import 'nearby_walks_screen.dart';
 import 'create_walk_screen.dart';
-import '../services/app_preferences.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;

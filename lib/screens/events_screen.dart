@@ -1,6 +1,5 @@
 // lib/screens/events_screen.dart
 import 'package:flutter/material.dart';
-import '../services/app_preferences.dart';
 
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key});

@@ -97,7 +97,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   // ===== Recurring walk fields =====
   bool _isRecurring = false;
   RecurrenceType _recurrenceType = RecurrenceType.weekly;
-  Set<int> _selectedWeekDays = {
+  final Set<int> _selectedWeekDays = {
     DateTime.now().weekday,
   }; // Default to today's weekday
   DateTime? _recurringEndDate;
@@ -1730,8 +1730,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                                   BoxDecoration(
                                                                 color: Colors
                                                                     .red
-                                                                    .withOpacity(
-                                                                  0.8,
+                                                                    .withAlpha(
+                                                                  (0.8 * 255)
+                                                                      .round(),
                                                                 ),
                                                                 shape: BoxShape
                                                                     .circle,

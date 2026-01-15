@@ -73,7 +73,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _profile;
   bool _loading = true;
-  int _currentTab = 3; // Profile tab is index 3
+  final int _currentTab = 3; // Profile tab is index 3
 
   static const Color _deepGreen = Color(0xFF1ABFC4);
 

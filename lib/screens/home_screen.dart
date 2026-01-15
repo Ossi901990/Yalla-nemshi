@@ -200,7 +200,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   }
                 }
 
-                final List<WalkEvent> merged = []..addAll(singles);
+                final List<WalkEvent> merged = [...singles];
 
                 for (final group in series.values) {
                   // pick the soonest future occurrence, otherwise the earliest in the series
@@ -2458,7 +2458,8 @@ if (img == null && !kIsWeb) {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
+            color:
+              isDark ? Colors.white.withAlpha((0.08 * 255).round()) : Colors.white,
         ),
         child: Icon(
           Icons.person,
@@ -2470,7 +2471,8 @@ if (img == null && !kIsWeb) {
 
     return CircleAvatar(
       radius: size / 2,
-      backgroundColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
+        backgroundColor:
+          isDark ? Colors.white.withAlpha((0.08 * 255).round()) : Colors.white,
       backgroundImage: img,
     );
   }

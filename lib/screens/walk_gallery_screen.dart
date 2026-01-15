@@ -10,10 +10,10 @@ class WalkGalleryScreen extends StatefulWidget {
   final List<String> photoUrls;
 
   const WalkGalleryScreen({
-    Key? key,
+    super.key,
     required this.walk,
     required this.photoUrls,
-  }) : super(key: key);
+  });
 
   @override
   State<WalkGalleryScreen> createState() => _WalkGalleryScreenState();
@@ -109,7 +109,7 @@ class _WalkGalleryScreenState extends State<WalkGalleryScreen> {
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
                 colors: [
-                  Colors.black.withOpacity(0.8),
+                  Colors.black.withAlpha((0.8 * 255).round()),
                   Colors.transparent,
                 ],
               ),
@@ -160,7 +160,7 @@ class _WalkGalleryScreenState extends State<WalkGalleryScreen> {
                 vertical: 6,
               ),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withAlpha((0.6 * 255).round()),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(

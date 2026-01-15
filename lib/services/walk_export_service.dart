@@ -139,6 +139,6 @@ class WalkExportService {
     final now = DateTime.now();
     final date =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    return '${type}_${date}.csv';
+    return '${type}_$date.csv';
   }
 }

@@ -350,8 +350,6 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
   // ===== COMPACT HORIZONTAL FILTERS =====
 
   Widget _buildCompactFilters(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return SizedBox(
       height: 44,
@@ -671,6 +669,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
   // ===== OLD FILTER CARD (KEPT FOR _buildFilterChip) =====
 
+  // ignore: unused_element
   Widget _buildFiltersCard(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
