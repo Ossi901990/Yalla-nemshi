@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/walk_event.dart';
 import 'nearby_walks_screen.dart';
 import 'create_walk_screen.dart';
+import '../services/app_preferences.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -143,82 +144,278 @@ class _WalksScreenState extends State<WalksScreen>
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Walks',
-          style: theme.textTheme.titleLarge?.copyWith(
-                fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ) ??
-              const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
-              ),
-        ),
-        elevation: 0,
-        backgroundColor: isDark ? kDarkSurface2 : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: _showNotificationsSheet,
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFF1ABFC4),
-          labelColor: const Color(0xFF1ABFC4),
-          unselectedLabelColor: isDark ? kTextMuted : Colors.black54,
-          labelStyle: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.1,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.1,
-          ),
-          tabs: const [
-            Tab(text: 'My Walks'),
-            Tab(text: 'Nearby Walks'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      backgroundColor: isDark
+          ? const Color(0xFF071B26)
+          : const Color(0xFF1ABFC4),
+      body: Column(
         children: [
-          // ===== TAB 1: MY WALKS =====
-          _MyWalksTab(
-            walks: widget.myWalks,
-            onTapEvent: widget.onTapEvent,
-          ),
+          // ===== HEADER (matching Home screen) =====
+          if (isDark)
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Left: logo + title
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withAlpha((0.1 * 255).round()),
+                          ),
+                          child: const Icon(
+                            Icons.directions_walk,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Transform.translate(
+                          offset: const Offset(0, -2),
+                          child: Text(
+                            'Yalla Nemshi',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 20,
+                                  letterSpacing: -0.2,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
 
-          // ===== TAB 2: NEARBY WALKS =====
-          NearbyWalksScreen(
-            events: widget.nearbyWalks,
-            onToggleJoin: widget.onToggleJoin,
-            onToggleInterested: widget.onToggleInterested,
-            onTapEvent: widget.onTapEvent,
-            onCancelHosted: widget.onCancelHosted,
-            walksJoined: widget.walksJoined,
-            eventsHosted: widget.eventsHosted,
-            totalKm: widget.totalKm,
-            interestedCount: widget.interestedCount,
-            weeklyKm: widget.weeklyKm,
-            weeklyWalks: widget.weeklyWalks,
-            streakDays: widget.streakDays,
-            weeklyGoalKm: widget.weeklyGoalKm,
-            userName: widget.userName,
-            hasMoreWalks: widget.hasMoreWalks,
-            isLoadingMore: widget.isLoadingMore,
-            onLoadMore: widget.onLoadMore,
+                    // Right: notif
+                    Semantics(
+                      label: 'Notifications',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: _showNotificationsSheet,
+                        child: Transform.translate(
+                          offset: const Offset(0, -1),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withAlpha(
+                                  (0.1 * 255).round(),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.notifications_none,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 80,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white24,
+                            ),
+                            child: const Icon(
+                              Icons.directions_walk,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Transform.translate(
+                            offset: const Offset(0, -2),
+                            child: Text(
+                              'Yalla Nemshi',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ) ??
+                                  const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 20,
+                                    letterSpacing: -0.2,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Semantics(
+                        label: 'Notifications',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: _showNotificationsSheet,
+                          child: Transform.translate(
+                            offset: const Offset(0, -1),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white24,
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_none,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // ===== MAIN CONTENT AREA WITH ROUNDED BACKGROUND =====
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? kDarkBg : const Color(0xFF1ABFC4),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(kRadiusCard),
+                  topRight: Radius.circular(kRadiusCard),
+                ),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(kRadiusCard),
+                    topRight: Radius.circular(kRadiusCard),
+                  ),
+                  color: isDark ? null : const Color(0xFFF7F9F2),
+                ),
+                child: Column(
+                  children: [
+                    // ===== TABS =====
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? kDarkSurface2 : const Color(0xFFF7F9F2),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(kRadiusCard),
+                          topRight: Radius.circular(kRadiusCard),
+                        ),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: const Color(0xFF1ABFC4),
+                        indicatorWeight: 3,
+                        indicatorPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        dividerColor: Colors.transparent,
+                        labelColor: const Color(0xFF1ABFC4),
+                        unselectedLabelColor: isDark ? kTextMuted : Colors.black54,
+                        labelStyle: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.1,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.1,
+                        ),
+                        tabs: const [
+                          Tab(text: 'My Walks'),
+                          Tab(text: 'Nearby Walks'),
+                        ],
+                      ),
+                    ),
+
+                    // ===== TAB CONTENT =====
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                // ===== TAB 1: MY WALKS =====
+                _MyWalksTab(
+                  walks: widget.myWalks,
+                  onTapEvent: widget.onTapEvent,
+                ),
+
+                // ===== TAB 2: NEARBY WALKS =====
+                NearbyWalksScreen(
+                  events: widget.nearbyWalks,
+                  onToggleJoin: widget.onToggleJoin,
+                  onToggleInterested: widget.onToggleInterested,
+                  onTapEvent: widget.onTapEvent,
+                  onCancelHosted: widget.onCancelHosted,
+                  walksJoined: widget.walksJoined,
+                  eventsHosted: widget.eventsHosted,
+                  totalKm: widget.totalKm,
+                  interestedCount: widget.interestedCount,
+                  weeklyKm: widget.weeklyKm,
+                  weeklyWalks: widget.weeklyWalks,
+                  streakDays: widget.streakDays,
+                  weeklyGoalKm: widget.weeklyGoalKm,
+                  userName: widget.userName,
+                  hasMoreWalks: widget.hasMoreWalks,
+                  isLoadingMore: widget.isLoadingMore,
+                  onLoadMore: widget.onLoadMore,
+                ),
+              ],
+                    ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),

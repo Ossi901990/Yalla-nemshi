@@ -859,78 +859,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           // ===== HEADER (match Home/Nearby) =====
           if (isDark)
-            // ✅ Dark: NO BAR, floating header (same as Nearby/Home)
+            // ✅ Dark: NO BAR, floating header (same as Home)
             SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Left: logo + title
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withAlpha((0.08 * 255).round()),
+                            color: Colors.white.withAlpha((0.1 * 255).round()),
                           ),
                           child: const Icon(
                             Icons.directions_walk,
                             color: Colors.white,
-                            size: 18,
+                            size: 22,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Yalla Nemshi',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        const SizedBox(width: 12),
+                        Transform.translate(
+                          offset: const Offset(0, -2),
+                          child: Text(
+                            'Yalla Nemshi',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 20,
+                                  letterSpacing: -0.2,
+                                ),
+                          ),
                         ),
                       ],
                     ),
 
-                    // Right: notif + settings (NO profile icon)
+                    // Right: notif + settings
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Semantics(
                           label: 'Notifications',
                           button: true,
                           child: GestureDetector(
                             onTap: _showNotificationsSheet,
-                            child: Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withAlpha(
-                                    (0.08 * 255).round(),
+                            child: Transform.translate(
+                              offset: const Offset(0, -1),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withAlpha(
+                                      (0.1 * 255).round(),
+                                    ),
                                   ),
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_none,
-                                  color: Colors.white,
-                                  size: 18,
+                                  child: const Icon(
+                                    Icons.notifications_none,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 8),
 
-                        // ✅ Keep SAME settings functionality from Profile
+                        // ✅ Settings icon (40x40)
                         Semantics(
                           label: 'Settings',
                           button: true,
@@ -949,19 +961,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               widget.onWeeklyGoalChanged?.call(wg);
                             },
                             child: Padding(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(4),
                               child: Container(
-                                width: 32,
-                                height: 32,
+                                width: 40,
+                                height: 40,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: Colors.white.withAlpha(
-                                    (0.08 * 255).round(),
+                                    (0.1 * 255).round(),
                                   ),
                                 ),
                                 child: const Icon(
                                   Icons.settings,
-                                  size: 18,
+                                  size: 22,
                                   color: Colors.white,
                                 ),
                               ),
@@ -975,9 +987,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           else
-            // ✅ Light: gradient bar (same as Nearby style)
+            // ✅ Light: gradient bar (same as Home)
             Container(
-              height: 64,
+              height: 80,
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -989,18 +1001,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 40,
+                            height: 40,
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.white24,
@@ -1008,48 +1018,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: const Icon(
                               Icons.directions_walk,
                               color: Colors.white,
-                              size: 18,
+                              size: 22,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Yalla Nemshi',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          const SizedBox(width: 12),
+                          Transform.translate(
+                            offset: const Offset(0, -2),
+                            child: Text(
+                              'Yalla Nemshi',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ) ??
+                                  const TextStyle(
+                                    fontFamily: 'Poppins',
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 20,
+                                    letterSpacing: -0.2,
+                                  ),
+                            ),
                           ),
                         ],
                       ),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Semantics(
                             label: 'Notifications',
                             button: true,
                             child: GestureDetector(
                               onTap: _showNotificationsSheet,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white24,
-                                  ),
-                                  child: const Icon(
-                                    Icons.notifications_none,
-                                    color: Colors.white,
-                                    size: 18,
+                              child: Transform.translate(
+                                offset: const Offset(0, -1),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white24,
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 8),
                           Semantics(
                             label: 'Settings',
                             button: true,
@@ -1069,17 +1093,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 widget.onWeeklyGoalChanged?.call(wg);
                               },
                               child: Padding(
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(4),
                                 child: Container(
-                                  width: 32,
-                                  height: 32,
+                                  width: 40,
+                                  height: 40,
                                   decoration: const BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: Colors.white24,
                                   ),
                                   child: const Icon(
                                     Icons.settings,
-                                    size: 18,
+                                    size: 22,
                                     color: Colors.white,
                                   ),
                                 ),

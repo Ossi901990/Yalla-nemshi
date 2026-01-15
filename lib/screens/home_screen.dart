@@ -1350,173 +1350,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Left: logo + title
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withAlpha((0.08 * 255).round()),
+                          color: Colors.white.withAlpha((0.1 * 255).round()),
                         ),
                         child: const Icon(
                           Icons.directions_walk,
                           color: Colors.white,
-                          size: 18,
+                          size: 22,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Yalla Nemshi',
-                        style:
-                            Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ) ??
-                            const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                      ),
-                    ],
-                  ),
-
-                  // Right: notif + profile
-                  Row(
-                    children: [
-                      Semantics(
-                        label: _unreadNotifCount > 0
-                            ? '$_unreadNotifCount unread notification${_unreadNotifCount == 1 ? '' : 's'}'
-                            : 'Notifications',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: _openNotificationsSheet,
-                          child: Padding(
-                            padding: const EdgeInsets.all(
-                              8,
-                            ), // ✅ Ensures 48x48 touch target
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withAlpha(
-                                      (0.08 * 255).round(),
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.notifications_none,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ),
-                                if (_unreadNotifCount > 0)
-                                  Positioned(
-                                    right: -2,
-                                    top: -2,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red,
-                                      ),
-                                      child: Text(
-                                        _unreadNotifCount > 99
-                                            ? '99+'
-                                            : '$_unreadNotifCount',
-                                        style:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.labelSmall?.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ) ??
-                                            const TextStyle(
-                                              fontSize: 9,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Semantics(
-                        label: 'Profile',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: _openProfileQuickSheet,
-                          child: Padding(
-                            padding: const EdgeInsets.all(
-                              8,
-                            ), // ✅ Ensures 48x48 touch target
-                            child: _HeaderAvatar(
-                              profile: _profile,
-                              size: 32,
-                              isDark: true,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          Container(
-            height: 64,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white24,
-                          ),
-                          child: const Icon(
-                            Icons.directions_walk,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
+                      const SizedBox(width: 12),
+                      Transform.translate(
+                        offset: const Offset(0, -2),
+                        child: Text(
                           'Yalla Nemshi',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontFamily: 'Poppins',
                                 color: Colors.white,
                                 fontSize: 20,
@@ -1531,67 +1392,240 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 letterSpacing: -0.2,
                               ),
                         ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        GestureDetector(
+                      ),
+                    ],
+                  ),
+
+                  // Right: notif + profile
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Semantics(
+                        label: _unreadNotifCount > 0
+                            ? '$_unreadNotifCount unread notification${_unreadNotifCount == 1 ? '' : 's'}'
+                            : 'Notifications',
+                        button: true,
+                        child: GestureDetector(
                           onTap: _openNotificationsSheet,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white24,
+                          child: Transform.translate(
+                            offset: const Offset(0, -1),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withAlpha(
+                                        (0.1 * 255).round(),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.notifications_none,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ),
                                 if (_unreadNotifCount > 0)
                                   Positioned(
-                                    right: -2,
-                                    top: -2,
+                                    right: 0,
+                                    top: 0,
                                     child: Container(
-                                      padding: const EdgeInsets.all(2),
+                                      padding: const EdgeInsets.all(4),
                                       decoration: const BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: Colors.red,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
                                       ),
                                       child: Text(
                                         _unreadNotifCount > 99
                                             ? '99+'
                                             : '$_unreadNotifCount',
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ) ??
-                                            const TextStyle(
-                                              fontSize: 9,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.0,
+                                        ),
                                       ),
                                     ),
                                   ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Semantics(
+                        label: 'Profile',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: _openProfileQuickSheet,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withAlpha((0.2 * 255).round()),
+                                width: 2,
+                              ),
+                            ),
+                            child: _HeaderAvatar(
+                              profile: _profile,
+                              size: 40,
+                              isDark: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          Container(
+            height: 80,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white24,
+                          ),
+                          child: const Icon(
+                            Icons.directions_walk,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
                         const SizedBox(width: 12),
+                        Transform.translate(
+                          offset: const Offset(0, -2),
+                          child: Text(
+                            'Yalla Nemshi',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ) ??
+                                const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 20,
+                                  letterSpacing: -0.2,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: _openNotificationsSheet,
+                          child: Transform.translate(
+                            offset: const Offset(0, -1),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white24,
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ),
+                                if (_unreadNotifCount > 0)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      child: Text(
+                                        _unreadNotifCount > 99
+                                            ? '99+'
+                                            : '$_unreadNotifCount',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: _openProfileQuickSheet,
-                          child: _HeaderAvatar(
-                            profile: _profile,
-                            size: 32,
-                            isDark: false,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withAlpha((0.3 * 255).round()),
+                                width: 2,
+                              ),
+                            ),
+                            child: _HeaderAvatar(
+                              profile: _profile,
+                              size: 40,
+                              isDark: false,
+                            ),
                           ),
                         ),
                       ],
