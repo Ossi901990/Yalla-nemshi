@@ -3,6 +3,10 @@ admin.initializeApp();
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { setGlobalOptions } = require("firebase-functions/v2");
+
+// ===== SET GLOBAL REGION FOR ALL FUNCTIONS =====
+setGlobalOptions({ region: "europe-west1" });
 
 // ===== HELPER FUNCTIONS =====
 
@@ -372,3 +376,12 @@ exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}",
     console.error("❌ Error in onChatMessage:", error);
   }
 });
+
+// ===== CP-4: WALK COMPLETION FUNCTIONS =====
+// Import CP-4 walk tracking functions
+const cp4Functions = require("./cp4_walk_completion");
+
+exports.onWalkStarted = cp4Functions.onWalkStarted;
+exports.onWalkEnded = cp4Functions.onWalkEnded;
+exports.onUserLeftWalkEarly = cp4Functions.onUserLeftWalkEarly;
+exports.onWalkAutoComplete = cp4Functions.onWalkAutoComplete;
