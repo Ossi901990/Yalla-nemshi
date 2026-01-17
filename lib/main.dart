@@ -36,12 +36,12 @@ Future<void> main() async {
     // 🔹 Web: Use hardcoded Firebase config
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyBNZj_FBNB1L3V8UAVUScTrjpCWDc8lTT8",
-        authDomain: "yallanemshiapp.firebaseapp.com",
-        projectId: "yallanemshiapp",
-        storageBucket: "yallanemshiapp.firebasestorage.app",
-        messagingSenderId: "695876088604",
-        appId: "1:695876088604:web:d7b5d37c1ff68131dcc0d9",
+        apiKey: "AIzaSyBtTVB_MUrlh2dN-3BoJsulupBP8zKQR6g",
+        authDomain: "yalla-nemshi-app.firebaseapp.com",
+        projectId: "yalla-nemshi-app",
+        storageBucket: "yalla-nemshi-app.firebasestorage.app",
+        messagingSenderId: "403871427941",
+        appId: "1:403871427941:web:6a5e07328b4e5db5d9458c",
       ),
     );
   } else {

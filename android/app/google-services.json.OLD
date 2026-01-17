@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "403871427941",
-    "project_id": "yalla-nemshi-app",
-    "storage_bucket": "yalla-nemshi-app.firebasestorage.app"
+    "project_number": "695876088604",
+    "project_id": "yallanemshiapp",
+    "storage_bucket": "yallanemshiapp.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:403871427941:android:8837f8d7a6052c64d9458c",
+        "mobilesdk_app_id": "1:695876088604:android:c6b1d3689c9cd168dcc0d9",
         "android_client_info": {
           "package_name": "com.example.yalla_nemshi"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCN3dibhlMv0sR9QQcMd5RabmuHRs8X83I"
+          "current_key": "AIzaSyCf4xhAGD2FlnFwsFjGpZZoXa5pnB4oRqM"
         }
       ],
       "services": {

@@ -5,8 +5,10 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 
-// ===== SET GLOBAL REGION FOR ALL FUNCTIONS =====
-setGlobalOptions({ region: "me-central2" });
+// ===== SET GLOBAL REGION FOR HTTPS AND HTTPS-CALLABLE FUNCTIONS =====
+// HTTPS functions can be in europe-west1 (closer to Middle East)
+// Firestore-triggered functions will override this in cp4_walk_completion.js
+setGlobalOptions({ region: "europe-west1" });
 
 // ===== HELPER FUNCTIONS =====
 

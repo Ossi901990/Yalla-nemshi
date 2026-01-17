@@ -12,8 +12,9 @@ const admin = require("firebase-admin");
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 
-// ===== SET GLOBAL REGION FOR ALL FUNCTIONS =====
-setGlobalOptions({ region: "me-central2" });
+// ===== SET GLOBAL REGION FOR FIRESTORE-TRIGGERED FUNCTIONS =====
+// All functions now in europe-west1 to match Firestore region
+setGlobalOptions({ region: "europe-west1" });
 
 // ===== CP-4: Helper function to send confirmation prompt =====
 
