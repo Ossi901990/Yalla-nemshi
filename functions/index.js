@@ -6,7 +6,7 @@ const { onDocumentWritten, onDocumentUpdated } = require("firebase-functions/v2/
 const { setGlobalOptions } = require("firebase-functions/v2");
 
 // ===== SET GLOBAL REGION FOR ALL FUNCTIONS =====
-setGlobalOptions({ region: "us-central1" });
+setGlobalOptions({ region: "me-central2" });
 
 // ===== HELPER FUNCTIONS =====
 

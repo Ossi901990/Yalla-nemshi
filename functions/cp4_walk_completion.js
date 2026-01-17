@@ -13,7 +13,7 @@ const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 
 // ===== SET GLOBAL REGION FOR ALL FUNCTIONS =====
-setGlobalOptions({ region: "us-central1" });
+setGlobalOptions({ region: "me-central2" });
 
 // ===== CP-4: Helper function to send confirmation prompt =====
 
