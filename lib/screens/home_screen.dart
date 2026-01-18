@@ -29,6 +29,7 @@ import 'event_details_screen.dart';
 import 'profile_screen.dart';
 import 'walks_screen.dart';
 import 'events_screen.dart';
+import 'walk_search_screen.dart';
 import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
 import '../providers/auth_provider.dart';
@@ -305,6 +306,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             CrashService.recordError(e, st);
           }
         });
+  }
+
+  void _openWalkSearch() {
+    Navigator.of(context).pushNamed(WalkSearchScreen.routeName);
   }
 
   /// Load more walks (next page)
@@ -1396,10 +1401,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
 
-                  // Right: notif + profile
+                  // Right: search + notif + profile
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      Semantics(
+                        label: 'Search walks',
+                        button: true,
+                        child: GestureDetector(
+                          onTap: _openWalkSearch,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withAlpha(
+                                (0.1 * 255).round(),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.search,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Semantics(
                         label: _unreadNotifCount > 0
                             ? '$_unreadNotifCount unread notification${_unreadNotifCount == 1 ? '' : 's'}'
@@ -1553,6 +1581,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        Semantics(
+                          label: 'Search walks',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: _openWalkSearch,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white24,
+                              ),
+                              child: const Icon(
+                                Icons.search,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: _openNotificationsSheet,
                           child: Transform.translate(

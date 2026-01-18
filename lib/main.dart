@@ -15,6 +15,7 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/review_walk_screen.dart';
+import 'screens/walk_search_screen.dart';
 import 'providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -163,6 +164,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/friends': (context) => FriendListScreen(),
         FriendSearchScreen.routeName: (context) => const FriendSearchScreen(),
+        WalkSearchScreen.routeName: (context) => const WalkSearchScreen(),
       },
     );
   }

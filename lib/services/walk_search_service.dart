@@ -99,7 +99,6 @@ class WalkSearchService {
         case WalkSearchSort.distance:
           return a.distanceKm.compareTo(b.distanceKm);
         case WalkSearchSort.soonest:
-        default:
           return a.dateTime.compareTo(b.dateTime);
       }
     });

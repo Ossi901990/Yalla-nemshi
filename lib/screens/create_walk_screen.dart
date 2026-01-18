@@ -1872,7 +1872,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                         const SizedBox(height: 16),
 
                                         DropdownButtonFormField<String>(
-                                          value: _comfortLevel,
+                                          initialValue: _comfortLevel,
                                           decoration: const InputDecoration(
                                             labelText: 'Comfort vibe',
                                           ),
@@ -1893,7 +1893,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                         const SizedBox(height: 12),
 
                                         DropdownButtonFormField<String>(
-                                          value: _experienceLevel,
+                                          initialValue: _experienceLevel,
                                           decoration: const InputDecoration(
                                             labelText: 'Experience level',
                                           ),

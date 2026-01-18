@@ -5,7 +5,7 @@ import '../services/friends_service.dart';
 
 class FriendSearchScreen extends StatefulWidget {
   static const routeName = '/friend-search';
-  const FriendSearchScreen({Key? key}) : super(key: key);
+  const FriendSearchScreen({super.key});
 
   @override
   State<FriendSearchScreen> createState() => _FriendSearchScreenState();
@@ -28,14 +28,16 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('displayName', isGreaterThanOrEqualTo: query)
-          .where('displayName', isLessThanOrEqualTo: query + '\uf8ff')
+          .where('displayName', isLessThanOrEqualTo: '$query\uf8ff')
           .limit(20)
           .get();
+      if (!mounted) return;
       setState(() {
         _results = snapshot.docs.map((doc) => doc.data()).toList();
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _loading = false;
@@ -48,10 +50,12 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     if (user == null) return;
     try {
       await _friendsService.sendFriendRequest(user.uid, targetUid);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Friend request sent!')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );

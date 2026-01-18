@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/walk_event.dart';
 import 'nearby_walks_screen.dart';
 import 'create_walk_screen.dart';
+import 'walk_search_screen.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -84,6 +85,10 @@ class WalksScreen extends StatefulWidget {
 class _WalksScreenState extends State<WalksScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  void _openWalkSearch() {
+    Navigator.of(context).pushNamed(WalkSearchScreen.routeName);
+  }
 
   void _showNotificationsSheet() {
     showModalBottomSheet(
@@ -198,16 +203,14 @@ class _WalksScreenState extends State<WalksScreen>
                       ],
                     ),
 
-                    // Right: notif
-                    Semantics(
-                      label: 'Notifications',
-                      button: true,
-                      child: GestureDetector(
-                        onTap: _showNotificationsSheet,
-                        child: Transform.translate(
-                          offset: const Offset(0, -1),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
+                    // Right: search + notif
+                    Row(
+                      children: [
+                        Semantics(
+                          label: 'Search walks',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: _openWalkSearch,
                             child: Container(
                               width: 40,
                               height: 40,
@@ -218,14 +221,43 @@ class _WalksScreenState extends State<WalksScreen>
                                 ),
                               ),
                               child: const Icon(
-                                Icons.notifications_none,
+                                Icons.search,
                                 color: Colors.white,
                                 size: 22,
                               ),
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Semantics(
+                          label: 'Notifications',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: _showNotificationsSheet,
+                            child: Transform.translate(
+                              offset: const Offset(0, -1),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withAlpha(
+                                      (0.1 * 255).round(),
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_none,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -288,15 +320,13 @@ class _WalksScreenState extends State<WalksScreen>
                           ),
                         ],
                       ),
-                      Semantics(
-                        label: 'Notifications',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: _showNotificationsSheet,
-                          child: Transform.translate(
-                            offset: const Offset(0, -1),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
+                      Row(
+                        children: [
+                          Semantics(
+                            label: 'Search walks',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: _openWalkSearch,
                               child: Container(
                                 width: 40,
                                 height: 40,
@@ -305,14 +335,41 @@ class _WalksScreenState extends State<WalksScreen>
                                   color: Colors.white24,
                                 ),
                                 child: const Icon(
-                                  Icons.notifications_none,
+                                  Icons.search,
                                   color: Colors.white,
                                   size: 22,
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Semantics(
+                            label: 'Notifications',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: _showNotificationsSheet,
+                              child: Transform.translate(
+                                offset: const Offset(0, -1),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white24,
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

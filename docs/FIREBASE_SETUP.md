@@ -157,6 +157,28 @@ This document explains the Firebase configuration for Yalla Nemshi and helps new
 
 ---
 
+## 🧮 Composite Indexes for Walk Search
+
+The new `WalkSearchScreen` issues compound Firestore queries that combine:
+- `cancelled == false` (always)
+- Optional equality filters for `visibility`, `city`, and `isRecurring`
+- Optional `arrayContainsAny` filters on `tags` or `searchKeywords`
+- Range filters + sorting on `dateTime`
+
+Because Firestore needs a composite index for every equality/array/order combination, we pre-created the required definitions in [`firestore.indexes.json`](../firestore.indexes.json). The added indexes cover:
+- Base feeds (cancelled + dateTime) for both public-only and include-private modes
+- City and recurring filters layered on top of the base feed
+- Tag- and keyword-driven searches, including combinations with city/recurring filters
+
+### Deploying the indexes
+1. Ensure you are logged in: `firebase login`
+2. From the repo root run: `firebase deploy --only firestore:indexes`
+3. Verify in the Firebase Console → Firestore Database → Indexes tab that the new entries are **Building** or **Ready**.
+
+> If you still hit a "missing index" error while experimenting with brand-new filter combinations, copy the link from the error dialog, add the suggested fields to `firestore.indexes.json`, and redeploy so the whole team stays in sync.
+
+---
+
 ## 🔐 Security Model (firestore.rules)
 
 ### **Key Principles:**

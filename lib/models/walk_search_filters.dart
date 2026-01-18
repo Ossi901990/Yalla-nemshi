@@ -15,7 +15,6 @@ extension WalkSearchSortStorage on WalkSearchSort {
       case WalkSearchSort.distance:
         return 'distance';
       case WalkSearchSort.soonest:
-      default:
         return 'soonest';
     }
   }
@@ -132,7 +131,7 @@ class WalkSearchFilters {
   }
 
   factory WalkSearchFilters.fromJson(Map<String, dynamic> json) {
-    Set<String> _toSet(dynamic value) {
+    Set<String> toSet(dynamic value) {
       if (value is Iterable) {
         return value.whereType<String>().toSet();
       }
@@ -141,10 +140,10 @@ class WalkSearchFilters {
 
     return WalkSearchFilters(
       keywords: (json['keywords'] ?? '').toString(),
-      cities: _toSet(json['cities']),
-      tags: _toSet(json['tags']),
-      paces: _toSet(json['paces']),
-      genders: _toSet(json['genders']),
+      cities: toSet(json['cities']),
+      tags: toSet(json['tags']),
+      paces: toSet(json['paces']),
+      genders: toSet(json['genders']),
       comfortLevel: json['comfortLevel']?.toString(),
       experienceLevel: json['experienceLevel']?.toString(),
       startDate: json['startDate'] != null
