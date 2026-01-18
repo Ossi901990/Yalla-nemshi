@@ -116,7 +116,7 @@ No UID sharing needed
 
 Planned Blaze invite flow
 
-Host creates private walk → share code/link generated
+Host creates private walk → share code/link generated (expires after 7 days)
 
 Host shares link via WhatsApp / QR
 
@@ -124,10 +124,10 @@ Invitee taps link
 
 App calls Cloud Function:
 
-redeemWalkInvite(walkId, shareCode)
+redeemInviteCode(walkId, shareCode)
 
 
-Function verifies invite and writes:
+Function verifies invite, checks expiry, and writes:
 
 /walks/{walkId}/allowed/{inviteeUid}
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_preferences.dart';
+import '../widgets/redeem_invite_sheet.dart';
 import 'safety_tips_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
@@ -69,6 +70,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (!mounted) return;
     setState(() => _loading = false);
+  }
+
+  Future<void> _openRedeemInviteSheet() async {
+    final redeemed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const RedeemInviteSheet(),
+    );
+
+    if (redeemed == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invite redeemed! Check your walks list.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -144,15 +164,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Settings',
-                          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ) ?? const TextStyle(
-                            fontFamily: 'Poppins',
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 24,
-                          ),
+                          style:
+                              Theme.of(
+                                context,
+                              ).textTheme.displaySmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ) ??
+                              const TextStyle(
+                                fontFamily: 'Poppins',
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 24,
+                              ),
                         ),
                       ),
                     ),
@@ -196,14 +220,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'Settings',
-                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ) ?? const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 24,
-                            ),
+                            style:
+                                Theme.of(
+                                  context,
+                                ).textTheme.displaySmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ) ??
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 24,
+                                ),
                           ),
                         ),
                       ),
@@ -345,7 +373,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 value: _pushUpdates,
                                 onChanged: (val) async {
                                   setState(() => _pushUpdates = val);
-                                  await AppPreferences.setPushUpdatesEnabled(val);
+                                  await AppPreferences.setPushUpdatesEnabled(
+                                    val,
+                                  );
                                   await _bootstrap();
                                 },
                               ),
@@ -546,6 +576,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
+
+                              ListTile(
+                                leading: const Icon(Icons.vpn_key_outlined),
+                                title: const Text('Redeem private invite'),
+                                subtitle: const Text(
+                                  'Enter a walk ID and invite code from a host',
+                                ),
+                                onTap: _openRedeemInviteSheet,
+                              ),
 
                               ListTile(
                                 leading: const Icon(Icons.shield_outlined),

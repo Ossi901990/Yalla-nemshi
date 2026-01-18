@@ -67,7 +67,7 @@ async function sendNotificationToUser(userId, notification, data = {}) {
   }
 }
 
-exports.redeemWalkInvite = onCall(async (request) => {
+exports.redeemInviteCode = onCall(async (request) => {
   // ✅ Must be signed in
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "You must be logged in.");
@@ -105,6 +105,22 @@ exports.redeemWalkInvite = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Invalid invite code.");
   }
 
+  const rawExpiry = walk.shareCodeExpiresAt;
+  if (rawExpiry) {
+    const expiresAt = typeof rawExpiry.toDate === "function"
+      ? rawExpiry.toDate()
+      : new Date(rawExpiry);
+
+    if (Number.isNaN(expiresAt.getTime())) {
+      console.warn(
+        `⚠️ shareCodeExpiresAt malformed for walk ${walkId}:`,
+        rawExpiry,
+      );
+    } else if (expiresAt.getTime() < Date.now()) {
+      throw new HttpsError("failed-precondition", "This invite has expired.");
+    }
+  }
+
   // ✅ Mark this user as allowed (rules allow them to read the walk)
   await walkRef.collection("allowed").doc(uid).set(
     {
@@ -117,6 +133,9 @@ exports.redeemWalkInvite = onCall(async (request) => {
 
   return { ok: true };
 });
+
+// Temporary alias to avoid breaking older clients while the app rolls out the new callable name
+exports.redeemWalkInvite = exports.redeemInviteCode;
 
 // ===== FCM NOTIFICATION TRIGGERS =====
 
