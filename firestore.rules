@@ -225,7 +225,10 @@ service cloud.firestore {
       }
 
       match /sent/{requestId} {
-        allow read, delete: if isAuth(userId);
+        allow read: if isAuth(userId)
+          || (request.auth != null && resource.data.toUserId == request.auth.uid);
+        allow delete: if isAuth(userId)
+          || (request.auth != null && resource.data.toUserId == request.auth.uid);
         allow create: if isAuth(userId)
           && request.resource.data.fromUserId == userId
           && request.resource.data.status == 'pending';
@@ -238,8 +241,17 @@ service cloud.firestore {
 
       match /friendsList/{friendId} {
         allow read: if isAuth(userId) || isAuth(friendId);
-        allow write: if isAuth(userId);
-        allow delete: if isAuth(userId);
+        allow write: if (
+            isAuth(userId)
+            && request.auth.uid == userId
+          ) || (
+            request.auth != null
+            && request.auth.uid == friendId
+            && request.resource.data.friendId == friendId
+            && request.resource.data.keys().hasOnly(['friendId','since'])
+          );
+        allow delete: if isAuth(userId)
+          || (request.auth != null && request.auth.uid == friendId);
       }
     }
 
