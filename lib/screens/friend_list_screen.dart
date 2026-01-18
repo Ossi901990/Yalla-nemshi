@@ -52,7 +52,18 @@ class _FriendListScreenState extends State<FriendListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My Friends')),
+      appBar: AppBar(
+        title: const Text('My Friends'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Find Friends',
+            onPressed: () {
+              Navigator.of(context).pushNamed('/friend-search');
+            },
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

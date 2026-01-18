@@ -19,6 +19,7 @@ import 'providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'screens/friend_list_screen.dart';
+import 'screens/friend_search_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -161,6 +162,7 @@ class MyApp extends StatelessWidget {
         SignupScreen.routeName: (context) => const SignupScreen(),
         '/home': (context) => const HomeScreen(),
         '/friends': (context) => FriendListScreen(),
+        FriendSearchScreen.routeName: (context) => const FriendSearchScreen(),
       },
     );
   }

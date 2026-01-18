@@ -854,7 +854,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: isDark
           ? const Color(0xFF071B26)
           : const Color(0xFF1ABFC4),
-
       body: Column(
         children: [
           // ===== HEADER (match Home/Nearby) =====
@@ -907,11 +906,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-
-                    // Right: notif + settings
+                    // Right: friends, notif, settings
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.people_outline),
+                          tooltip: 'My Friends',
+                          onPressed: () {
+                            Navigator.of(context).pushNamed('/friends');
+                          },
+                        ),
                         Semantics(
                           label: 'Notifications',
                           button: true,
@@ -941,7 +946,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-
                         // ✅ Settings icon (40x40)
                         Semantics(
                           label: 'Settings',
@@ -953,10 +957,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   builder: (_) => const SettingsScreen(),
                                 ),
                               );
-
                               final wg = await AppPreferences.getWeeklyGoalKm();
                               if (!mounted) return;
-
                               setState(() => _weeklyGoalKmLocal = wg);
                               widget.onWeeklyGoalChanged?.call(wg);
                             },
@@ -1047,6 +1049,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.people_outline),
+                            tooltip: 'My Friends',
+                            onPressed: () {
+                              Navigator.of(context).pushNamed('/friends');
+                            },
+                          ),
                           Semantics(
                             label: 'Notifications',
                             button: true,
@@ -1084,11 +1093,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     builder: (_) => const SettingsScreen(),
                                   ),
                                 );
-
                                 final wg =
                                     await AppPreferences.getWeeklyGoalKm();
                                 if (!mounted) return;
-
                                 setState(() => _weeklyGoalKmLocal = wg);
                                 widget.onWeeklyGoalChanged?.call(wg);
                               },
