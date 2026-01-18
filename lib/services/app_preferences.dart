@@ -12,6 +12,8 @@ class AppPreferences {
   static const _keyPushWalks = 'push_walks_enabled';
   static const _keyPushChat = 'push_chat_enabled';
   static const _keyPushUpdates = 'push_updates_enabled';
+  static const _keySearchHistory = 'search_history_v1';
+  static const _keySavedSearchFilters = 'search_filter_sets_v1';
 
   // ===== DEFAULT VALUES (used if nothing saved yet) =====
   static const double defaultDistanceKmFallback = 3.0;
@@ -118,5 +120,48 @@ class AppPreferences {
   static Future<void> setPushUpdatesEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyPushUpdates, enabled);
+  }
+
+  // ===== Search helpers =====
+  static Future<List<String>> getSearchHistory({int maxItems = 12}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final history = prefs.getStringList(_keySearchHistory) ?? const [];
+    if (history.length <= maxItems) return history;
+    return history.sublist(0, maxItems);
+  }
+
+  static Future<void> addSearchHistoryTerm(
+    String raw,
+    {
+      int maxItems = 12,
+    }
+  ) async {
+    final term = raw.trim();
+    if (term.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final history = prefs.getStringList(_keySearchHistory) ?? <String>[];
+
+    history.removeWhere((entry) => entry.toLowerCase() == term.toLowerCase());
+    history.insert(0, term);
+    if (history.length > maxItems) {
+      history.removeRange(maxItems, history.length);
+    }
+
+    await prefs.setStringList(_keySearchHistory, history);
+  }
+
+  static Future<void> clearSearchHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keySearchHistory);
+  }
+
+  static Future<List<String>> getSavedSearchFilterJson() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keySavedSearchFilters) ?? const [];
+  }
+
+  static Future<void> setSavedSearchFilterJson(List<String> payload) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keySavedSearchFilters, payload);
   }
 }

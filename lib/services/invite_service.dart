@@ -6,6 +6,7 @@ enum InviteErrorCode {
   invalidInput,
   notFound,
   notPrivate,
+  notAuthorized,
   unauthenticated,
   unknown,
 }
@@ -94,6 +95,62 @@ class InviteService {
         return InviteException(
           InviteErrorCode.unknown,
           'Unable to redeem invite right now. Please retry shortly.',
+        );
+    }
+  }
+
+  Future<void> revokeInvite({
+    required String walkId,
+    required String userId,
+  }) async {
+    final trimmedWalkId = walkId.trim();
+    final trimmedUserId = userId.trim();
+
+    if (trimmedWalkId.isEmpty || trimmedUserId.isEmpty) {
+      throw InviteException(
+        InviteErrorCode.invalidInput,
+        'Missing walk or user information.',
+      );
+    }
+
+    try {
+      await _functions.httpsCallable('revokeWalkInvite').call({
+        'walkId': trimmedWalkId,
+        'userId': trimmedUserId,
+      });
+    } on FirebaseFunctionsException catch (error) {
+      throw _mapRevocationException(error);
+    } catch (_) {
+      throw InviteException(
+        InviteErrorCode.unknown,
+        'Unable to revoke invite right now. Please retry shortly.',
+      );
+    }
+  }
+
+  InviteException _mapRevocationException(
+    FirebaseFunctionsException error,
+  ) {
+    switch (error.code) {
+      case 'unauthenticated':
+        return InviteException(
+          InviteErrorCode.unauthenticated,
+          'Please sign in as the host to manage invites.',
+        );
+      case 'permission-denied':
+        return InviteException(
+          InviteErrorCode.notAuthorized,
+          'You are not allowed to revoke invites for this walk.',
+        );
+      case 'not-found':
+        return InviteException(
+          InviteErrorCode.notFound,
+          'Invite not found or already removed.',
+        );
+      default:
+        return InviteException(
+          InviteErrorCode.unknown,
+          'Unable to revoke invite right now. Please retry shortly.',
         );
     }
   }

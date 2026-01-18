@@ -17,6 +17,8 @@ import '../services/crash_service.dart';
 import '../services/recurring_walk_service.dart';
 import '../services/storage_service.dart';
 import '../utils/error_handler.dart';
+import '../utils/invite_utils.dart';
+import '../utils/search_utils.dart';
 
 // ===== Design tokens (match Home / Profile) =====
 const double kRadiusCard = 24;
@@ -33,8 +35,6 @@ const double kCardElevationLight = 0.6;
 const double kCardElevationDark = 0.0;
 const double kCardBorderAlpha = 0.06;
 
-const Duration kPrivateWalkShareCodeTtl = Duration(days: 7);
-const String kInviteLinkBaseUrl = 'https://yalla-nemshi-app.firebaseapp.com/invite';
 
 class CreateWalkScreen extends StatefulWidget {
   final void Function(WalkEvent) onEventCreated;
@@ -93,6 +93,38 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   static const double _minutesPerKm = 12.0;
 
   String _description = '';
+
+  // ===== Tags / vibe metadata =====
+  static const List<String> _walkTagOptions = [
+    'Scenic views',
+    'City loop',
+    'Trail run',
+    'Dog friendly',
+    'Family / stroller',
+    'Sunrise',
+    'Sunset',
+    'Coffee after',
+    'Mindful pace',
+    'Women only',
+    'Beginners welcome',
+    'Hiking',
+  ];
+  final Set<String> _selectedTags = {};
+
+  static const List<String> _comfortOptions = [
+    'Social & chatty',
+    'Quiet & mindful',
+    'Workout focused',
+  ];
+  String _comfortLevel = _comfortOptions.first;
+
+  static const List<String> _experienceOptions = [
+    'All levels',
+    'Beginners welcome',
+    'Intermediate walkers',
+    'Advanced hikers',
+  ];
+  String _experienceLevel = _experienceOptions.first;
 
   // ===== Photo picker fields =====
   final List<File> _selectedPhotos = [];
@@ -458,12 +490,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   }
 
   String _generateShareCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final seed = DateTime.now().millisecondsSinceEpoch;
-    return List.generate(
-      6,
-      (i) => chars[(seed + i * 13) % chars.length],
-    ).join();
+    return InviteUtils.generateShareCode();
   }
 
   void _preparePrivateInviteState() {
@@ -481,13 +508,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
   String? _buildInviteLink() {
     if (_draftWalkId == null || _privateShareCode == null) return null;
-    final uri = Uri.parse(kInviteLinkBaseUrl).replace(
-      queryParameters: {
-        'walkId': _draftWalkId!,
-        'code': _privateShareCode!,
-      },
+    return InviteUtils.buildInviteLink(
+      walkId: _draftWalkId!,
+      shareCode: _privateShareCode!,
     );
-    return uri.toString();
   }
 
   Future<void> _copyInviteCode() async {
@@ -530,9 +554,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   Widget _buildInviteCodeCard(ThemeData theme, bool isDark) {
     final code = _privateShareCode ?? '------';
     final generatedAt = _shareCodeGeneratedAt ?? DateTime.now();
-    final expiresAt = generatedAt.add(kPrivateWalkShareCodeTtl);
+    final expiresAt = generatedAt.add(InviteUtils.privateInviteTtl);
     final expiryText = _formatDateTime(expiresAt);
-    final expiresInDays = kPrivateWalkShareCodeTtl.inDays;
+    final expiresInDays = InviteUtils.privateInviteTtl.inDays;
     final hasInviteLink = _buildInviteLink() != null;
 
     final borderColor = (isDark ? Colors.white : Colors.black).withAlpha(
@@ -753,10 +777,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
 
     final Timestamp? shareCodeExpiresAt = isPrivatePointToPoint
-        ? Timestamp.fromDate(
-            DateTime.now().toUtc().add(kPrivateWalkShareCodeTtl),
-          )
-        : null;
+      ? Timestamp.fromDate(InviteUtils.nextExpiry())
+      : null;
+    final DateTime? shareCodeExpiresAtDate = shareCodeExpiresAt?.toDate();
 
     // Compute effective points:
     final LatLng? effectiveStart = _startLatLng;
@@ -785,6 +808,22 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         debugPrint('⚠️ Warning: Walk created without city information');
       }
     }
+
+    final sanitizedDescription = _description.trim();
+    final descriptionForPayload =
+        sanitizedDescription.isEmpty ? null : sanitizedDescription;
+
+    final selectedTagsList = _selectedTags.toList(growable: false);
+
+    final keywordBundle = SearchUtils.buildKeywords(
+      title: _title,
+      description: descriptionForPayload,
+      city: cityForWalk,
+      tags: selectedTagsList,
+      comfortLevel: _comfortLevel,
+      experienceLevel: _experienceLevel,
+      pace: _pace,
+    );
 
     final payload = <String, dynamic>{
       'walkType': walkType,
@@ -826,8 +865,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'endLng': effectiveEnd?.longitude,
 
       'city': cityForWalk,
-
-      'description': _description.isEmpty ? null : _description,
+      'description': descriptionForPayload,
+      'tags': selectedTagsList,
+      'comfortLevel': _comfortLevel,
+      'experienceLevel': _experienceLevel,
+      'searchKeywords': keywordBundle,
       'createdAt': FieldValue.serverTimestamp(),
     };
 
@@ -851,6 +893,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             distanceKm: (effectiveDistanceKm ?? 0),
             gender: _gender,
             pace: _pace,
+            visibility: isPrivatePointToPoint ? 'private' : 'open',
+            joinPolicy: 'request',
+            shareCode: isPrivatePointToPoint ? _privateShareCode : null,
+            shareCodeExpiresAt: shareCodeExpiresAtDate,
             isOwner: true,
             joined: false,
             meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
@@ -860,8 +906,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             startLng: effectiveStart?.longitude,
             endLat: effectiveEnd?.latitude,
             endLng: effectiveEnd?.longitude,
-            city: _detectedCity,
-            description: _description.isEmpty ? null : _description,
+            city: cityForWalk,
+            description: descriptionForPayload,
+            tags: selectedTagsList,
+            comfortLevel: _comfortLevel,
+            experienceLevel: _experienceLevel,
+            searchKeywords: keywordBundle,
           );
 
           final recurrence = RecurrenceRule(
@@ -955,6 +1005,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             distanceKm: (effectiveDistanceKm ?? 0),
             gender: _gender,
             pace: _pace,
+            visibility: isPrivatePointToPoint ? 'private' : 'open',
+            joinPolicy: 'request',
+            shareCode: isPrivatePointToPoint ? _privateShareCode : null,
+            shareCodeExpiresAt: shareCodeExpiresAtDate,
             isOwner: true,
             joined: false,
             meetingPlaceName: _meetingPlace.isEmpty ? null : _meetingPlace,
@@ -964,8 +1018,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             startLng: effectiveStart?.longitude,
             endLat: effectiveEnd?.latitude,
             endLng: effectiveEnd?.longitude,
-            city: _detectedCity,
-            description: _description.isEmpty ? null : _description,
+            city: cityForWalk,
+            description: descriptionForPayload,
+            tags: selectedTagsList,
+            comfortLevel: _comfortLevel,
+            experienceLevel: _experienceLevel,
+            searchKeywords: keywordBundle,
           );
 
           widget.onEventCreated(newEvent);
@@ -1770,6 +1828,88 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               : 5,
                                           onSaved: (val) =>
                                               _description = (val ?? '').trim(),
+                                        ),
+                                        const SizedBox(height: 24),
+
+                                        Text(
+                                          'Tags & vibe',
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
+                                              ) ??
+                                              TextStyle(
+                                                fontFamily: 'Poppins',
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
+                                              ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: _walkTagOptions.map((tag) {
+                                            final selected = _selectedTags.contains(tag);
+                                            return FilterChip(
+                                              label: Text(tag),
+                                              selected: selected,
+                                              onSelected: (isSelected) {
+                                                setState(() {
+                                                  if (isSelected) {
+                                                    _selectedTags.add(tag);
+                                                  } else {
+                                                    _selectedTags.remove(tag);
+                                                  }
+                                                });
+                                              },
+                                            );
+                                          }).toList(),
+                                        ),
+                                        const SizedBox(height: 16),
+
+                                        DropdownButtonFormField<String>(
+                                          value: _comfortLevel,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Comfort vibe',
+                                          ),
+                                          items: _comfortOptions
+                                              .map(
+                                                (option) => DropdownMenuItem(
+                                                  value: option,
+                                                  child: Text(option),
+                                                ),
+                                              )
+                                              .toList(),
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setState(() => _comfortLevel = val);
+                                            }
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        DropdownButtonFormField<String>(
+                                          value: _experienceLevel,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Experience level',
+                                          ),
+                                          items: _experienceOptions
+                                              .map(
+                                                (option) => DropdownMenuItem(
+                                                  value: option,
+                                                  child: Text(option),
+                                                ),
+                                              )
+                                              .toList(),
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setState(() => _experienceLevel = val);
+                                            }
+                                          },
                                         ),
                                         const SizedBox(height: 24),
 

@@ -1,4 +1,6 @@
 // lib/models/walk_event.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'recurrence_rule.dart';
 
 class WalkEvent {
@@ -15,6 +17,10 @@ class WalkEvent {
   final double distanceKm;
   final String gender; // e.g. "Mixed", "Women only", "Men only"
   final String pace; // e.g. "Relaxed", "Normal", "Brisk"
+  final String visibility;
+  final String joinPolicy;
+  final String? shareCode;
+  final DateTime? shareCodeExpiresAt;
   final bool isOwner;
   final String? meetingPlaceName;
   final double? meetingLat;
@@ -67,6 +73,12 @@ class WalkEvent {
   /// Optional: comfort/vibe, e.g. "Social", "Quiet", "Workout" (for future use)
   final String? comfortLevel;
 
+  /// Experience guidance shown to participants (e.g., "All levels").
+  final String experienceLevel;
+
+  /// Cached keywords used by advanced search.
+  final List<String> searchKeywords;
+
   /// Optional: recurring rule text, e.g. "Weekly on Saturday" (deprecated, use recurrence)
   final String? recurringRule;
 
@@ -117,6 +129,10 @@ class WalkEvent {
     required this.distanceKm,
     required this.gender,
     required this.pace,
+    this.visibility = 'open',
+    this.joinPolicy = 'request',
+    this.shareCode,
+    this.shareCodeExpiresAt,
     this.isOwner = false,
     this.joined = false,
     this.interested = false,
@@ -137,6 +153,7 @@ class WalkEvent {
     this.actualDurationMinutes,  // CP-4
     List<String>? tags,
     this.comfortLevel,
+    this.experienceLevel = 'All levels',
     this.recurringRule,
     this.userNotes,
     this.city,
@@ -151,11 +168,13 @@ class WalkEvent {
     List<String>? joinedUserUids,
     List<String>? joinedUserPhotoUrls,
     int? joinedCount,
-  }) : tags = tags ?? const [],
-       photoUrls = photoUrls ?? const [],
-       joinedUserUids = joinedUserUids ?? const [],
-       joinedUserPhotoUrls = joinedUserPhotoUrls ?? const [],
-       joinedCount = joinedCount ?? (joinedUserUids?.length ?? 0);
+    List<String>? searchKeywords,
+  })  : tags = tags ?? const [],
+        photoUrls = photoUrls ?? const [],
+        joinedUserUids = joinedUserUids ?? const [],
+        joinedUserPhotoUrls = joinedUserPhotoUrls ?? const [],
+        joinedCount = joinedCount ?? (joinedUserUids?.length ?? 0),
+        searchKeywords = searchKeywords ?? const [];
 
   WalkEvent copyWith({
     String? id,
@@ -166,6 +185,10 @@ class WalkEvent {
     double? distanceKm,
     String? gender,
     String? pace,
+    String? visibility,
+    String? joinPolicy,
+    String? shareCode,
+    DateTime? shareCodeExpiresAt,
     bool? isOwner,
     bool? joined,
     bool? interested,
@@ -186,6 +209,7 @@ class WalkEvent {
     int? actualDurationMinutes,  // CP-4
     List<String>? tags,
     String? comfortLevel,
+    String? experienceLevel,
     String? recurringRule,
     String? userNotes,
     String? city,
@@ -200,6 +224,7 @@ class WalkEvent {
     List<String>? joinedUserUids,
     List<String>? joinedUserPhotoUrls,
     int? joinedCount,
+    List<String>? searchKeywords,
   }) {
     return WalkEvent(
       id: id ?? this.id,
@@ -210,6 +235,10 @@ class WalkEvent {
       distanceKm: distanceKm ?? this.distanceKm,
       gender: gender ?? this.gender,
       pace: pace ?? this.pace,
+      visibility: visibility ?? this.visibility,
+      joinPolicy: joinPolicy ?? this.joinPolicy,
+      shareCode: shareCode ?? this.shareCode,
+      shareCodeExpiresAt: shareCodeExpiresAt ?? this.shareCodeExpiresAt,
       isOwner: isOwner ?? this.isOwner,
       joined: joined ?? this.joined,
       interested: interested ?? this.interested,
@@ -229,7 +258,8 @@ class WalkEvent {
       completedAt: completedAt ?? this.completedAt,  // CP-4
       actualDurationMinutes: actualDurationMinutes ?? this.actualDurationMinutes,  // CP-4
       tags: tags ?? this.tags,
-      comfortLevel: comfortLevel ?? this.comfortLevel,
+        comfortLevel: comfortLevel ?? this.comfortLevel,
+        experienceLevel: experienceLevel ?? this.experienceLevel,
       recurringRule: recurringRule ?? this.recurringRule,
       userNotes: userNotes ?? this.userNotes,
       city: city ?? this.city,
@@ -242,8 +272,9 @@ class WalkEvent {
       hostName: hostName ?? this.hostName,
       hostPhotoUrl: hostPhotoUrl ?? this.hostPhotoUrl,
       joinedUserUids: joinedUserUids ?? this.joinedUserUids,
-      joinedUserPhotoUrls: joinedUserPhotoUrls ?? this.joinedUserPhotoUrls,
-      joinedCount: joinedCount ?? this.joinedCount,
+        joinedUserPhotoUrls: joinedUserPhotoUrls ?? this.joinedUserPhotoUrls,
+        joinedCount: joinedCount ?? this.joinedCount,
+        searchKeywords: searchKeywords ?? this.searchKeywords,
     );
   }
 
@@ -272,7 +303,8 @@ class WalkEvent {
       'description': description,
       'cancelled': cancelled,
       'tags': tags,
-      'comfortLevel': comfortLevel,
+        'comfortLevel': comfortLevel,
+        'experienceLevel': experienceLevel,
       'recurringRule': recurringRule,
       'userNotes': userNotes,
       'city': city,
@@ -285,8 +317,9 @@ class WalkEvent {
       'hostName': hostName,
       'hostPhotoUrl': hostPhotoUrl,
       'joinedUserUids': joinedUserUids,
-      'joinedUserPhotoUrls': joinedUserPhotoUrls,
-      'joinedCount': joinedCount,
+        'joinedUserPhotoUrls': joinedUserPhotoUrls,
+        'joinedCount': joinedCount,
+        'searchKeywords': searchKeywords,
     };
   }
 
@@ -314,6 +347,19 @@ class WalkEvent {
     if (v == null) return fallback;
     if (v is String) return v;
     return v.toString();
+  }
+
+  static DateTime? _toDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    if (value is num) {
+      final millis = value.toInt();
+      if (millis <= 0) return null;
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    }
+    return null;
   }
 
   factory WalkEvent.fromMap(Map<String, dynamic> map) {
@@ -362,6 +408,10 @@ class WalkEvent {
       distanceKm: distanceKm,
       gender: _toStringSafe(map['gender'], fallback: 'Mixed'),
       pace: pace,
+      visibility: _toStringSafe(map['visibility'], fallback: 'open'),
+      joinPolicy: _toStringSafe(map['joinPolicy'], fallback: 'request'),
+      shareCode: map['shareCode']?.toString(),
+      shareCodeExpiresAt: _toDateTime(map['shareCodeExpiresAt']),
       isOwner: _toBool(map['isOwner']),
       joined: _toBool(map['joined']),
       interested: _toBool(map['interested']),
@@ -376,6 +426,7 @@ class WalkEvent {
       cancelled: _toBool(map['cancelled']),
       tags: parsedTags,
       comfortLevel: map['comfortLevel']?.toString(),
+      experienceLevel: map['experienceLevel']?.toString() ?? 'All levels',
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
       city: map['city']?.toString(),
@@ -404,6 +455,9 @@ class WalkEvent {
           : (map['joinedUserUids'] is List
               ? (map['joinedUserUids'] as List).length
               : 0),
+        searchKeywords: (map['searchKeywords'] is List)
+          ? (map['searchKeywords'] as List).whereType<String>().toList()
+          : const [],
     );
   }
 
@@ -411,4 +465,6 @@ class WalkEvent {
   String get formattedDate {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
+
+  bool get isPrivate => visibility == 'private';
 }

@@ -137,6 +137,53 @@ exports.redeemInviteCode = onCall(async (request) => {
 // Temporary alias to avoid breaking older clients while the app rolls out the new callable name
 exports.redeemWalkInvite = exports.redeemInviteCode;
 
+exports.revokeWalkInvite = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be logged in.');
+  }
+
+  const hostUid = request.auth.uid;
+  const walkId = (request.data?.walkId || '').toString().trim();
+  const targetUid = (request.data?.userId || '').toString().trim();
+
+  if (!walkId) {
+    throw new HttpsError('invalid-argument', 'walkId is required.');
+  }
+  if (!targetUid) {
+    throw new HttpsError('invalid-argument', 'userId is required.');
+  }
+
+  const db = admin.firestore();
+  const walkRef = db.collection('walks').doc(walkId);
+  const walkSnap = await walkRef.get();
+
+  if (!walkSnap.exists) {
+    throw new HttpsError('not-found', 'Walk not found.');
+  }
+
+  const walk = walkSnap.data() || {};
+  if (walk.hostUid !== hostUid) {
+    throw new HttpsError(
+      'permission-denied',
+      'Only the host can revoke invites for this walk.',
+    );
+  }
+
+  const inviteRef = walkRef.collection('allowed').doc(targetUid);
+  const inviteSnap = await inviteRef.get();
+
+  if (!inviteSnap.exists) {
+    throw new HttpsError('not-found', 'Invite not found.');
+  }
+
+  await inviteRef.delete();
+  console.log(
+    `🔐 Host ${hostUid} revoked invite for ${targetUid} on walk ${walkId}`,
+  );
+
+  return { ok: true };
+});
+
 // ===== FCM NOTIFICATION TRIGGERS =====
 
 /**

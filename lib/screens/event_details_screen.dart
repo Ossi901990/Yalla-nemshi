@@ -1,15 +1,19 @@
 // lib/screens/event_details_screen.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/review.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'walk_chat_screen.dart';
 import 'review_walk_screen.dart';
 import '../models/walk_event.dart';
+import '../services/invite_service.dart';
 import '../services/review_service.dart';
 import '../services/recurring_walk_service.dart';
 import '../services/host_rating_service.dart';
 import '../services/walk_control_service.dart';
 import '../services/walk_history_service.dart';
+import '../utils/invite_utils.dart';
 import '../widgets/review_widgets.dart';
 
 class EventDetailsScreen extends StatefulWidget {
@@ -28,6 +32,576 @@ class EventDetailsScreen extends StatefulWidget {
 
   @override
   State<EventDetailsScreen> createState() => _EventDetailsScreenState();
+}
+
+class _PrivateInviteManagement extends StatefulWidget {
+  const _PrivateInviteManagement({required this.event});
+
+  final WalkEvent event;
+
+  @override
+  State<_PrivateInviteManagement> createState() => _PrivateInviteManagementState();
+}
+
+class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
+  late final DocumentReference<Map<String, dynamic>> _walkRef;
+  final InviteService _inviteService = InviteService();
+  bool _rotatingCode = false;
+  bool _extendingExpiry = false;
+  final Set<String> _revoking = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _walkRef = FirebaseFirestore.instance
+        .collection('walks')
+        .doc(widget.event.firestoreId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.event.firestoreId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      color: isDark ? const Color(0xFF0F2734) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: (isDark ? Colors.white : Colors.black).withAlpha(
+            (0.08 * 255).round(),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Private invites',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(
+                      (0.18 * 255).round(),
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Host only',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: _walkRef.snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const LinearProgressIndicator();
+                }
+
+                final data = snapshot.data?.data();
+                final shareCode =
+                    (data?['shareCode'] ?? widget.event.shareCode)?.toString();
+                final expiresAt =
+                    _asDateTime(data?['shareCodeExpiresAt']) ??
+                        widget.event.shareCodeExpiresAt;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: isDark
+                            ? Colors.white.withAlpha((0.05 * 255).round())
+                            : Colors.black.withAlpha((0.03 * 255).round()),
+                        border: Border.all(
+                          color: (isDark ? Colors.white : Colors.black).withAlpha(
+                            (0.12 * 255).round(),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Invite code',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                SelectableText(
+                                  shareCode ?? '------',
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    letterSpacing: 2,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isDark ? Colors.white : const Color(0xFF111827),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Copy invite code',
+                            onPressed: (shareCode == null || shareCode.isEmpty)
+                                ? null
+                                : () => _copyCode(shareCode),
+                            icon: const Icon(Icons.copy),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _expiryDescription(expiresAt),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      expiresAt != null
+                          ? 'Active until ${_formatAbsolute(expiresAt)}'
+                          : 'Set an expiry to keep codes secure.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            onPressed: (shareCode == null || shareCode.isEmpty)
+                                ? null
+                                : () => _copyLink(shareCode),
+                            icon: const Icon(Icons.link),
+                            label: const Text('Copy invite link'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _extendingExpiry || shareCode == null
+                                ? null
+                                : _extendExpiry,
+                            icon: _extendingExpiry
+                                ? const SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.schedule),
+                            label: const Text('Extend 7 days'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed:
+                            _rotatingCode || shareCode == null || shareCode.isEmpty
+                                ? null
+                                : _regenerateShareCode,
+                        icon: _rotatingCode
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.refresh),
+                        label: const Text('Regenerate code'),
+                      ),
+                    ),
+                    Text(
+                      'Regenerating immediately invalidates the previous link.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text(
+              'People with access',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildInviteeList(theme, isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInviteeList(ThemeData theme, bool isDark) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _walkRef
+          .collection('allowed')
+          .orderBy('redeemedAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const LinearProgressIndicator();
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return Text(
+            'No invitees yet. Share the code to pre-approve walkers.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isDark ? Colors.white54 : Colors.black54,
+            ),
+          );
+        }
+
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
+            final uid = doc.id;
+            final redeemedAt = _asDateTime(doc.data()['redeemedAt']);
+            final isRevoking = _revoking.contains(uid);
+
+            return _InviteeListTile(
+              userId: uid,
+              redeemedAt: redeemedAt,
+              isRevoking: isRevoking,
+              onRevoke: () => _revokeInvite(uid),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _copyCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    _showSnack('Invite code copied');
+  }
+
+  Future<void> _copyLink(String code) async {
+    final link = InviteUtils.buildInviteLink(
+      walkId: widget.event.firestoreId,
+      shareCode: code,
+    );
+    await Clipboard.setData(ClipboardData(text: link));
+    _showSnack('Invite link copied');
+  }
+
+  Future<void> _extendExpiry() async {
+    setState(() {
+      _extendingExpiry = true;
+    });
+
+    try {
+      final newExpiry = InviteUtils.nextExpiry();
+      await _walkRef.update({
+        'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
+      });
+      _showSnack('Invite extended to ${_formatAbsolute(newExpiry)}');
+    } catch (error) {
+      _showSnack('Unable to extend invite right now.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _extendingExpiry = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _regenerateShareCode() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Regenerate invite code?'),
+        content: const Text(
+          'Anyone with the old code will lose access. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep current'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Regenerate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _rotatingCode = true;
+    });
+
+    try {
+      final newCode = InviteUtils.generateShareCode();
+      final newExpiry = InviteUtils.nextExpiry();
+      await _walkRef.update({
+        'shareCode': newCode,
+        'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
+      });
+      _showSnack('New invite code generated');
+    } catch (error) {
+      _showSnack('Unable to regenerate invite right now.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _rotatingCode = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _revokeInvite(String userId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove invited walker?'),
+        content: const Text(
+          'They will lose access to this private walk until they redeem a new code.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep access'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _revoking.add(userId);
+    });
+
+    try {
+      await _inviteService.revokeInvite(
+        walkId: widget.event.firestoreId,
+        userId: userId,
+      );
+      _showSnack('Invite revoked');
+    } catch (error) {
+      _showSnack('Unable to revoke invite.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _revoking.remove(userId);
+        });
+      }
+    }
+  }
+
+  DateTime? _asDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  String _expiryDescription(DateTime? expiresAt) {
+    if (expiresAt == null) {
+      return 'No expiry configured yet.';
+    }
+
+    final now = DateTime.now().toUtc();
+    if (expiresAt.isBefore(now)) {
+      final elapsed = now.difference(expiresAt);
+      if (elapsed.inDays >= 1) {
+        return 'Expired ${elapsed.inDays}d ago';
+      }
+      if (elapsed.inHours >= 1) {
+        return 'Expired ${elapsed.inHours}h ago';
+      }
+      return 'Expired recently';
+    }
+
+    final remaining = expiresAt.difference(now);
+    if (remaining.inDays >= 1) {
+      return 'Expires in ${remaining.inDays}d';
+    }
+    if (remaining.inHours >= 1) {
+      return 'Expires in ${remaining.inHours}h';
+    }
+    return 'Expires in ${remaining.inMinutes}m';
+  }
+
+  String _formatAbsolute(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year.toString();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year • $hour:$minute';
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+
+class _InviteeListTile extends StatelessWidget {
+  const _InviteeListTile({
+    required this.userId,
+    required this.redeemedAt,
+    required this.onRevoke,
+    required this.isRevoking,
+  });
+
+  final String userId;
+  final DateTime? redeemedAt;
+  final VoidCallback onRevoke;
+  final bool isRevoking;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data();
+        final rawName = (data?['displayName'] as String?)?.trim();
+        final displayName =
+            (rawName != null && rawName.isNotEmpty)
+                ? rawName
+                : 'User ${_shortId(userId)}';
+        final photoUrl = (data?['photoUrl'] as String?)?.trim();
+
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(
+            radius: 22,
+            backgroundColor: theme.colorScheme.primary.withAlpha(30),
+            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                ? NetworkImage(photoUrl)
+                : null,
+            child: (photoUrl == null || photoUrl.isEmpty)
+                ? Text(
+                    displayName.isNotEmpty
+                        ? displayName.substring(0, 1).toUpperCase()
+                        : '?',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : null,
+          ),
+          title: Text(
+            displayName,
+            style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+          ),
+          subtitle: Text(
+            _formatRedeemedAt(redeemedAt),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withAlpha(160),
+            ),
+          ),
+          trailing: isRevoking
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : IconButton(
+                  tooltip: 'Revoke invite',
+                  icon: const Icon(Icons.block),
+                  onPressed: onRevoke,
+                ),
+        );
+      },
+    );
+  }
+
+  String _shortId(String value) {
+    if (value.length <= 6) return value;
+    return value.substring(0, 6);
+  }
+
+  String _formatRedeemedAt(DateTime? redeemedAt) {
+    if (redeemedAt == null) {
+      return 'Awaiting redemption';
+    }
+
+    final local = redeemedAt.toLocal();
+    final now = DateTime.now();
+    final diff = now.difference(local);
+
+    if (diff.inDays >= 1) {
+      return 'Redeemed ${diff.inDays}d ago';
+    }
+    if (diff.inHours >= 1) {
+      return 'Redeemed ${diff.inHours}h ago';
+    }
+    final minutes = diff.inMinutes;
+    if (minutes <= 0) {
+      return 'Redeemed just now';
+    }
+    return 'Redeemed ${minutes}m ago';
+  }
 }
 
 class _EventDetailsScreenState extends State<EventDetailsScreen> {
@@ -1285,6 +1859,11 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                           // CP-4: Host walk control buttons (start/end walk)
                           if (event.isOwner && !event.cancelled) ...[
                             _buildHostControlButtons(context, event, theme, isDark),
+                          ],
+
+                          if (event.isOwner && !event.cancelled && event.isPrivate) ...[
+                            const SizedBox(height: 16),
+                            _PrivateInviteManagement(event: event),
                           ],
 
                           // CP-4: Participant confirmation button (shown when walk is starting)

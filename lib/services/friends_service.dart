@@ -86,4 +86,89 @@ class FriendsService {
         .get();
     return snapshot.docs.map((doc) => doc.id).toList();
   }
+
+  Future<void> removeFriend(String userId, String friendId) async {
+    final batch = _firestore.batch();
+    final userRef = _firestore
+        .collection('friends')
+        .doc(userId)
+        .collection('friendsList')
+        .doc(friendId);
+    final friendRef = _firestore
+        .collection('friends')
+        .doc(friendId)
+        .collection('friendsList')
+        .doc(userId);
+    batch.delete(userRef);
+    batch.delete(friendRef);
+    await batch.commit();
+  }
+
+  Future<void> blockUser(String blockerUid, String targetUid, {String? reason}) async {
+    final blockRef = _firestore
+        .collection('blocks')
+        .doc(blockerUid)
+        .collection('blocked')
+        .doc(targetUid);
+
+    await blockRef.set({
+      'targetUserId': targetUid,
+      'blockedAt': FieldValue.serverTimestamp(),
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+    });
+
+    await removeFriend(blockerUid, targetUid);
+    await _deleteFriendRequestsBetween(blockerUid, targetUid);
+  }
+
+  Future<void> reportUser({
+    required String reporterUid,
+    required String targetUid,
+    required String reason,
+    String? details,
+  }) async {
+    final reportRef = _firestore.collection('user_reports').doc();
+    await reportRef.set({
+      'reportId': reportRef.id,
+      'reporterUid': reporterUid,
+      'targetUid': targetUid,
+      'reason': reason.trim(),
+      if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> _deleteFriendRequestsBetween(String userA, String userB) async {
+    final receivedByA = await _firestore
+        .collection('friend_requests')
+        .doc(userA)
+        .collection('received')
+        .where('fromUserId', isEqualTo: userB)
+        .get();
+    final receivedByB = await _firestore
+        .collection('friend_requests')
+        .doc(userB)
+        .collection('received')
+        .where('fromUserId', isEqualTo: userA)
+        .get();
+    final sentByA = await _firestore
+        .collection('friend_requests')
+        .doc(userA)
+        .collection('sent')
+        .where('toUserId', isEqualTo: userB)
+        .get();
+    final sentByB = await _firestore
+        .collection('friend_requests')
+        .doc(userB)
+        .collection('sent')
+        .where('toUserId', isEqualTo: userA)
+        .get();
+
+    await Future.wait([
+      ...receivedByA.docs.map((doc) => doc.reference.delete()),
+      ...receivedByB.docs.map((doc) => doc.reference.delete()),
+      ...sentByA.docs.map((doc) => doc.reference.delete()),
+      ...sentByB.docs.map((doc) => doc.reference.delete()),
+    ]);
+  }
 }
