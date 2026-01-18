@@ -14,6 +14,10 @@ class FirestoreUserService {
   static const String _usersCollection = 'users';
   static const String _profilePhotosPath = 'user_profiles';
 
+  static String _sanitizeDisplayName(String value) => value.trim();
+
+  static String _displayNameLower(String value) => _sanitizeDisplayName(value).toLowerCase();
+
   /// Create a new user document in Firestore
   static Future<void> createUser({
     required String uid,
@@ -22,10 +26,11 @@ class FirestoreUserService {
     String? photoURL,
   }) async {
     try {
+      final normalizedName = _sanitizeDisplayName(displayName);
       final user = FirestoreUser(
         uid: uid,
         email: email,
-        displayName: displayName,
+        displayName: normalizedName,
         photoURL: photoURL,
         createdAt: DateTime.now(),
         lastUpdated: DateTime.now(),
@@ -89,7 +94,11 @@ class FirestoreUserService {
         'lastUpdated': FieldValue.serverTimestamp(),
       };
 
-      if (displayName != null) updates['displayName'] = displayName;
+      if (displayName != null) {
+        final normalized = _sanitizeDisplayName(displayName);
+        updates['displayName'] = normalized;
+        updates['displayNameLower'] = _displayNameLower(normalized);
+      }
       if (photoURL != null) updates['photoURL'] = photoURL;
       if (bio != null) updates['bio'] = bio;
       if (age != null) updates['age'] = age;
@@ -185,29 +194,64 @@ class FirestoreUserService {
   }
 
   /// Search users by display name (for future use)
-  static Future<List<FirestoreUser>> searchUsers(String query) async {
+  static Future<List<FirestoreUser>> searchUsers(String query, {int limit = 20}) async {
     try {
-      if (query.isEmpty) return [];
+      final trimmed = query.trim();
+      if (trimmed.isEmpty) return [];
 
-      // Note: Firestore doesn't support full-text search
-      // For production, use Algolia or ElasticSearch
-      // This is a simple prefix search
-      final snapshot = await _firestore
-          .collection(_usersCollection)
-          .where('displayName', isGreaterThanOrEqualTo: query)
-          .where('displayName', isLessThanOrEqualTo: '$query\uf8ff')
-          .limit(20)
-          .get()
-          .timeout(const Duration(seconds: 10));
+      final normalized = trimmed.toLowerCase();
+      final Map<String, FirestoreUser> resultsById = {};
 
-      return snapshot.docs
-          .map((doc) => FirestoreUser.fromFirestore(doc))
-          .toList();
+      Future<void> runPrefixedQuery(String field, String value) async {
+        final snapshot = await _firestore
+            .collection(_usersCollection)
+            .where(field, isGreaterThanOrEqualTo: value)
+            .where(field, isLessThanOrEqualTo: '$value\uf8ff')
+            .limit(limit)
+            .get()
+            .timeout(const Duration(seconds: 5));
+
+        for (final doc in snapshot.docs) {
+          final user = FirestoreUser.fromFirestore(doc);
+          resultsById[user.uid] = user;
+          if (resultsById.length >= limit) break;
+        }
+      }
+
+      await runPrefixedQuery('displayNameLower', normalized);
+
+      if (resultsById.length < limit) {
+        final variants = {
+          trimmed,
+          _toTitleCase(trimmed),
+          trimmed.toUpperCase(),
+        }..removeWhere((value) => value.isEmpty);
+
+        for (final variant in variants) {
+          await runPrefixedQuery('displayName', variant);
+          if (resultsById.length >= limit) break;
+        }
+      }
+
+      final users = resultsById.values.toList()
+        ..sort((a, b) => a.displayNameLower.compareTo(b.displayNameLower));
+      return users.take(limit).toList();
     } catch (e, st) {
       debugPrint('❌ Error searching users: $e');
       CrashService.recordError(e, st, reason: 'FirestoreUserService.searchUsers');
       return [];
     }
+  }
+
+  static String _toTitleCase(String value) {
+    if (value.isEmpty) return value;
+    final words = value
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map((word) =>
+            '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}')
+        .toList();
+    return words.join(' ');
   }
 
   /// Increment walk stats (called after walk completion)

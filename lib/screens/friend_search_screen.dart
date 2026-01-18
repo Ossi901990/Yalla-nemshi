@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/firestore_user.dart';
+import '../services/firestore_user_service.dart';
 import '../services/friends_service.dart';
 
 class FriendSearchScreen extends StatefulWidget {
@@ -13,7 +15,7 @@ class FriendSearchScreen extends StatefulWidget {
 
 class _FriendSearchScreenState extends State<FriendSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _results = [];
+  List<FirestoreUser> _results = [];
   bool _loading = false;
   String? _error;
   final FriendsService _friendsService = FriendsService();
@@ -25,15 +27,10 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       _results = [];
     });
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('displayName', isGreaterThanOrEqualTo: query)
-          .where('displayName', isLessThanOrEqualTo: '$query\uf8ff')
-          .limit(20)
-          .get();
+      final users = await FirestoreUserService.searchUsers(query);
       if (!mounted) return;
       setState(() {
-        _results = snapshot.docs.map((doc) => doc.data()).toList();
+        _results = users;
         _loading = false;
       });
     } catch (e) {
@@ -92,11 +89,11 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                     final user = _results[index];
                     return ListTile(
                       leading: const Icon(Icons.person),
-                      title: Text(user['displayName'] ?? ''),
-                      subtitle: Text(user['email'] ?? ''),
+                      title: Text(user.displayName),
+                      subtitle: Text(user.email),
                       trailing: ElevatedButton(
                         child: const Text('Add Friend'),
-                        onPressed: () => _sendFriendRequest(user['uid']),
+                        onPressed: () => _sendFriendRequest(user.uid),
                       ),
                     );
                   },

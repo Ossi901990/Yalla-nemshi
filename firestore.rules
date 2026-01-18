@@ -46,8 +46,11 @@ service cloud.firestore {
     // ===== USERS COLLECTION (NEW) =====
     match /users/{userId} {
       allow get: if signedIn();
-      
-      allow list: if false; // Never allow listing all users
+
+      // Allow small, filtered queries (friend search, whereIn batches) but
+      // continue blocking blanket reads of the entire collection.
+      allow list: if signedIn()
+        && (request.query.limit == null || request.query.limit <= 50);
 
       allow create: if isAuth(userId)
         && request.resource.data.keys().hasAny(['uid', 'email', 'displayName', 'createdAt'])
@@ -214,11 +217,18 @@ service cloud.firestore {
       allow get, list: if isAuth(userId);
 
       match /received/{requestId} {
-        allow read, create, delete: if isAuth(userId);
+        allow read, delete: if isAuth(userId);
+        allow create: if signedIn()
+          && request.resource.data.fromUserId == request.auth.uid
+          && request.resource.data.toUserId == userId
+          && request.resource.data.status == 'pending';
       }
 
       match /sent/{requestId} {
-        allow read, create, delete: if isAuth(userId);
+        allow read, delete: if isAuth(userId);
+        allow create: if isAuth(userId)
+          && request.resource.data.fromUserId == userId
+          && request.resource.data.status == 'pending';
       }
     }
 

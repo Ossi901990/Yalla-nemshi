@@ -6,6 +6,7 @@ class FirestoreUser {
   final String uid;
   final String email;
   final String displayName;
+  final String displayNameLower;
   final String? photoURL; // Firebase Storage URL
   final String? bio;
   final int? age;
@@ -25,6 +26,7 @@ class FirestoreUser {
     required this.uid,
     required this.email,
     required this.displayName,
+    String? displayNameLower,
     this.photoURL,
     this.bio,
     this.age,
@@ -35,7 +37,7 @@ class FirestoreUser {
     this.walksHosted = 0,
     this.totalKm = 0.0,
     this.profilePublic = true,
-  });
+  }) : displayNameLower = (displayNameLower ?? displayName).toLowerCase();
 
   /// Convert to Firestore map
   Map<String, dynamic> toFirestore() {
@@ -44,6 +46,7 @@ class FirestoreUser {
       'email': email,
       'displayName': displayName,
       'photoURL': photoURL,
+      'displayNameLower': displayNameLower,
       'bio': bio,
       'age': age,
       'gender': gender,
@@ -67,7 +70,9 @@ class FirestoreUser {
     return FirestoreUser(
       uid: map['uid'] as String? ?? '',
       email: map['email'] as String? ?? '',
-      displayName: map['displayName'] as String? ?? '',
+        displayName: map['displayName'] as String? ?? '',
+        displayNameLower: (map['displayNameLower'] as String?) ??
+          (map['displayName'] as String? ?? '').toLowerCase(),
       photoURL: map['photoURL'] as String?,
       bio: map['bio'] as String?,
       age: map['age'] as int?,
@@ -86,6 +91,7 @@ class FirestoreUser {
     String? uid,
     String? email,
     String? displayName,
+    String? displayNameLower,
     String? photoURL,
     String? bio,
     int? age,
@@ -101,6 +107,7 @@ class FirestoreUser {
       uid: uid ?? this.uid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
+      displayNameLower: displayNameLower ?? this.displayNameLower,
       photoURL: photoURL ?? this.photoURL,
       bio: bio ?? this.bio,
       age: age ?? this.age,
