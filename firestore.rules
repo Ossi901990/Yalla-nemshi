@@ -207,6 +207,7 @@ service cloud.firestore {
       }
     }
 
+
     // ===== FRIEND REQUESTS (NEW) =====
     match /friend_requests/{userId} {
       // Users can only access their own friend requests
@@ -223,11 +224,12 @@ service cloud.firestore {
 
     // ===== FRIENDS LIST (NEW) =====
     match /friends/{userId} {
-      allow get: if signedIn();
+      allow get: if isAuth(userId);
 
       match /friendsList/{friendId} {
-        allow read: if signedIn();
+        allow read: if isAuth(userId) || isAuth(friendId);
         allow write: if isAuth(userId);
+        allow delete: if isAuth(userId);
       }
     }
 

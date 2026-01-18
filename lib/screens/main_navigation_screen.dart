@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'walks_screen.dart';
 import 'events_screen.dart';
 import 'profile_screen.dart';
+import 'friend_list_screen.dart';
 
 /// Main navigation screen that manages tab switching across the app
 class MainNavigationScreen extends StatefulWidget {
@@ -17,7 +18,7 @@ class MainNavigationScreen extends StatefulWidget {
   final void Function(WalkEvent) onCancelHosted;
   final void Function(WalkEvent) onEventCreated;
   final VoidCallback onCreatedNavigateHome;
-  
+
   final int walksJoined;
   final int eventsHosted;
   final double totalKm;
@@ -27,11 +28,11 @@ class MainNavigationScreen extends StatefulWidget {
   final int streakDays;
   final double weeklyGoalKm;
   final String userName;
-  
+
   final bool hasMoreWalks;
   final bool isLoadingMore;
   final VoidCallback onLoadMore;
-  
+
   final ValueChanged<double>? onWeeklyGoalChanged;
 
   const MainNavigationScreen({
@@ -69,14 +70,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     late Widget body;
-    
+
     switch (_currentTab) {
       case 0:
-        // Home Tab
+        // Home tab
         body = HomeScreen(initialTab: 0);
         break;
       case 1:
-        // Walk Tab
+        // Walks tab
         body = WalksScreen(
           myWalks: widget.myWalks,
           nearbyWalks: widget.nearbyWalks,
@@ -101,11 +102,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         );
         break;
       case 2:
-        // Events Tab
-        body = const EventsScreen();
+        // Friends tab
+        body = const FriendListScreen();
         break;
       case 3:
-        // Profile Tab
+        // Events tab
+        body = const EventsScreen();
+        break;
+      case 4:
+        // Profile tab
         body = ProfileScreen(
           walksJoined: widget.walksJoined,
           eventsHosted: widget.eventsHosted,

@@ -18,6 +18,7 @@ import 'screens/review_walk_screen.dart';
 import 'providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'screens/friend_list_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,13 +65,13 @@ Future<void> main() async {
   }
 
   await NotificationService.init();
-  
+
   // 🔹 Migrate local profile to Firestore (background, non-blocking)
   ProfileMigrationService.migrateIfNeeded();
-  
+
   // 🔹 Detect user's city on app startup (runs in background)
   _detectAndSaveUserCity();
-  
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -143,9 +144,12 @@ class MyApp extends StatelessWidget {
       home: const AuthStateRouter(),
       routes: {
         LoginScreen.routeName: (context) => const LoginScreen(),
-        ForgotPasswordScreen.routeName: (context) => const ForgotPasswordScreen(),
+        ForgotPasswordScreen.routeName: (context) =>
+            const ForgotPasswordScreen(),
         ReviewWalkScreen.routeName: (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           return ReviewWalkScreen(
             walk: args?['walk'],
             userId: args?['userId'],
@@ -156,6 +160,7 @@ class MyApp extends StatelessWidget {
         TermsScreen.routeName: (context) => const TermsScreen(),
         SignupScreen.routeName: (context) => const SignupScreen(),
         '/home': (context) => const HomeScreen(),
+        '/friends': (context) => FriendListScreen(),
       },
     );
   }
@@ -180,11 +185,7 @@ class AuthStateRouter extends ConsumerWidget {
       },
       loading: () {
         // While checking auth state, show a loading screen
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       },
       error: (error, stackTrace) {
         // Error checking auth state, show login screen as fallback
@@ -199,7 +200,7 @@ class AuthStateRouter extends ConsumerWidget {
 final ThemeData _lightTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
-    fontFamily: 'Poppins',
+  fontFamily: 'Poppins',
   colorScheme: const ColorScheme.light(
     primary: Color(0xFF1ABFC4),
     secondary: Color(0xFF1A2332),

@@ -19,7 +19,8 @@ class MapPickScreen extends StatefulWidget {
 class _MapPickScreenState extends State<MapPickScreen> {
   // ✅ Put your Google API key here (must have Geocoding API enabled)
   // Tip: later we can move it to a safer config approach.
-  static const String _googleApiKey = 'AIzaSyCf4xhAGD2FlnFwsFjGpZZoXa5pnB4oRqM';
+  static const String _googleApiKey =
+      'AIzaSyCf4xhAGD2FlnFwsFjGpZZoXa5pnB4oRqM';
 
   final TextEditingController _searchCtrl = TextEditingController();
   bool _searchLoading = false;
@@ -281,4 +282,3 @@ class _MapPickScreenState extends State<MapPickScreen> {
     );
   }
 }
-
