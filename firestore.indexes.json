@@ -15,6 +15,24 @@
         { "fieldPath": "walkId", "order": "ASCENDING" },
         { "fieldPath": "userId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "walks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cancelled", "order": "ASCENDING" },
+        { "fieldPath": "visibility", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "walks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recurringGroupId", "order": "ASCENDING" },
+        { "fieldPath": "dateTime", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

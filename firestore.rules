@@ -50,10 +50,7 @@ service cloud.firestore {
       allow list: if false; // Never allow listing all users
 
       allow create: if isAuth(userId)
-        && request.resource.data.keys().hasOnly([
-          'uid', 'email', 'displayName', 'photoURL', 
-          'bio', 'createdAt', 'lastUpdated'
-        ])
+        && request.resource.data.keys().hasAny(['uid', 'email', 'displayName', 'createdAt'])
         && request.resource.data.uid == userId
         && request.resource.data.email is string
         && request.resource.data.displayName is string
@@ -142,13 +139,9 @@ service cloud.firestore {
           isAllowedViewer(walkId)
         );
 
-      // CREATE: only if hostUid == current user (with validation)
+      // CREATE: only if hostUid == current user (simplified - no field validation)
       allow create: if signedIn()
-        && request.resource.data.hostUid == request.auth.uid
-        && request.resource.data.keys().hasAny(['title', 'dateTime', 'distanceKm'])
-        && request.resource.data.title is string
-        && request.resource.data.dateTime is timestamp
-        && request.resource.data.distanceKm is number;
+        && request.resource.data.hostUid == request.auth.uid;
 
       // UPDATE: host can change anything; non-hosts can modify join metadata only
       allow update: if signedIn() && (
