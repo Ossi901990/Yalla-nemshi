@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/firestore_user.dart';
 import '../services/firestore_user_service.dart';
 import '../services/friends_service.dart';
+import 'friend_profile_screen.dart';
 
 class FriendSearchScreen extends StatefulWidget {
   static const routeName = '/friend-search';
@@ -88,6 +89,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   itemBuilder: (context, index) {
                     final user = _results[index];
                     return ListTile(
+                      onTap: () => _openFriendProfile(user),
                       leading: const Icon(Icons.person),
                       title: Text(user.displayName),
                       subtitle: Text(user.email),
@@ -103,6 +105,17 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
               const Text('No users found.'),
           ],
         ),
+      ),
+    );
+  }
+
+  void _openFriendProfile(FirestoreUser user) {
+    Navigator.of(context).pushNamed(
+      FriendProfileScreen.routeName,
+      arguments: FriendProfileScreenArgs(
+        userId: user.uid,
+        displayName: user.displayName,
+        photoUrl: user.photoURL,
       ),
     );
   }

@@ -1,4 +1,6 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import '../models/firestore_user.dart';
 import '../services/firestore_user_service.dart';
 import '../services/friends_service.dart';
 import '../utils/invite_utils.dart';
+import 'friend_profile_screen.dart';
 
 class FriendListScreen extends StatefulWidget {
   static const routeName = '/friends';
@@ -20,6 +23,7 @@ class FriendListScreen extends StatefulWidget {
 class _FriendListScreenState extends State<FriendListScreen> {
   final FriendsService _friendsService = FriendsService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const int _walkSummariesPerFriend = 3;
 
   List<_FriendRequestItem> _incomingRequests = [];
   List<_FriendCardData> _friendCards = [];
@@ -30,11 +34,23 @@ class _FriendListScreenState extends State<FriendListScreen> {
   final Set<String> _unfriending = {};
   final Set<String> _blocking = {};
   final Set<String> _reporting = {};
+  final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+      _walkSummarySubscriptions = {};
+  final Map<String, List<_FriendWalkActivity>> _recentWalksByFriend = {};
+  List<String> _currentFriendIds = [];
+  List<FirestoreUser> _currentFriendProfiles = [];
+  Map<String, int> _currentMutualCounts = {};
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _clearWalkSummarySubscriptions();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -45,6 +61,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
+      _clearWalkSummarySubscriptions();
       setState(() {
         _error = 'Not signed in.';
         _loading = false;
@@ -57,12 +74,16 @@ class _FriendListScreenState extends State<FriendListScreen> {
       final friendIds = await _friendsService.getFriends(user.uid);
 
       if (friendIds.isEmpty) {
+        _clearWalkSummarySubscriptions();
         final requests = await requestsFuture;
         if (!mounted) return;
         setState(() {
           _incomingRequests = requests;
           _friendCards = [];
           _activityFeed = [];
+          _currentFriendIds = [];
+          _currentFriendProfiles = [];
+          _currentMutualCounts = {};
           _loading = false;
         });
         return;
@@ -70,16 +91,13 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
       final profilesFuture = FirestoreUserService.getUsersByIds(friendIds);
       final mutualFuture = _fetchMutualFriendCounts(user.uid, friendIds);
-      final activityFuture = _fetchRecentWalksForFriends(friendIds);
-
       final profiles = await profilesFuture;
       final mutualCounts = await mutualFuture;
-      final recentActivity = await activityFuture;
       final friendCards = _composeFriendCards(
         friendIds,
         profiles,
         mutualCounts,
-        recentActivity,
+        _recentWalksByFriend,
       );
       final feed = _buildActivityFeed(friendCards);
       final requests = await requestsFuture;
@@ -87,10 +105,15 @@ class _FriendListScreenState extends State<FriendListScreen> {
       if (!mounted) return;
       setState(() {
         _incomingRequests = requests;
+        _currentFriendIds = List<String>.from(friendIds);
+        _currentFriendProfiles = List<FirestoreUser>.from(profiles);
+        _currentMutualCounts = Map<String, int>.from(mutualCounts);
         _friendCards = friendCards;
         _activityFeed = feed;
         _loading = false;
       });
+
+      _subscribeToFriendWalkSummaries(friendIds);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -184,60 +207,91 @@ class _FriendListScreenState extends State<FriendListScreen> {
   }
 
   Future<Map<String, int>> _fetchMutualFriendCounts(
-    String currentUserId,
+    String _currentUserId,
     List<String> friendIds,
   ) async {
     if (friendIds.isEmpty) return {};
-    final currentSet = friendIds.toSet();
-
-    final futures = friendIds.map((friendId) async {
-      try {
-        final snapshot = await _firestore
-            .collection('friends')
-            .doc(friendId)
-            .collection('friendsList')
-            .get();
-        final friendSet = snapshot.docs.map((doc) => doc.id).toSet();
-        friendSet.remove(currentUserId);
-        final mutual = friendSet.intersection(currentSet).length;
-        return MapEntry(friendId, mutual);
-      } catch (error) {
-        debugPrint('Failed to compute mutual friends for $friendId: $error');
-        return MapEntry(friendId, 0);
-      }
-    });
-
-    final entries = await Future.wait(futures);
-    return Map<String, int>.fromEntries(entries);
+    // Permissions prevent reading other users' friendsList documents, so for now we
+    // default mutual counts to zero until a friend-safe snapshot is available.
+    return {
+      for (final friendId in friendIds) friendId: 0,
+    };
   }
 
-  Future<Map<String, List<_FriendWalkActivity>>> _fetchRecentWalksForFriends(
-    List<String> friendIds, {
-    int limitPerFriend = 3,
-  }) async {
-    if (friendIds.isEmpty) return {};
-    final results = <String, List<_FriendWalkActivity>>{};
+  void _subscribeToFriendWalkSummaries(List<String> friendIds) {
+    if (friendIds.isEmpty) {
+      _clearWalkSummarySubscriptions();
+      return;
+    }
 
-    final futures = friendIds.map((friendId) async {
-      try {
-        final snapshot = await _firestore
-            .collection('users')
-            .doc(friendId)
-            .collection('walks')
-            .orderBy('joinedAt', descending: true)
-            .limit(limitPerFriend)
-            .get();
+    final desiredIds = friendIds.toSet();
+    final existingIds = _walkSummarySubscriptions.keys.toSet();
 
-        results[friendId] = snapshot.docs
-            .map((doc) => _FriendWalkActivity.fromDoc(doc))
-            .toList(growable: false);
-      } catch (error) {
-        debugPrint('Failed to load walk history for $friendId: $error');
-      }
-    });
+    for (final removedId in existingIds.difference(desiredIds)) {
+      _walkSummarySubscriptions[removedId]?.cancel();
+      _walkSummarySubscriptions.remove(removedId);
+      _recentWalksByFriend.remove(removedId);
+    }
 
-    await Future.wait(futures);
-    return results;
+    for (final friendId in desiredIds) {
+      if (_walkSummarySubscriptions.containsKey(friendId)) continue;
+      final subscription = _firestore
+          .collection('friend_profiles')
+          .doc(friendId)
+          .collection('walk_summaries')
+          .orderBy('startTime', descending: true)
+          .limit(_walkSummariesPerFriend)
+          .snapshots()
+          .listen(
+        (snapshot) {
+          final walks = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return _FriendWalkActivity(
+              walkId: doc.id,
+              joinedAt: _readTimestamp(data['startTime']) ?? DateTime.now(),
+              completedAt: _readTimestamp(data['endTime']),
+              status: data['status']?.toString(),
+              distanceKm: (data['distanceKm'] as num?)?.toDouble() ??
+                  (data['actualDistanceKm'] as num?)?.toDouble(),
+            );
+          }).toList(growable: false);
+
+          if (!mounted) return;
+          setState(() {
+            _recentWalksByFriend[friendId] = walks;
+            _refreshFriendCardsAndFeed();
+          });
+        },
+        onError: (_) {
+          if (!mounted) return;
+          setState(() {
+            _recentWalksByFriend[friendId] = const <_FriendWalkActivity>[];
+            _refreshFriendCardsAndFeed();
+          });
+        },
+      );
+
+      _walkSummarySubscriptions[friendId] = subscription;
+    }
+  }
+
+  void _refreshFriendCardsAndFeed() {
+    final friendCards = _composeFriendCards(
+      _currentFriendIds,
+      _currentFriendProfiles,
+      _currentMutualCounts,
+      _recentWalksByFriend,
+    );
+    _friendCards = friendCards;
+    _activityFeed = _buildActivityFeed(friendCards);
+  }
+
+  void _clearWalkSummarySubscriptions() {
+    for (final subscription in _walkSummarySubscriptions.values) {
+      subscription.cancel();
+    }
+    _walkSummarySubscriptions.clear();
+    _recentWalksByFriend.clear();
   }
 
   Future<List<_FriendRequestItem>> _fetchPendingRequests(String userId) async {
@@ -722,6 +776,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ListTile(
+            onTap: () => _openFriendProfile(friend),
             leading: _buildAvatar(theme, friend.photoUrl, friend.displayName),
             title: Text(friend.displayName),
             subtitle: Column(
@@ -797,6 +852,17 @@ class _FriendListScreenState extends State<FriendListScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openFriendProfile(_FriendCardData friend) {
+    Navigator.of(context).pushNamed(
+      FriendProfileScreen.routeName,
+      arguments: FriendProfileScreenArgs(
+        userId: friend.userId,
+        displayName: friend.displayName,
+        photoUrl: friend.photoUrl,
       ),
     );
   }

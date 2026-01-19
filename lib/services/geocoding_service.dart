@@ -8,8 +8,18 @@ import '../models/app_exception.dart';
 /// Service to convert coordinates (lat/lng) → city name using Google Geocoding API
 class GeocodingService {
   /// Get Google Geocoding API key from environment
-  static String get _googleGeocodingApiKey {
-    return dotenv.env['GOOGLE_GEOCODING_API_KEY'] ?? '';
+  static String? get _googleGeocodingApiKey {
+    if (dotenv.isInitialized) {
+      final value = dotenv.env['GOOGLE_GEOCODING_API_KEY'];
+      if (value != null && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    const dartDefineValue = String.fromEnvironment('GOOGLE_GEOCODING_API_KEY');
+    if (dartDefineValue.isNotEmpty) {
+      return dartDefineValue;
+    }
+    return null;
   }
 
   /// Convert latitude/longitude to city name
@@ -19,10 +29,18 @@ class GeocodingService {
     required double longitude,
   }) async {
     try {
+      final apiKey = _googleGeocodingApiKey;
+      if (apiKey == null) {
+        throw LocationException(
+          message: 'Missing Google Geocoding API key. Set GOOGLE_GEOCODING_API_KEY in your .env file or via --dart-define.',
+          code: 'geocoding/missing-api-key',
+        );
+      }
+
       final url = Uri.parse(
         'https://maps.googleapis.com/maps/api/geocode/json'
         '?latlng=$latitude,$longitude'
-        '&key=$_googleGeocodingApiKey',
+        '&key=$apiKey',
       );
 
       final response = await http.get(url).timeout(
