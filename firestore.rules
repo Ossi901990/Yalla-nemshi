@@ -38,9 +38,12 @@ service cloud.firestore {
         );
     }
 
-    // Rate limiting helper (simple check)
-    function isRateLimited() {
-      return request.time < resource.data.rateLimitUntil;
+    function isFriendOf(uid) {
+      return signedIn()
+        && (
+          exists(/databases/$(database)/documents/friends/$(uid)/friendsList/$(request.auth.uid))
+          || exists(/databases/$(database)/documents/friends/$(request.auth.uid)/friendsList/$(uid))
+        );
     }
 
     // ===== USERS COLLECTION (NEW) =====
@@ -252,6 +255,25 @@ service cloud.firestore {
           );
         allow delete: if isAuth(userId)
           || (request.auth != null && request.auth.uid == friendId);
+      }
+    }
+
+    // ===== FRIEND PROFILES (READ-ONLY SNAPSHOTS FOR FRIEND VIEW) =====
+    match /friend_profiles/{userId} {
+      allow get: if isAuth(userId) || isFriendOf(userId);
+      allow list: if (isAuth(userId) || isFriendOf(userId))
+        && request.query != null
+        && request.query.limit != null
+        && request.query.limit <= 50;
+      allow create, update, delete: if false; // Managed by backend only
+
+      match /walk_summaries/{walkId} {
+        allow get: if isAuth(userId) || isFriendOf(userId);
+        allow list: if (isAuth(userId) || isFriendOf(userId))
+          && request.query != null
+          && request.query.limit != null
+          && request.query.limit <= 50;
+        allow create, update, delete: if false;
       }
     }
 
