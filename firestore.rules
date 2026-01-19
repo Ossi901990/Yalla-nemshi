@@ -106,8 +106,18 @@ service cloud.firestore {
 
       // User badges
       match /badges/{badgeId} {
-        allow read: if signedIn();
-        allow write: if false; // Server-side only
+        allow read: if isAuth(userId);
+        allow create, update: if isAuth(userId)
+          && request.resource.data.keys().hasOnly(['title','description','progress','target','achieved','earnedAt','metric','updatedAt'])
+          && request.resource.data.title is string
+          && request.resource.data.description is string
+          && request.resource.data.progress is number
+          && request.resource.data.target is number
+          && request.resource.data.achieved is bool
+          && (request.resource.data.earnedAt == null || request.resource.data.earnedAt is timestamp)
+          && request.resource.data.metric is string
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if false;
       }
 
       // FCM tokens for notifications
