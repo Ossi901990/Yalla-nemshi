@@ -2,6 +2,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class WalkChatScreen extends StatelessWidget {
   final String walkId;
@@ -58,6 +60,7 @@ class WalkChatScreen extends StatelessWidget {
 
                     final senderId = (data['senderId'] ?? '') as String;
                     final text = (data['text'] ?? '') as String;
+                    final imageUrl = (data['imageUrl'] ?? '') as String?;
                     final isMe = uid != null && senderId == uid;
 
                     return Align(
@@ -73,23 +76,37 @@ class WalkChatScreen extends StatelessWidget {
                         constraints: BoxConstraints(
                           maxWidth: MediaQuery.of(context).size.width * 0.75,
                         ),
-
                         decoration: BoxDecoration(
                           color: isMe
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.primary.withAlpha((0.12 * 255).round())
-                              : Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                    .withAlpha((0.6 * 255).round()),
+                              ? Theme.of(context).colorScheme.primary.withAlpha((0.12 * 255).round())
+                              : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha((0.6 * 255).round()),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Text(
-                          text,
-                          softWrap: true,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                        child: imageUrl != null && imageUrl.isNotEmpty
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Image.network(
+                                    imageUrl,
+                                    width: 180,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  if (text.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        text,
+                                        style: Theme.of(context).textTheme.bodyMedium,
+                                      ),
+                                    ),
+                                ],
+                              )
+                            : Text(
+                                text,
+                                softWrap: true,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
                       ),
                     );
                   },
@@ -117,6 +134,7 @@ class _MessageComposer extends StatefulWidget {
 class _MessageComposerState extends State<_MessageComposer> {
   final _controller = TextEditingController();
   bool _sending = false;
+  final ImagePicker _picker = ImagePicker();
 
   Future<void> _send() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -139,13 +157,61 @@ class _MessageComposerState extends State<_MessageComposer> {
           'text': text,
           'sentAt': FieldValue.serverTimestamp(),
         });
-
         tx.set(chatRef, {
           'walkId': widget.walkId,
           'lastMessage': text,
           'lastMessageAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       });
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> pickAndSendImage() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || _sending) return;
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 1200);
+    if (picked == null) return;
+    setState(() => _sending = true);
+    try {
+      final file = picked;
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('walk_chats/${widget.walkId}/images/${DateTime.now().millisecondsSinceEpoch}_$uid.jpg');
+      await storageRef.putData(await file.readAsBytes());
+      final imageUrl = await storageRef.getDownloadURL();
+
+      final chatRef = FirebaseFirestore.instance
+          .collection('walk_chats')
+          .doc(widget.walkId);
+      final msgRef = chatRef.collection('messages').doc();
+
+      // Reference to the walk document in 'walks' collection
+      final walkDocRef = FirebaseFirestore.instance.collection('walks').doc(widget.walkId);
+
+      await FirebaseFirestore.instance.runTransaction((tx) async {
+        tx.set(msgRef, {
+          'senderId': uid,
+          'imageUrl': imageUrl,
+          'sentAt': FieldValue.serverTimestamp(),
+        });
+        tx.set(chatRef, {
+          'walkId': widget.walkId,
+          'lastMessage': '[Image]',
+          'lastMessageAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        // Add imageUrl to the walk's photoUrls array (if not already present)
+        tx.set(walkDocRef, {
+          'photoUrls': FieldValue.arrayUnion([imageUrl]),
+        }, SetOptions(merge: true));
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image upload failed: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -171,6 +237,11 @@ class _MessageComposerState extends State<_MessageComposer> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           child: Row(
             children: [
+              IconButton(
+                icon: const Icon(Icons.photo),
+                tooltip: 'Send Image',
+                onPressed: _sending ? null : pickAndSendImage,
+              ),
               Expanded(
                 child: TextField(
                   controller: _controller,
