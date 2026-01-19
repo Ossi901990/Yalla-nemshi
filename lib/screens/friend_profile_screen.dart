@@ -1,10 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/friend_profile.dart';
+import '../services/dm_thread_service.dart';
 import '../services/friend_profile_service.dart';
 import '../services/friends_service.dart';
+import 'dm_chat_screen.dart';
 
 class FriendProfileScreenArgs {
   final String userId;
@@ -30,6 +33,7 @@ class FriendProfileScreen extends StatefulWidget {
 class _FriendProfileScreenState extends State<FriendProfileScreen> {
   final FriendsService _friendsService = FriendsService();
   bool _removingFriend = false;
+  bool _startingChat = false;
 
   @override
   Widget build(BuildContext context) {
@@ -158,12 +162,15 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               alignment: WrapAlignment.center,
               children: [
                 FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Messaging is coming soon.')),
-                    );
-                  },
-                  icon: const Icon(Icons.chat_bubble_outline_rounded),
+                  onPressed:
+                      _startingChat ? null : () => _startDirectMessage(profile, args),
+                  icon: _startingChat
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chat_bubble_outline_rounded),
                   label: const Text('Message'),
                 ),
                 OutlinedButton.icon(
@@ -189,6 +196,64 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _startDirectMessage(
+    FriendProfile profile,
+    FriendProfileScreenArgs? args,
+  ) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    if (currentUser == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Please sign in to send messages.')),
+      );
+      return;
+    }
+
+    setState(() => _startingChat = true);
+    try {
+      final threadId = await DmThreadService.ensureThread(
+        currentUid: currentUser.uid,
+        friendUid: profile.uid,
+        currentDisplayName: currentUser.displayName,
+        friendDisplayName: profile.displayName,
+        friendPhotoUrl: profile.photoUrl ?? args?.photoUrl,
+      );
+      if (!mounted) return;
+      navigator.pushNamed(
+        DmChatScreen.routeName,
+        arguments: DmChatScreenArgs(
+          threadId: threadId,
+          friendUid: profile.uid,
+          friendName: profile.displayName,
+          friendPhotoUrl: profile.photoUrl ?? args?.photoUrl,
+        ),
+      );
+    } catch (error, stackTrace) {
+      final friendlyError = _formatDmError(error);
+      debugPrint('Failed to open DM with ${profile.uid}: $friendlyError\n$stackTrace');
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Unable to open chat: $friendlyError')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _startingChat = false);
+      }
+    }
+  }
+
+  String _formatDmError(Object error) {
+    if (error is FirebaseException) {
+      final message = error.message?.trim();
+      if (message != null && message.isNotEmpty) {
+        return '${error.code}: $message';
+      }
+      return error.code;
+    }
+    return error.toString();
   }
 
   Widget _buildStatsGrid(BuildContext context, FriendProfile profile) {
@@ -249,7 +314,11 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     );
   }
 
-  Future<void> _confirmRemoveFriend(BuildContext context, String friendUid, String friendName) async {
+  Future<void> _confirmRemoveFriend(
+    BuildContext context,
+    String friendUid,
+    String friendName,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -272,9 +341,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
     if (confirmed != true) return;
 
+  if (!context.mounted) return;
+
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     if (currentUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Please sign in again.')),
       );
       return;
@@ -284,13 +357,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     try {
       await _friendsService.removeFriend(currentUid, friendUid);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Removed $friendName from your friends.')),
       );
-      Navigator.of(context).maybePop();
+      navigator.maybePop();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Could not remove friend: $error')),
       );
     } finally {

@@ -1,10 +1,14 @@
 // lib/services/notification_service.dart
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/app_notification.dart';
 import '../models/walk_event.dart';
+import '../screens/dm_chat_screen.dart';
 import 'notification_storage.dart';
 import 'app_preferences.dart';
 import 'crash_service.dart';
@@ -19,9 +23,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _messagingOverride;
+  FirebaseMessaging get _messaging => _messagingOverride ?? FirebaseMessaging.instance;
   String? _currentToken;
+  StreamSubscription<User?>? _authSubscription;
+  Map<String, String?>? _pendingDmNavigation;
 
   /// Initialize FCM and request permissions
   static Future<void> init() async {
@@ -45,6 +53,9 @@ class NotificationService {
       
       // Handle notification taps when app is opened from terminated state
       instance._handleInitialMessage();
+
+      // Persist tokens when auth state changes
+      instance._listenForAuthChanges();
       
       debugPrint('✅ NotificationService initialized');
     } catch (e, st) {
@@ -86,7 +97,7 @@ class NotificationService {
       if (token != null) {
         _currentToken = token;
         debugPrint('📱 FCM Token: ${token.substring(0, 20)}...');
-        await _saveTokenToFirestore(token);
+        await _persistTokenForCurrentUser(tokenOverride: token);
       } else {
         debugPrint('⚠️ FCM token is null');
       }
@@ -97,14 +108,11 @@ class NotificationService {
   }
 
   /// Save FCM token to Firestore
-  Future<void> _saveTokenToFirestore(String token) async {
+  Future<void> _saveTokenToFirestore(String token, User user) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        debugPrint('⚠️ Cannot save token: user not logged in');
-        return;
-      }
-
+      debugPrint(
+        '💾 Saving FCM token for ${user.uid} at users/${user.uid}/fcmTokens/${token.substring(0, 12)}...',
+      );
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -112,11 +120,12 @@ class NotificationService {
           .doc(token)
           .set({
         'token': token,
-        'createdAt': FieldValue.serverTimestamp(),
         'platform': defaultTargetPlatform.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      debugPrint('✅ FCM token saved to Firestore');
+      debugPrint('✅ FCM token saved to Firestore for ${user.uid}');
     } catch (e, st) {
       debugPrint('❌ Token save error: $e');
       CrashService.recordError(e, st, reason: 'Failed to save FCM token to Firestore');
@@ -128,7 +137,7 @@ class NotificationService {
     _messaging.onTokenRefresh.listen((newToken) {
       debugPrint('🔄 FCM token refreshed');
       _currentToken = newToken;
-      _saveTokenToFirestore(newToken);
+      _persistTokenForCurrentUser(tokenOverride: newToken);
     }).onError((error, stackTrace) {
       debugPrint('❌ Token refresh error: $error');
       CrashService.recordError(error, stackTrace, reason: 'FCM token refresh failed');
@@ -175,9 +184,15 @@ class NotificationService {
   void _handleNotificationData(Map<String, dynamic> data) {
     final type = data['type'] as String?;
     debugPrint('📦 Notification data type: $type');
-    
-    // You can add custom handling based on notification type
-    // e.g., navigate to specific screen, update UI, etc.
+
+    if (type == 'dm_message') {
+      _navigateToDmThread(
+        threadId: data['threadId'] as String?,
+        friendUid: data['senderId'] as String? ?? data['friendUid'] as String?,
+        friendName: data['senderName'] as String? ?? 'Friend',
+        friendPhotoUrl: data['senderPhotoUrl'] as String?,
+      );
+    }
   }
 
   /// Handle initial message when app is opened from terminated state
@@ -265,5 +280,100 @@ class NotificationService {
     );
 
     await NotificationStorage.addNotification(n);
+  }
+
+  void _navigateToDmThread({
+    required String? threadId,
+    required String? friendUid,
+    required String friendName,
+    String? friendPhotoUrl,
+    bool allowQueue = true,
+  }) {
+    if (threadId == null || friendUid == null) {
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    final navigator = navigatorKey.currentState;
+    if (user == null || navigator == null) {
+      if (allowQueue) {
+        _pendingDmNavigation = {
+          'threadId': threadId,
+          'friendUid': friendUid,
+          'friendName': friendName,
+          'friendPhotoUrl': friendPhotoUrl,
+        };
+      }
+      return;
+    }
+
+    navigator.pushNamed(
+      DmChatScreen.routeName,
+      arguments: DmChatScreenArgs(
+        threadId: threadId,
+        friendUid: friendUid,
+        friendName: friendName,
+        friendPhotoUrl: friendPhotoUrl,
+      ),
+    );
+  }
+
+  void handlePendingNavigation() {
+    final data = _pendingDmNavigation;
+    if (data == null) return;
+    _pendingDmNavigation = null;
+    _navigateToDmThread(
+      threadId: data['threadId'],
+      friendUid: data['friendUid'],
+      friendName: data['friendName'] ?? 'Friend',
+      friendPhotoUrl: data['friendPhotoUrl'],
+      allowQueue: false,
+    );
+  }
+
+  void _listenForAuthChanges() {
+    _authSubscription ??=
+        FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user == null) {
+        return;
+      }
+      await _persistTokenForUser(user);
+    });
+  }
+
+  Future<void> _persistTokenForCurrentUser({String? tokenOverride}) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint('⚠️ Cannot persist token: user not logged in');
+      return;
+    }
+    await _persistTokenForUser(user, tokenOverride: tokenOverride);
+  }
+
+  Future<void> _persistTokenForUser(
+    User user, {
+    String? tokenOverride,
+  }) async {
+    try {
+      final token = tokenOverride ?? _currentToken ?? await _messaging.getToken();
+      if (token == null) {
+        debugPrint('⚠️ Cannot persist token: token is null');
+        return;
+      }
+      _currentToken = token;
+      await _saveTokenToFirestore(token, user);
+    } catch (e, st) {
+      debugPrint('❌ Failed to persist FCM token for ${user.uid}: $e');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'Persist FCM token for user ${user.uid}',
+      );
+    }
+  }
+
+  @visibleForTesting
+  void overrideMessaging(FirebaseMessaging messaging) {
+    _messagingOverride = messaging;
   }
 }

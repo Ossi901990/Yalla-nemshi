@@ -90,7 +90,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
       }
 
       final profilesFuture = FirestoreUserService.getUsersByIds(friendIds);
-      final mutualFuture = _fetchMutualFriendCounts(user.uid, friendIds);
+      final mutualFuture = _fetchMutualFriendCounts(friendIds);
       final profiles = await profilesFuture;
       final mutualCounts = await mutualFuture;
       final friendCards = _composeFriendCards(
@@ -207,7 +207,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
   }
 
   Future<Map<String, int>> _fetchMutualFriendCounts(
-    String _currentUserId,
     List<String> friendIds,
   ) async {
     if (friendIds.isEmpty) return {};
@@ -1165,19 +1164,6 @@ class _FriendWalkActivity {
     this.status,
     this.distanceKm,
   });
-
-  factory _FriendWalkActivity.fromDoc(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data();
-    return _FriendWalkActivity(
-      walkId: doc.id,
-      joinedAt: _readTimestamp(data['joinedAt']) ?? DateTime.now(),
-      completedAt: _readTimestamp(data['completedAt']),
-      status: data['status']?.toString(),
-      distanceKm: (data['actualDistanceKm'] as num?)?.toDouble(),
-    );
-  }
 
   final String walkId;
   final DateTime joinedAt;

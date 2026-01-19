@@ -46,6 +46,25 @@ service cloud.firestore {
         );
     }
 
+    function _threadDataContainsUser(data) {
+      return data != null
+        && (
+          (data.participants != null && request.auth.uid in data.participants)
+          || (data.memberIds != null && request.auth.uid in data.memberIds)
+        );
+    }
+
+    function dmThreadHasParticipant(threadId) {
+      return signedIn()
+        && _threadDataContainsUser(
+          get(/databases/$(database)/documents/dm_threads/$(threadId)).data,
+        );
+    }
+
+    function dmResourceHasParticipant() {
+      return signedIn() && _threadDataContainsUser(resource.data);
+    }
+
     // ===== USERS COLLECTION (NEW) =====
     match /users/{userId} {
       allow get: if signedIn();
@@ -207,7 +226,7 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 1000  // Max message length
-          && request.resource.data.sentAt is timestamp;
+          && request.resource.data.sentAt != null;
 
         allow update, delete: if false;
       }
@@ -274,6 +293,46 @@ service cloud.firestore {
           && request.query.limit != null
           && request.query.limit <= 50;
         allow create, update, delete: if false;
+      }
+    }
+
+    // ===== DIRECT MESSAGE THREADS =====
+    match /dm_threads/{threadId} {
+      allow get: if dmResourceHasParticipant();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() == 2
+        && request.resource.data.participants[0] is string
+        && request.resource.data.participants[1] is string
+        && request.resource.data.participants[0] != request.resource.data.participants[1]
+        && request.auth.uid in request.resource.data.participants;
+
+      allow update: if dmResourceHasParticipant();
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow get, list: if dmThreadHasParticipant(threadId);
+
+        allow create: if dmThreadHasParticipant(threadId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.type is string
+          && request.resource.data.createdAt != null
+          && (
+            (
+              request.resource.data.type == 'text'
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 2000
+            )
+            || (
+              request.resource.data.type == 'image'
+              && request.resource.data.mediaUrl is string
+            )
+          );
+
+        allow update, delete: if false;
       }
     }
 

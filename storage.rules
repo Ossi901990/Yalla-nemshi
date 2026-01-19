@@ -1,11 +1,40 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function dmThread(threadId) {
+      return firestore.get(/databases/(default)/documents/dm_threads/$(threadId)).data;
+    }
+
+    function isDmParticipant(threadId) {
+      return signedIn()
+        && dmThread(threadId) != null
+        && (
+          (dmThread(threadId).participants != null
+            && request.auth.uid in dmThread(threadId).participants)
+          || (dmThread(threadId).memberIds != null
+            && request.auth.uid in dmThread(threadId).memberIds)
+        );
+    }
+
     // Walk photos: anyone authenticated can read, only authenticated users can write
     match /walks/{walkId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if signedIn();
+      allow write: if signedIn();
+      allow delete: if signedIn();
+    }
+
+    // Direct message media uploads
+    match /dm_media/{threadId}/{fileName} {
+      allow read: if isDmParticipant(threadId);
+      allow delete: if isDmParticipant(threadId);
+      allow write: if isDmParticipant(threadId)
+        && request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
   }
 }

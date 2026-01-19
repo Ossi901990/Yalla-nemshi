@@ -22,6 +22,7 @@ import 'package:geolocator/geolocator.dart';
 import 'screens/friend_list_screen.dart';
 import 'screens/friend_search_screen.dart';
 import 'screens/friend_profile_screen.dart';
+import 'screens/dm_chat_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -144,6 +145,7 @@ class MyApp extends StatelessWidget {
       title: 'Yalla Nemshi',
       debugShowCheckedModeBanner: false,
       theme: _lightTheme,
+      navigatorKey: NotificationService.navigatorKey,
       home: const AuthStateRouter(),
       routes: {
         LoginScreen.routeName: (context) => const LoginScreen(),
@@ -167,6 +169,10 @@ class MyApp extends StatelessWidget {
         FriendSearchScreen.routeName: (context) => const FriendSearchScreen(),
         FriendProfileScreen.routeName: (context) => const FriendProfileScreen(),
         WalkSearchScreen.routeName: (context) => const WalkSearchScreen(),
+        DmChatScreen.routeName: (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as DmChatScreenArgs;
+          return DmChatScreen(args: args);
+        },
       },
     );
   }
@@ -184,6 +190,9 @@ class AuthStateRouter extends ConsumerWidget {
       data: (user) {
         // User is logged in, show home screen
         if (user != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            NotificationService.instance.handlePendingNavigation();
+          });
           return const HomeScreen();
         }
         // User is not logged in, show login screen

@@ -2,7 +2,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentWritten, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten, onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 
 const db = admin.firestore();
@@ -29,8 +29,9 @@ setGlobalOptions({ region: "europe-west1" });
  * @param {string} userId - User ID to send notification to
  * @param {Object} notification - Notification object with title and body
  * @param {Object} data - Optional data payload
+ * @param {string} context - String used for log correlation
  */
-async function sendNotificationToUser(userId, notification, data = {}) {
+async function sendNotificationToUser(userId, notification, data = {}, context = "general") {
   try {
     const db = admin.firestore();
     const tokensSnapshot = await db
@@ -40,11 +41,12 @@ async function sendNotificationToUser(userId, notification, data = {}) {
       .get();
 
     if (tokensSnapshot.empty) {
-      console.log(`No FCM tokens found for user: ${userId}`);
+      console.log(`[${context}] No FCM tokens found for user: ${userId}`);
       return;
     }
 
     const tokens = tokensSnapshot.docs.map((doc) => doc.data().token);
+    console.log(`📨 [${context}] Preparing notification for user ${userId} (${tokens.length} tokens)`);
 
     const message = {
       notification: {
@@ -56,7 +58,16 @@ async function sendNotificationToUser(userId, notification, data = {}) {
     };
 
     const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`✅ Sent ${response.successCount} notifications to user ${userId}`);
+    console.log(`✅ [${context}] Sent ${response.successCount} notifications to user ${userId}`);
+
+    response.responses.forEach((resp, idx) => {
+      const tokenPreview = tokens[idx] ? `${tokens[idx].substring(0, 12)}...` : 'unknown';
+      if (resp.success) {
+        console.log(`   ↳ Delivered to token ${tokenPreview}`);
+      } else {
+        console.error(`   ↳ Failed token ${tokenPreview}: ${resp.error?.code || resp.error}`);
+      }
+    });
 
     // Clean up invalid tokens
     if (response.failureCount > 0) {
@@ -72,10 +83,10 @@ async function sendNotificationToUser(userId, notification, data = {}) {
         }
       });
       await batch.commit();
-      console.log(`🗑️ Cleaned up ${response.failureCount} invalid tokens`);
+      console.log(`🗑️ [${context}] Cleaned up ${response.failureCount} invalid tokens`);
     }
   } catch (error) {
-    console.error(`❌ Error sending notification to user ${userId}:`, error);
+    console.error(`❌ [${context}] Error sending notification to user ${userId}:`, error);
   }
 }
 
@@ -454,6 +465,88 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
     console.error("❌ Error in onWalkUpdated:", error);
   }
 });
+
+/**
+ * Trigger: New direct message created
+ * Action: Notify the other participant(s) in the thread
+ */
+exports.onDmMessageCreated = onDocumentCreated(
+  "dm_threads/{threadId}/messages/{messageId}",
+  async (event) => {
+    const message = event.data?.data();
+    if (!message) return;
+
+    const senderId = message.senderId;
+    if (!senderId) return;
+
+    const threadId = event.params.threadId;
+
+    try {
+      const threadSnap = await db.collection("dm_threads").doc(threadId).get();
+      if (!threadSnap.exists) {
+        return;
+      }
+
+      const thread = threadSnap.data() || {};
+      const rawParticipants = Array.isArray(thread.participants)
+        ? thread.participants
+        : Array.isArray(thread.memberIds)
+          ? thread.memberIds
+          : [];
+      const recipients = rawParticipants.filter((uid) => uid && uid !== senderId);
+      if (recipients.length === 0) {
+        return;
+      }
+
+      console.log(
+        `💬 DM notification trigger thread=${threadId} message=${event.params.messageId} sender=${senderId} recipients=${recipients.join(",")}`,
+      );
+
+      const participantProfiles = thread.participantProfiles || {};
+      let senderProfile = participantProfiles[senderId] || {};
+      const senderSnap = await db.collection("users").doc(senderId).get();
+      if (senderSnap.exists) {
+        senderProfile = { ...senderProfile, ...senderSnap.data() };
+      }
+
+      const senderName = senderProfile.displayName || "New message";
+      const senderPhotoUrl = senderProfile.photoUrl || senderProfile.photoURL || "";
+
+      let body;
+      const messageType = message.type || message.mediaType;
+      if (messageType === "image") {
+        body = `${senderName} sent you a photo`;
+      } else {
+        const text = (message.text || "").toString();
+        body = text.length > 120 ? `${text.substring(0, 117)}...` : text || "New message";
+      }
+
+      await Promise.all(
+        recipients.map((uid) =>
+          sendNotificationToUser(
+            uid,
+            {
+              title: senderName,
+              body,
+            },
+            {
+              type: "dm_message",
+              threadId,
+              senderId,
+              senderName,
+              senderPhotoUrl,
+            },
+            `dm:${threadId}:${event.params.messageId}`,
+          ),
+        ),
+      );
+
+      console.log(`✅ Sent DM notifications for thread ${threadId}`);
+    } catch (error) {
+      console.error("❌ Error in onDmMessageCreated:", error);
+    }
+  },
+);
 
 /**
  * Trigger: When a new chat message is created
