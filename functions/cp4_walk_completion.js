@@ -10,11 +10,26 @@
 
 const admin = require("firebase-admin");
 const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
-const { setGlobalOptions } = require("firebase-functions/v2");
+const { sendNotificationToUser } = require("./index");
 
-// ===== SET GLOBAL REGION FOR FIRESTORE-TRIGGERED FUNCTIONS =====
-// All functions now in europe-west1 to match Firestore region
-setGlobalOptions({ region: "europe-west1" });
+// ===== BADGE CATALOG (mirrors Flutter badge catalog) =====
+// metric options: totalWalksCompleted | totalDistanceKm | totalWalksHosted
+const badgeCatalog = [
+  { id: "first_walk", title: "First Steps", description: "Complete your first walk.", metric: "totalWalksCompleted", target: 1 },
+  { id: "five_walks", title: "Getting Going", description: "Complete 5 walks.", metric: "totalWalksCompleted", target: 5 },
+  { id: "ten_walks", title: "Consistent Walker", description: "Complete 10 walks.", metric: "totalWalksCompleted", target: 10 },
+  { id: "twentyfive_walks", title: "Trail Regular", description: "Complete 25 walks.", metric: "totalWalksCompleted", target: 25 },
+  { id: "fifty_walks", title: "Walk Centurion", description: "Complete 50 walks.", metric: "totalWalksCompleted", target: 50 },
+  { id: "hundred_walks", title: "Habit Master", description: "Complete 100 walks.", metric: "totalWalksCompleted", target: 100 },
+  { id: "km_20", title: "20 km", description: "Walk 20 km in total.", metric: "totalDistanceKm", target: 20 },
+  { id: "km_42", title: "Marathon Mindset", description: "Walk 42 km in total.", metric: "totalDistanceKm", target: 42 },
+  { id: "km_100", title: "Century Club", description: "Walk 100 km in total.", metric: "totalDistanceKm", target: 100 },
+  { id: "km_250", title: "Quarter to 1k", description: "Walk 250 km in total.", metric: "totalDistanceKm", target: 250 },
+  { id: "km_500", title: "Half to 1k", description: "Walk 500 km in total.", metric: "totalDistanceKm", target: 500 },
+  { id: "first_host", title: "First Host", description: "Host your first walk.", metric: "totalWalksHosted", target: 1 },
+  { id: "five_hosts", title: "Community Leader", description: "Host 5 walks.", metric: "totalWalksHosted", target: 5 },
+  { id: "ten_hosts", title: "Super Host", description: "Host 10 walks.", metric: "totalWalksHosted", target: 10 },
+];
 
 // ===== CP-4: Helper function to send confirmation prompt =====
 
@@ -176,7 +191,7 @@ exports.onWalkEnded = onDocumentUpdated(
       // Calculate stats for each user
       await Promise.all(
         userStatsToUpdate.map(async (update) => {
-          await updateUserStats(db, update.userId, update.actualDurationMinutes, update.actualDistanceKm);
+          await updateUserStats(db, update.userId, update.actualDurationMinutes, update.actualDistanceKm, false, sendNotificationToUser);
         })
       );
 
@@ -279,7 +294,8 @@ exports.onUserLeftWalkEarly = onDocumentUpdated(
         userId,
         actualDurationMinutes,
         participationAfter.actualDistanceKm || 0,
-        true // isPartialCredit
+        true, // isPartialCredit
+        sendNotificationToUser
       );
 
       console.log(`✅ Updated stats for user ${userId} (${actualDurationMinutes} min)`);
@@ -295,7 +311,7 @@ exports.onUserLeftWalkEarly = onDocumentUpdated(
  * Update user's walking statistics
  * Called when walk completes or user leaves early
  */
-async function updateUserStats(db, userId, durationMinutes, distanceKm, isPartialCredit = false) {
+async function updateUserStats(db, userId, durationMinutes, distanceKm, isPartialCredit = false, sendNotification = null) {
   try {
     const statsRef = db.collection("users").doc(userId).collection("stats").doc("walkStats");
     const statsSnapshot = await statsRef.get();
@@ -337,8 +353,94 @@ async function updateUserStats(db, userId, durationMinutes, distanceKm, isPartia
 
     await statsRef.set(stats, { merge: true });
     console.log(`✅ Updated stats for user ${userId}`);
+
+    // Evaluate and persist badges for this user
+    await evaluateBadges(db, userId, {
+      totalWalksCompleted: stats.totalWalksCompleted ?? (statsSnapshot.data()?.totalWalksCompleted ?? 0),
+      totalDistanceKm: stats.totalDistanceKm ?? (statsSnapshot.data()?.totalDistanceKm ?? 0),
+      totalWalksHosted: stats.totalWalksHosted ?? (statsSnapshot.data()?.totalWalksHosted ?? 0),
+    }, sendNotification);
   } catch (error) {
     console.error(`❌ Error updating stats for user ${userId}:`, error);
+  }
+}
+
+function metricValue(metric, stats) {
+  switch (metric) {
+    case "totalWalksCompleted":
+      return stats.totalWalksCompleted || 0;
+    case "totalDistanceKm":
+      return stats.totalDistanceKm || 0;
+    case "totalWalksHosted":
+      return stats.totalWalksHosted || 0;
+    default:
+      return 0;
+  }
+}
+
+async function evaluateBadges(db, userId, stats, sendNotification = null) {
+  try {
+    const badgesRef = db.collection("users").doc(userId).collection("badges");
+    const existingSnapshot = await badgesRef.get();
+
+    const existing = {};
+    existingSnapshot.forEach((doc) => {
+      existing[doc.id] = doc.data();
+    });
+
+    const batch = db.batch();
+    const newBadgesEarned = [];
+
+    badgeCatalog.forEach((badge) => {
+      const currentValue = metricValue(badge.metric, stats);
+      const progress = badge.target > 0 ? Math.min(1, currentValue / badge.target) : 0;
+      const achieved = currentValue >= badge.target - 1e-9;
+
+      const prev = existing[badge.id];
+      const alreadyAchieved = prev && prev.achieved === true;
+
+      const earnedAt = achieved
+        ? (prev && prev.earnedAt) || admin.firestore.Timestamp.now()
+        : null;
+
+      batch.set(
+        badgesRef.doc(badge.id),
+        {
+          title: badge.title,
+          description: badge.description,
+          progress,
+          target: badge.target,
+          achieved,
+          earnedAt,
+          metric: badge.metric,
+          updatedAt: admin.firestore.Timestamp.now(),
+        },
+        { merge: true },
+      );
+
+      if (achieved && !alreadyAchieved) {
+        console.log(`🎉 Badge earned for ${userId}: ${badge.id}`);
+        newBadgesEarned.push(badge);
+      }
+    });
+
+    await batch.commit();
+
+    // Send notifications for newly earned badges
+    if (sendNotification && newBadgesEarned.length > 0) {
+      for (const badge of newBadgesEarned) {
+        await sendNotification(userId, {
+          title: `🎉 Badge Earned!`,
+          body: `"${badge.title}" - ${badge.description}`,
+        }, {
+          action: "badge_earned",
+          badgeId: badge.id,
+          badgeTitle: badge.title,
+        }, "badge_notification");
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error evaluating badges for ${userId}:`, error);
   }
 }
 

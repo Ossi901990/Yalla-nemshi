@@ -4,6 +4,7 @@ import '../services/walk_history_service.dart';
 import '../services/user_stats_service.dart';
 import '../services/crash_service.dart';
 import '../utils/error_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Dialog for marking a walk as completed and recording stats
 class CompleteWalkDialog extends StatefulWidget {
@@ -62,6 +63,11 @@ class _CompleteWalkDialogState extends State<CompleteWalkDialog> {
       final duration = Duration(minutes: durationMinutes);
       final notes = _notesController.text.trim();
 
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        throw Exception('User not authenticated');
+      }
+
       final walkId = widget.walk.firestoreId.isNotEmpty
           ? widget.walk.firestoreId
           : widget.walk.id;
@@ -78,7 +84,7 @@ class _CompleteWalkDialogState extends State<CompleteWalkDialog> {
       // Only count as completed if user walked majority of time
       final participantCount = widget.walk.joinedUserUids.length;
       await UserStatsService.instance.incrementWalkCompleted(
-        userId: '', // Will be fetched from auth context
+        userId: uid,
         distanceKm: distance,
         duration: duration,
         participantCount: participantCount,

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
@@ -15,6 +16,7 @@ import '../services/user_stats_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/walk_export_service.dart';
 import '../models/profile_badge.dart';
+import '../models/badge.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 
 import 'badges_info_screen.dart';
@@ -38,6 +40,28 @@ const double kSpace4 = 32;
 const kLightSurface = Color(0xFFFBFEF8);
 const double kCardElevationLight = 0.6;
 const double kCardElevationDark = 0.0;
+
+class _BadgeView {
+  final String id;
+  final String title;
+  final String description;
+  final double progress;
+  final double target;
+  final bool achieved;
+  final IconData icon;
+  final DateTime? earnedAt;
+
+  const _BadgeView({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.progress,
+    required this.target,
+    required this.achieved,
+    required this.icon,
+    this.earnedAt,
+  });
+}
 const double kCardBorderAlpha = 0.06;
 
 class ProfileScreen extends StatefulWidget {
@@ -646,6 +670,242 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildBadgesSection(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Badges',
+          style: theme.textTheme.titleMedium?.copyWith(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+                color: isDark ? Colors.white : Colors.black,
+              ) ??
+              const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+              ),
+        ),
+        const SizedBox(height: 8),
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .collection('badges')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+              return Card(
+                color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+                elevation: isDark ? 0.0 : 0.5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withAlpha((0.08 * 255).round()),
+                  ),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: SizedBox(
+                    height: 40,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              );
+            }
+
+            final docs = snapshot.data?.docs ?? [];
+            final existing = {
+              for (final d in docs) d.id: d.data() as Map<String, dynamic>
+            };
+
+            final merged = kBadgeCatalog.map((def) {
+              final data = existing[def.id];
+              final progress = ((data?['progress'] as num?)?.toDouble() ?? 0).clamp(0.0, 1.0);
+              final achieved = data?['achieved'] as bool? ?? false;
+              final earnedAt = (data?['earnedAt'] as Timestamp?)?.toDate();
+
+              return _BadgeView(
+                id: def.id,
+                title: def.title,
+                description: def.description,
+                progress: progress,
+                target: def.target,
+                achieved: achieved,
+                icon: def.icon,
+                earnedAt: earnedAt,
+              );
+            }).toList();
+
+            final achievedBadges = merged.where((b) => b.achieved).toList();
+            final inProgressBadges = merged
+                .where((b) => !b.achieved)
+                .toList()
+              ..sort((a, b) => b.progress.compareTo(a.progress));
+
+            final profileBadges = merged
+                .map(
+                  (b) => ProfileBadge(
+                    id: b.id,
+                    title: b.title,
+                    description: b.description,
+                    icon: b.icon,
+                    achieved: b.achieved,
+                  ),
+                )
+                .toList();
+
+            return Card(
+              color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
+              elevation: isDark ? 0.0 : 0.5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withAlpha((0.08 * 255).round()),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (achievedBadges.isEmpty && inProgressBadges.isEmpty)
+                      Text(
+                        'Badges will appear here as you walk more.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                              color: isDark ? Colors.white70 : null,
+                            ) ??
+                            TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                              color: isDark ? Colors.white70 : null,
+                            ),
+                      )
+                    else ...[
+                      if (achievedBadges.isNotEmpty)
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: achievedBadges.take(6).map((b) {
+                            return GestureDetector(
+                              onTap: () => _showBadgeDetails(
+                                ProfileBadge(
+                                  id: b.id,
+                                  title: b.title,
+                                  description: b.description,
+                                  icon: b.icon,
+                                  achieved: b.achieved,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: theme.colorScheme.primary,
+                                child: Icon(
+                                  b.icon,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+
+                      if (inProgressBadges.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Column(
+                          children: inProgressBadges.take(3).map((b) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(b.icon, size: 18, color: theme.colorScheme.primary),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            b.title,
+                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: isDark ? Colors.white : Colors.black,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        '${(b.progress * 100).round()}%',
+                                        style: theme.textTheme.labelMedium,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: LinearProgressIndicator(
+                                      value: b.progress,
+                                      minHeight: 8,
+                                      backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    b.description,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                          color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => _openBadgesPage(profileBadges),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('View all'),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   Future<void> _openEditProfile() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EditProfileScreen(profile: _profile)),
@@ -835,16 +1095,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final profile = _profile;
-
-    final allBadges = computeBadges(
-      walksJoined: widget.walksJoined,
-      eventsHosted: widget.eventsHosted,
-      totalKm: widget.totalKm,
-    );
-
-    final achievedBadges = allBadges
-        .where((b) => b.achieved)
-        .toList(growable: false);
 
     final double weeklyProgress = _weeklyGoalKmLocal <= 0
         ? 0
@@ -1639,110 +1889,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
 
-                          // Badges
-                          Text(
-                            'Badges',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ) ??
-                                const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          Card(
-                            color: isDark
-                                ? const Color(0xFF0C2430)
-                                : theme.cardColor,
-                            elevation: isDark ? 0.0 : 0.5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: (isDark ? Colors.white : Colors.black)
-                                    .withAlpha((0.08 * 255).round()),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                12,
-                                10,
-                                12,
-                                10,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (achievedBadges.isEmpty)
-                                    Text(
-                                      'Badges will appear here as you walk more.',
-                                      style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                fontFamily: 'Inter',
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                                height: 1.4,
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : null,
-                                              ) ??
-                                              TextStyle(
-                                                fontFamily: 'Inter',
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                                height: 1.4,
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : null,
-                                              ),
-                                    )
-                                  else ...[
-                                    Wrap(
-                                      spacing: 10,
-                                      runSpacing: 10,
-                                      children: achievedBadges.take(6).map((b) {
-                                        return GestureDetector(
-                                          onTap: () => _showBadgeDetails(b),
-                                          child: CircleAvatar(
-                                            radius: 18,
-                                            backgroundColor:
-                                                theme.colorScheme.primary,
-                                            child: Icon(
-                                              b.icon,
-                                              size: 18,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-
-                                    // ✅ Compact "View all" (doesn't inflate card height)
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: TextButton(
-                                        onPressed: () =>
-                                            _openBadgesPage(allBadges),
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        child: const Text('View all'),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
+                          _buildBadgesSection(context),
 
                           const SizedBox(height: 24),
 

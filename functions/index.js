@@ -90,6 +90,8 @@ async function sendNotificationToUser(userId, notification, data = {}, context =
   }
 }
 
+// Export sendNotificationToUser for use in other modules
+module.exports.sendNotificationToUser = sendNotificationToUser;
 
 exports.redeemInviteCode = onCall(async (request) => {
   // ✅ Must be signed in

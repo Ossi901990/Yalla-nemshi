@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/walk_participation.dart';
+import 'badge_service.dart';
 import 'crash_service.dart';
 
 /// Service for managing user walk statistics
@@ -109,6 +110,8 @@ class UserStatsService {
         'createdAt': doc.exists ? stats.createdAt : DateTime.now(),
         'lastUpdated': Timestamp.now(),
       }, SetOptions(merge: true));
+
+      await BadgeService.instance.checkAndAward(userId: userId);
     } catch (e) {
       CrashService.recordError(
         e,
@@ -145,6 +148,8 @@ class UserStatsService {
         'lastWalkDate': Timestamp.now(),
         'lastUpdated': Timestamp.now(),
       });
+
+      await BadgeService.instance.checkAndAward(userId: userId);
     } catch (e) {
       CrashService.recordError(
         e,
