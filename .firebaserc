@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "yalla-nemshi-app"
-  }
+    "default": "yalla-nemshi-app",
+    "prod": "yalla-nemshi-app"
+  },
+  "targets": {},
+  "etags": {}
 }
