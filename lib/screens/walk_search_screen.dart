@@ -433,6 +433,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               const SizedBox(height: 16),
               _buildSuggestionList(theme),
               _buildHistorySection(theme),
+              _buildPopularTagsSection(theme),
               const SizedBox(height: 24),
               _buildSavedFiltersSection(theme),
               const SizedBox(height: 24),
@@ -611,6 +612,53 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               )
               .toList(),
         ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildPopularTagsSection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Popular tags',
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Browse walks by popular categories',
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _tagOptions
+              .map(
+                (tag) {
+                  final selected = _filters.tags.contains(tag);
+                  return FilterChip(
+                    label: Text(tag),
+                    selected: selected,
+                    onSelected: (newValue) {
+                      setState(() {
+                        if (newValue) {
+                          _filters = _filters.copyWith(tags: {..._filters.tags, tag});
+                        } else {
+                          final updated = {..._filters.tags};
+                          updated.remove(tag);
+                          _filters = _filters.copyWith(tags: updated);
+                        }
+                      });
+                      _runSearch(reset: true);
+                    },
+                  );
+                },
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }

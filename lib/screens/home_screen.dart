@@ -20,6 +20,7 @@ import '../services/firestore_sync_service.dart';
 import '../services/offline_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/walk_control_service.dart';
+import '../services/tag_recommendation_service.dart';
 import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
 import '../services/profile_storage.dart';
@@ -424,6 +425,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
+  late List<WalkEvent> _recommendations; // For future UI recommendations section
   bool _isOffline = false;
   int _pendingActions = 0;
 
@@ -741,6 +743,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _loadProfile(); // ✅ load saved avatar
     _loadWeeklyGoal();
     _loadCachedWalks();
+    _loadRecommendations(); // ✅ Load tag-based recommendations
     _listenToWalks();
 
     // 🔹 Sync user profile to Firestore (if missing)
@@ -794,6 +797,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'HomeScreen.loadCachedWalks');
+    }
+  }
+
+  Future<void> _loadRecommendations() async {
+    try {
+      final recs = await TagRecommendationService.instance.getRecommendations();
+      if (!mounted) return;
+      setState(() {
+        _recommendations = recs; // Can be used for "Recommended" section in UI
+      });
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'HomeScreen.loadRecommendations',
+      );
     }
   }
 
@@ -2144,6 +2163,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             streakDays: _streakDays,
                           ),
                           SizedBox(height: kSpace2),
+
+                          // ===== TAG-BASED RECOMMENDATIONS =====
+                          if (_recommendations.isNotEmpty) ...[
+                            Text(
+                              'Recommended for you',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: kSpace1),
+                            Text(
+                              'Based on walks you\'ve joined',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.black54,
+                              ),
+                            ),
+                            SizedBox(height: kSpace2),
+                            SizedBox(
+                              height: 200,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _recommendations.length,
+                                itemBuilder: (context, index) {
+                                  final rec = _recommendations[index];
+                                  return Container(
+                                    width: 280,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    child: _RecommendationCard(
+                                      event: rec,
+                                      onTap: () => _navigateToDetails(rec),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            SizedBox(height: kSpace2),
+                          ],
                         ],
                       ),
                     ),
@@ -2160,7 +2218,95 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 //end of homescreeninstant
 // ===== Smaller components =====
 
-class _WeeklySummaryCard extends StatelessWidget {
+// ===== RECOMMENDATION CARD (horizontal carousel card) =====
+class _RecommendationCard extends StatelessWidget {
+  final WalkEvent event;
+  final VoidCallback onTap;
+
+  const _RecommendationCard({
+    required this.event,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        color: isDark ? kDarkSurface : kLightSurface,
+        elevation: isDark ? kCardElevationDark : kCardElevationLight,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(kRadiusCard),
+          side: BorderSide(
+            color: (isDark ? Colors.white : Colors.black).withAlpha(
+              (kCardBorderAlpha * 255).round(),
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                event.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? kTextPrimary : Colors.black87,
+                    ) ??
+                    const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${event.distanceKm} km • ${event.dateTime.month}/${event.dateTime.day}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isDark ? kTextSecondary : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (event.tags.isNotEmpty)
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: event.tags.take(2).map((tag) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        tag,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}class _WeeklySummaryCard extends StatelessWidget {
   final int walks;
   final double kmSoFar;
   final double kmGoal;

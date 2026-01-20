@@ -646,6 +646,48 @@ class _WalkCard extends StatelessWidget {
                       color: isDark ? kTextSecondary : Colors.black54,
                     ),
               ),
+              // ===== TAGS (if any) =====
+              if (event.tags.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: event.tags.take(3).map((tag) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        tag,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (event.tags.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '+${event.tags.length - 3} more',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? kTextSecondary : Colors.black54,
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
