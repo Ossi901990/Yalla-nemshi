@@ -25,6 +25,7 @@ import 'safety_tips_screen.dart';
 import 'login_screen.dart'; // for routeName
 import 'settings_screen.dart';
 import 'home_screen.dart';
+import 'badge_leaderboard_screen.dart';
 import '../services/app_preferences.dart';
 
 // ===== Design tokens (match HomeScreen) =====
@@ -866,7 +867,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     child: LinearProgressIndicator(
                                       value: b.progress,
                                       minHeight: 8,
-                                      backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                                      backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
                                       valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
                                     ),
                                   ),
@@ -886,13 +887,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => _openBadgesPage(profileBadges),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text('View all'),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => _openBadgesPage(profileBadges),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text('View all'),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: _openLeaderboard,
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text('🏆 Leaderboard'),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -917,6 +932,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => BadgesInfoScreen(badges: allBadges)),
     );
+  }
+
+  void _openLeaderboard() {
+    Navigator.of(context).pushNamed(BadgeLeaderboardScreen.routeName);
   }
 
   void _showBadgeDetails(ProfileBadge badge) {

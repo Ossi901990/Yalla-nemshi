@@ -426,6 +426,9 @@ async function evaluateBadges(db, userId, stats, sendNotification = null) {
 
     await batch.commit();
 
+    // Update leaderboard data
+    await updateLeaderboardData(db, userId, newBadgesEarned);
+
     // Send notifications for newly earned badges
     if (sendNotification && newBadgesEarned.length > 0) {
       for (const badge of newBadgesEarned) {
@@ -441,6 +444,72 @@ async function evaluateBadges(db, userId, stats, sendNotification = null) {
     }
   } catch (error) {
     console.error(`❌ Error evaluating badges for ${userId}:`, error);
+  }
+}
+
+/**
+ * Update global and per-badge leaderboards when badges are earned
+ */
+async function updateLeaderboardData(db, userId, newBadgesEarned) {
+  try {
+    if (newBadgesEarned.length === 0) return;
+
+    const userDocRef = db.collection("users").doc(userId);
+    const userDoc = await userDocRef.get();
+    const userData = userDoc.data() || {};
+    const displayName = userData.displayName || "Unknown User";
+    const photoUrl = userData.photoUrl || "";
+
+    // Get total badges earned for this user
+    const badgesSnapshot = await userDocRef.collection("badges").where("achieved", "==", true).get();
+    const totalBadgesEarned = badgesSnapshot.size;
+
+    const now = admin.firestore.Timestamp.now();
+
+    // Update global badge leaderboard
+    await db
+      .collection("leaderboards")
+      .doc("global_badges")
+      .collection("rankings")
+      .doc(userId)
+      .set(
+        {
+          userId,
+          displayName,
+          photoUrl,
+          totalBadgesEarned,
+          lastBadgeEarnedAt: now,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+    console.log(`📊 Updated global leaderboard for ${userId} (${totalBadgesEarned} badges)`);
+
+    // Update per-badge leaderboards for each newly earned badge
+    for (const badge of newBadgesEarned) {
+      await db
+        .collection("leaderboards")
+        .doc(`badge_${badge.id}`)
+        .collection("rankings")
+        .doc(userId)
+        .set(
+          {
+            userId,
+            displayName,
+            photoUrl,
+            badgeId: badge.id,
+            badgeTitle: badge.title,
+            earnedAt: now,
+            updatedAt: now,
+          },
+          { merge: true }
+        );
+
+      console.log(`📊 Updated leaderboard for badge: ${badge.id} for user ${userId}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error updating leaderboard data for ${userId}:`, error);
   }
 }
 

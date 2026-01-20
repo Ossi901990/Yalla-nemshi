@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/profile_badge.dart';
+import 'per_badge_leaderboard_screen.dart';
 
 class BadgesInfoScreen extends StatelessWidget {
   final List<ProfileBadge> badges;
@@ -16,21 +17,36 @@ class BadgesInfoScreen extends StatelessWidget {
         separatorBuilder: (context, _) => const SizedBox(height: 12),
         itemBuilder: (context, i) {
           final b = badges[i];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: b.achieved
-                  ? theme.colorScheme.primary
-                  : Colors.grey.shade300,
-              child: Icon(
-                b.icon,
-                color: b.achieved ? Colors.white : Colors.grey.shade700,
+          return GestureDetector(
+            onTap: () {
+              // Navigate to per-badge leaderboard when tapped
+              Navigator.of(context).pushNamed(
+                PerBadgeLeaderboardScreen.routeName,
+                arguments: {
+                  'id': b.id,
+                  'title': b.title,
+                  'description': b.description,
+                  'metric': 'totalWalksCompleted',
+                  'target': 1,
+                },
+              );
+            },
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: b.achieved
+                    ? theme.colorScheme.primary
+                    : Colors.grey.shade300,
+                child: Icon(
+                  b.icon,
+                  color: b.achieved ? Colors.white : Colors.grey.shade700,
+                ),
               ),
+              title: Text(b.title),
+              subtitle: Text(b.description),
+              trailing: b.achieved
+                  ? const Icon(Icons.check_circle, color: Color(0xFF00D97E))
+                  : null,
             ),
-            title: Text(b.title),
-            subtitle: Text(b.description),
-            trailing: b.achieved
-                ? const Icon(Icons.check_circle, color: Color(0xFF00D97E))
-                : null,
           );
         },
       ),

@@ -346,6 +346,19 @@ service cloud.firestore {
       }
     }
 
+    // ===== BADGE LEADERBOARDS (READ-ONLY) =====
+    match /leaderboards/{leaderboardId} {
+      // Global and per-badge leaderboards are read-only for clients
+      allow get: if signedIn();
+      allow list: if false;
+      allow create, update, delete: if false; // Managed by backend only
+
+      match /rankings/{userId} {
+        allow get, list: if signedIn();
+        allow create, update, delete: if false; // Managed by backend only
+      }
+    }
+
     // ===== CATCH-ALL: DENY EVERYTHING ELSE =====
     match /{document=**} {
       allow read, write: if false;

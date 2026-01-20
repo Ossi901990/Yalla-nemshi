@@ -23,6 +23,8 @@ import 'screens/friend_list_screen.dart';
 import 'screens/friend_search_screen.dart';
 import 'screens/friend_profile_screen.dart';
 import 'screens/dm_chat_screen.dart';
+import 'screens/badge_leaderboard_screen.dart';
+import 'screens/per_badge_leaderboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -172,6 +174,11 @@ class MyApp extends StatelessWidget {
         DmChatScreen.routeName: (context) {
           final args = ModalRoute.of(context)!.settings.arguments as DmChatScreenArgs;
           return DmChatScreen(args: args);
+        },
+        BadgeLeaderboardScreen.routeName: (context) => const BadgeLeaderboardScreen(),
+        PerBadgeLeaderboardScreen.routeName: (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return PerBadgeLeaderboardScreen(badgeData: args);
         },
       },
     );
