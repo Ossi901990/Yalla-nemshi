@@ -6,6 +6,7 @@ import '../models/review.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'walk_chat_screen.dart';
 import 'review_walk_screen.dart';
+import 'walk_summary_screen.dart';
 import '../models/walk_event.dart';
 import '../services/invite_service.dart';
 import '../services/review_service.dart';
@@ -13,6 +14,7 @@ import '../services/recurring_walk_service.dart';
 import '../services/host_rating_service.dart';
 import '../services/walk_control_service.dart';
 import '../services/walk_history_service.dart';
+import '../services/gps_tracking_service.dart';
 import '../utils/invite_utils.dart';
 import '../widgets/review_widgets.dart';
 
@@ -1072,9 +1074,13 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   Future<void> _startWalk(BuildContext context, WalkEvent event) async {
     try {
       await WalkControlService.instance.startWalk(event.firestoreId);
+      
+      // Start GPS tracking for the host
+      await GPSTrackingService.instance.startTracking(event.firestoreId);
+      
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Walk started! Sending confirmation prompts...')),
+        const SnackBar(content: Text('✅ Walk started! GPS tracking enabled...')),
       );
       // Refresh the screen
       setState(() {});
@@ -1111,13 +1117,23 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     if (confirmed != true) return;
 
     try {
+      // Stop GPS tracking and get route stats
+      final routeStats = await GPSTrackingService.instance.stopTracking(event.firestoreId);
+      
+      // End the walk on Firestore
       await WalkControlService.instance.endWalk(event.firestoreId);
+      
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Walk ended! Stats calculated.')),
+      
+      // Navigate to summary screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => WalkSummaryScreen(
+            walk: event,
+            routeStats: routeStats,
+          ),
+        ),
       );
-      // Close the dialog
-      Navigator.pop(context);
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

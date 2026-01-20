@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/walk_event.dart';
 import 'crash_service.dart';
+import 'badge_service.dart';
 
 /// Service for controlling walk state (start/end walks)
 /// For CP-4 walk completion and participant confirmation flow
@@ -95,6 +96,19 @@ class WalkControlService {
         'completedAt': Timestamp.now(),
         'actualDurationMinutes': actualDurationMinutes,
       });
+
+      // Award badges to all participants (async, no need to await)
+      final participantsSnapshot = await walkRef
+          .collection('walkParticipations')
+          .get();
+      
+      for (final doc in participantsSnapshot.docs) {
+        final participantId = doc['userId'] as String?;
+        if (participantId != null) {
+          // Award badges asynchronously
+          BadgeService.instance.checkAndAward(userId: participantId).ignore();
+        }
+      }
 
       CrashService.log('Walk $walkId ended by $uid (${actualDurationMinutes}m)');
     } catch (e) {
