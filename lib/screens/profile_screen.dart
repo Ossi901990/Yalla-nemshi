@@ -27,6 +27,8 @@ import 'settings_screen.dart';
 import 'home_screen.dart';
 import 'badge_leaderboard_screen.dart';
 import '../services/app_preferences.dart';
+import '../services/profile_cache_service.dart';
+import '../services/offline_service.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -103,12 +105,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _deepGreen = Color(0xFF1ABFC4);
 
   late double _weeklyGoalKmLocal;
+  bool _isOffline = false;
+  bool _isProfileStale = false;
+
+  late final VoidCallback _offlineListener;
 
   @override
   void initState() {
     super.initState();
     _weeklyGoalKmLocal = widget.weeklyGoalKm;
+
+    _offlineListener = () {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = OfflineService.instance.isOffline.value;
+      });
+    };
+    OfflineService.instance.isOffline.addListener(_offlineListener);
+    _isOffline = OfflineService.instance.isOffline.value;
+
     _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    OfflineService.instance.isOffline.removeListener(_offlineListener);
+    super.dispose();
   }
 
   @override
@@ -117,12 +139,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _weeklyGoalKmLocal = widget.weeklyGoalKm;
   }
 
+  Widget? _buildStaleDataBanner() {
+    if (!_isOffline || !_isProfileStale) return null;
+    return Container(
+      width: double.infinity,
+      color: Colors.orange.shade600,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const Row(
+        children: [
+          Icon(Icons.info, color: Colors.white, size: 18),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Showing cached profile. Some info may be outdated.',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadProfile() async {
-    final p = await ProfileStorage.loadProfile();
+    UserProfile? p = await ProfileStorage.loadProfile();
+
+    // Fallback to cached profile if offline or on load error
+    if (p == null && _isOffline) {
+      p = await ProfileCacheService.instance.loadCachedProfile();
+      if (p != null && p.toMap().containsKey('_is_stale')) {
+        _isProfileStale = true;
+      }
+    }
+
     setState(() {
       _profile = p;
       _loading = false;
     });
+
+    // Cache profile for later offline use
+    if (p != null) {
+      await ProfileCacheService.instance.cacheProfile(p);
+    }
   }
 
   Future<void> _pickAndSaveImage() async {
@@ -1125,6 +1186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : const Color(0xFF1ABFC4),
       body: Column(
         children: [
+          if (_buildStaleDataBanner() != null) _buildStaleDataBanner()!,
           // ===== HEADER (match Home/Nearby) =====
           if (isDark)
             // ✅ Dark: NO BAR, floating header (same as Home)

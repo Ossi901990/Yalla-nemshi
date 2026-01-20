@@ -8,6 +8,7 @@ import 'services/geocoding_service.dart';
 import 'services/app_preferences.dart';
 import 'services/crash_service.dart';
 import 'services/profile_migration_service.dart';
+import 'services/offline_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/privacy_policy_screen.dart';
 import 'screens/terms_screen.dart';
@@ -55,6 +56,9 @@ Future<void> main() async {
     // 🔹 Android/iOS (uses google-services.json)
     await Firebase.initializeApp();
   }
+
+  // 🔹 Enable Firestore persistence and connectivity tracking (non-web)
+  await OfflineService.instance.init();
 
   // 🔹 Initialize Firebase Crashlytics (not supported on web)
   if (!kIsWeb) {

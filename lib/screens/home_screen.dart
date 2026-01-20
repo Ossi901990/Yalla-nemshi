@@ -17,7 +17,9 @@ import '../services/notification_service.dart';
 import '../services/app_preferences.dart';
 import '../services/crash_service.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/offline_service.dart';
 import '../services/walk_history_service.dart';
+import '../services/walk_control_service.dart';
 import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
 import '../services/profile_storage.dart';
@@ -233,6 +235,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ..clear()
                     ..addAll(merged);
                 });
+
+                OfflineService.instance.cacheWalks(merged);
               } catch (e, st) {
                 debugPrint('❌ Error processing walks snapshot: $e');
                 CrashService.recordError(e, st);
@@ -294,6 +298,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ..clear()
                             ..addAll(loaded);
                         });
+
+                        OfflineService.instance.cacheWalks(loaded);
                       }
                     } catch (e, st) {
                       CrashService.recordError(e, st);
@@ -380,6 +386,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _isLoadingMore = false;
       });
 
+      OfflineService.instance.cacheWalks(_events);
+
       debugPrint(
         '📄 Loaded ${newWalks.length} more walks. Total: ${_events.length}',
       );
@@ -416,6 +424,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
+  bool _isOffline = false;
+  int _pendingActions = 0;
+
+  late final VoidCallback _offlineListener;
+  late final VoidCallback _pendingListener;
 
   // Pagination state
   static const int _walksPerPage = 20;
@@ -704,9 +717,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!kIsWeb) {
       _initStepCounter();
     }
+
+    _offlineListener = () {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = OfflineService.instance.isOffline.value;
+      });
+    };
+
+    _pendingListener = () {
+      if (!mounted) return;
+      setState(() {
+        _pendingActions = OfflineService.instance.pendingActionCount.value;
+      });
+    };
+
+    OfflineService.instance.isOffline.addListener(_offlineListener);
+    OfflineService.instance.pendingActionCount.addListener(_pendingListener);
+    _isOffline = OfflineService.instance.isOffline.value;
+    _pendingActions = OfflineService.instance.pendingActionCount.value;
+
     _loadUserName();
     _loadProfile(); // ✅ load saved avatar
     _loadWeeklyGoal();
+    _loadCachedWalks();
     _listenToWalks();
 
     // 🔹 Sync user profile to Firestore (if missing)
@@ -728,6 +762,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _walksSub?.cancel();
     _stepSubscription?.cancel();
 
+    OfflineService.instance.isOffline.removeListener(_offlineListener);
+    OfflineService.instance.pendingActionCount.removeListener(_pendingListener);
+
     super.dispose();
   }
 
@@ -743,6 +780,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       debugPrint('⚠️ Error loading weekly goal: $e');
       CrashService.recordError(e, st);
       // Fall back to default (already set in class)
+    }
+  }
+
+  Future<void> _loadCachedWalks() async {
+    try {
+      final cached = await OfflineService.instance.loadCachedWalks();
+      if (!mounted || cached.isEmpty) return;
+      if (_events.isEmpty) {
+        setState(() {
+          _events.addAll(cached);
+        });
+      }
+    } catch (e, st) {
+      CrashService.recordError(e, st, reason: 'HomeScreen.loadCachedWalks');
     }
   }
 
@@ -944,6 +995,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       await docRef.update(updateData).timeout(const Duration(seconds: 15));
 
+      if (_isOffline) {
+        await OfflineService.instance.queueJoinAction(
+          walkId: walkId,
+          join: willJoin,
+        );
+      }
+
       // ✅ Record walk history for tracking
       if (willJoin) {
         await WalkHistoryService.instance.recordWalkJoin(walkId);
@@ -961,9 +1019,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
 
       if (mounted) {
+        final msg = _isOffline
+          ? "Saved offline. We'll sync when you're back online."
+            : (willJoin ? 'You joined the walk!' : 'You left the walk.');
         ErrorHandler.showErrorSnackBar(
           context,
-          willJoin ? 'You joined the walk!' : 'You left the walk.',
+          msg,
           duration: const Duration(seconds: 2),
         );
       }
@@ -1022,6 +1083,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _cancelHostedWalk(WalkEvent event) {
+    // Get the correct walk ID (use firestoreId if available)
+    final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
+
+    // ✅ Save cancellation to Firestore FIRST
+    WalkControlService.instance.cancelWalk(walkId).then((_) {
+      // Firestore listener will auto-update UI via snapshot
+      debugPrint('✅ Walk $walkId cancelled on Firestore');
+    }).catchError((e, st) {
+      debugPrint('❌ Error cancelling walk: $e');
+      CrashService.recordError(e, st);
+      // Show error to user
+      if (mounted) {
+        ErrorHandler.showErrorSnackBar(context, 'Failed to cancel walk: $e');
+      }
+    });
+
+    // Optimistic UI update (will be confirmed by listener)
     setState(() {
       final index = _events.indexWhere((e) => e.id == event.id);
       if (index == -1) return;
@@ -1236,6 +1314,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // --- UI ---
 
+  Widget _buildOfflineBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.orange.shade700,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          const Text(
+            'Offline mode: showing cached walks. Changes will sync when back online.',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncingBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.blueGrey.shade800,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: const [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          SizedBox(width: 8),
+          Text(
+            'Syncing your pending actions...',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Listen to auth changes using provider - must be in build method
@@ -1310,7 +1431,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
       backgroundColor: isDark ? kDarkBg : const Color(0xFF1ABFC4),
 
-      body: body,
+      body: Column(
+        children: [
+          if (_isOffline) _buildOfflineBanner(),
+          if (_pendingActions > 0 && !_isOffline) _buildSyncingBanner(),
+          Expanded(child: body),
+        ],
+      ),
       bottomNavigationBar: AppBottomNavBar(
         currentIndex: _currentTab,
         onTap: (index) {
