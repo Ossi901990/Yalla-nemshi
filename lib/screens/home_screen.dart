@@ -263,6 +263,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 .collection('walks')
                 .where('visibility', isNotEqualTo: 'private')
                 .orderBy('visibility')
+                .where('cancelled', isEqualTo: false)
                 .limit(_walksPerPage)
                 .snapshots()
                 .listen(
@@ -332,6 +333,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           .collection('walks')
           .where('visibility', isNotEqualTo: 'private')
           .orderBy('visibility')
+          .where('cancelled', isEqualTo: false)
           .startAfterDocument(_lastDocument!);
 
       if (userCity != null && userCity.isNotEmpty) {

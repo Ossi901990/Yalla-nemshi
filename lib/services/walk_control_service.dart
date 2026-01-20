@@ -169,7 +169,7 @@ class WalkControlService {
       }
 
       await walkRef.update({
-        'status': 'cancelled',
+        'cancelled': true,
         'cancelledAt': Timestamp.now(),
         'cancellationReason': reason,
       });
