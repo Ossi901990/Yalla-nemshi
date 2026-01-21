@@ -419,7 +419,14 @@ exports.sendMonthlyDigests = onSchedule(
   },
   async () => {
     const window = getPreviousMonthWindow();
-    sgMail.setApiKey(sendgridApiKey.value());
+    const apiKey = sendgridApiKey.value();
+    if (!apiKey) {
+      console.error(
+        "❌ [Digest] SENDGRID_API_KEY is not configured. Skipping monthly digests to avoid partial logs."
+      );
+      return;
+    }
+    sgMail.setApiKey(apiKey);
 
     console.log(`📬 [Digest] Starting run for ${window.yearMonth} (${window.label})`);
     const optInSnapshot = await db
