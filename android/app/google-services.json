@@ -12,20 +12,7 @@
           "package_name": "com.example.yalla_nemshi"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "403871427941-fj99qc7eusl1i39b8eglq8b0r5i0sg36.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.yalla_nemshi",
-            "certificate_hash": "1fd4eb505945797424ae951e791a782939190474"
-          }
-        },
-        {
-          "client_id": "403871427941-i0p5ff5vhp1hv6sed0358a6l0njsfrq1.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyCN3dibhlMv0sR9QQcMd5RabmuHRs8X83I"
@@ -33,19 +20,7 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "403871427941-i0p5ff5vhp1hv6sed0358a6l0njsfrq1.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "403871427941-5040kbvfht5ambvf1348eoo1s2aakgh9.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.yallaNemshi"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

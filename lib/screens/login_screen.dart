@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 /// Custom exception for timeout errors
 class TimeoutException implements Exception {
@@ -67,25 +68,54 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Non-web: Google sign-in disabled for now (keep mobile changes undone)
-      if (!kIsWeb) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Google sign-in is available on web only for now.'),
-          ),
-        );
+      // Mobile (Android/iOS): Use google_sign_in plugin
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email'],
+      );
+
+      // Trigger Google Sign-In flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        // User cancelled the sign-in
         return;
       }
+
+      // Obtain auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Create a new credential for Firebase
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      await _auth.signInWithCredential(credential);
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/home');
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      String errorMessage = 'Google sign-in failed';
+      
+      // Provide specific error messages
+      if (e.code == 'account-exists-with-different-credential') {
+        errorMessage = 'An account already exists with this email.';
+      } else if (e.code == 'invalid-credential') {
+        errorMessage = 'Invalid credentials. Please try again.';
+      } else if (e.message != null) {
+        errorMessage = e.message!;
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google sign-in failed: ${e.message ?? ''}')),
+        SnackBar(content: Text(errorMessage)),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Google sign-in failed. Please try again.'),
+        SnackBar(
+          content: Text('Google sign-in failed: ${e.toString()}'),
         ),
       );
     }
