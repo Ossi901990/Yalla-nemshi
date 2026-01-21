@@ -107,10 +107,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             debugPrint('⚠️ No user city set; showing all walks');
           }
 
-          // Exclude cancelled walks and filter by visibility
-          query = query
-              .where('cancelled', isEqualTo: false)
-              .where('visibility', whereIn: ['open', null]);
+          // Exclude cancelled walks only - filter private walks in code after fetching
+          query = query.where('cancelled', isEqualTo: false);
 
           // Add pagination limit
           query = query.limit(_walksPerPage);
@@ -153,6 +151,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       (currentUid != null && joinedUids.contains(currentUid));
 
                   return WalkEvent.fromMap(data);
+                }).where((walk) {
+                  // Filter out private walks unless user is host
+                  final visibility = walk.visibility ?? 'open';
+                  return visibility != 'private' || walk.isOwner;
                 }).toList();
 
                 if (!mounted) return;
