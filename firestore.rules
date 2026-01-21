@@ -167,6 +167,7 @@ service cloud.firestore {
     match /walks/{walkId} {
 
       // READ walks: open (or missing visibility): any signed-in user; private: host OR allowed viewer
+      // Support filtered list queries (by city, visibility, cancelled status)
       allow get, list: if signedIn()
         && (
           isOpenWalk(resource.data) ||

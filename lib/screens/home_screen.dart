@@ -107,12 +107,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             debugPrint('⚠️ No user city set; showing all walks');
           }
 
-          // Exclude private walks to satisfy Firestore rules for list queries
-          // Note: Firestore requires ordering by the same field when using isNotEqualTo
+          // Exclude cancelled walks and filter by visibility
           query = query
-              .where('visibility', isNotEqualTo: 'private')
-              .orderBy('visibility')
-              .where('cancelled', isEqualTo: false);
+              .where('cancelled', isEqualTo: false)
+              .where('visibility', whereIn: ['open', null]);
 
           // Add pagination limit
           query = query.limit(_walksPerPage);
@@ -433,7 +431,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
-  late List<WalkEvent> _recommendations; // For future UI recommendations section
+  List<WalkEvent> _recommendations = []; // For future UI recommendations section
   bool _isOffline = false;
   int _pendingActions = 0;
 
