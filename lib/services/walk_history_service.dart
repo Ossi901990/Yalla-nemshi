@@ -30,11 +30,16 @@ class WalkHistoryService {
           .doc(walkId)
           .set({
         'userId': uid,
+        'walkId': walkId,
         'joinedAt': Timestamp.now(),
         'completed': false,
         'leftEarly': false,
         'hostCancelled': false,
+        'status': 'open',
+        'participationState': 'joined',
       }, SetOptions(merge: true));
+
+      await _updateParticipantStateOnWalk(walkId, uid, 'joined');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -57,10 +62,15 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
+        'walkId': walkId,
         'leftAt': Timestamp.now(),
         'leftEarly': true,
         'completed': false,
+        'status': 'declined',
+        'participationState': 'left',
       });
+
+      await _updateParticipantStateOnWalk(walkId, uid, 'left');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -68,6 +78,25 @@ class WalkHistoryService {
         reason: 'WalkHistoryService.recordWalkLeave error',
       );
       rethrow;
+    }
+  }
+
+  Future<void> _updateParticipantStateOnWalk(
+    String walkId,
+    String userId,
+    String state,
+  ) async {
+    try {
+      await _firestore.collection('walks').doc(walkId).update({
+        'participantStates.$userId': state,
+      });
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason:
+            'WalkHistoryService._updateParticipantStateOnWalk error',
+      );
     }
   }
 
@@ -88,11 +117,13 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
+        'walkId': walkId,
         'completed': true,
         'actualDistanceKm': distanceKm,
         'actualDuration': duration?.inSeconds,
         'notes': notes,
         'completedAt': Timestamp.now(),
+        'participationState': 'confirmed',
       });
     } catch (e) {
       CrashService.recordError(
@@ -289,9 +320,13 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
+        'walkId': walkId,
         'status': 'actively_walking',
         'confirmedAt': Timestamp.now(),
+        'participationState': 'confirmed',
       });
+
+      await _updateParticipantStateOnWalk(walkId, uid, 'confirmed');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -318,9 +353,11 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
+        'walkId': walkId,
         'status': 'completed',
         'completedAt': Timestamp.now(),
         'actualDurationMinutes': actualDurationMinutes,
+        'participationState': 'confirmed',
       });
     } catch (e) {
       CrashService.recordError(
@@ -345,9 +382,13 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
+        'walkId': walkId,
         'status': 'declined',
         'declinedAt': Timestamp.now(),
+        'participationState': 'left',
       });
+
+      await _updateParticipantStateOnWalk(walkId, uid, 'left');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -371,9 +412,13 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
+        'walkId': walkId,
         'status': 'completed_early',
         'completedAt': Timestamp.now(),
+        'participationState': 'left',
       });
+
+      await _updateParticipantStateOnWalk(walkId, uid, 'left');
     } catch (e) {
       CrashService.recordError(
         e,

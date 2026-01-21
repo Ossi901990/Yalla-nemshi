@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'walk_chat_screen.dart';
 import 'review_walk_screen.dart';
 import 'walk_summary_screen.dart';
+import 'active_walk_screen.dart';
 import '../models/walk_event.dart';
 import '../services/invite_service.dart';
 import '../services/review_service.dart';
@@ -607,6 +608,20 @@ class _InviteeListTile extends StatelessWidget {
 }
 
 class _EventDetailsScreenState extends State<EventDetailsScreen> {
+  bool _didConfirmParticipation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _didConfirmParticipation = _isCurrentUserConfirmed(widget.event);
+  }
+
+  bool _isCurrentUserConfirmed(WalkEvent event) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    return event.participantStates[uid] == 'confirmed';
+  }
+
   String _formatDateTime(DateTime dt) {
     final dd = dt.day.toString().padLeft(2, '0');
     final mm = dt.month.toString().padLeft(2, '0');
@@ -938,7 +953,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     return Column(
       children: [
         // Show start button if walk hasn't started
-        if (event.status == 'open') ...[
+        if (event.status == 'scheduled') ...[
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -959,7 +974,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         ],
 
         // Show end button if walk is starting or in progress
-        if (event.status == 'starting' || event.status == 'active') ...[
+        if (event.status == 'active') ...[
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -980,7 +995,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         ],
 
         // Show participant count if walk has started
-        if (event.status == 'starting' || event.status == 'active') ...[
+        if (event.status == 'active') ...[
           FutureBuilder<int>(
             future: WalkControlService.instance.getActiveParticipantCount(event.firestoreId),
             builder: (context, snapshot) {
@@ -1145,11 +1160,14 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   Future<void> _confirmParticipation(BuildContext context, WalkEvent event) async {
     try {
       await WalkHistoryService.instance.confirmParticipation(event.firestoreId);
+      await GPSTrackingService.instance.startTracking(event.firestoreId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ Confirmed! You\'re walking with us!')),
       );
-      setState(() {});
+      setState(() {
+        _didConfirmParticipation = true;
+      });
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1158,9 +1176,29 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     }
   }
 
+  void _openActiveWalkScreen(BuildContext context, WalkEvent event) {
+    final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
+    if (walkId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open active walk right now.')),
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ActiveWalkScreen(
+          walkId: walkId,
+          initialWalk: event,
+        ),
+      ),
+    );
+  }
+
   Future<void> _declineParticipation(BuildContext context, WalkEvent event) async {
     try {
       await WalkHistoryService.instance.declineParticipation(event.firestoreId);
+      await GPSTrackingService.instance.stopTracking(event.firestoreId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Declined. You can join another time!')),
@@ -1184,8 +1222,17 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final onToggleJoin = widget.onToggleJoin;
     final onToggleInterested = widget.onToggleInterested;
 
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final participantState = currentUid != null
+      ? event.participantStates[currentUid]
+      : null;
+    final bool isConfirmed =
+      _didConfirmParticipation || participantState == 'confirmed';
+
     final canJoin = !event.isOwner && !event.cancelled;
-    final joinText = event.joined ? 'Leave walk' : 'Join walk';
+    final joinText = event.joined
+      ? (event.status == 'active' ? 'Leave Walk' : 'Cancel Join')
+      : 'Join walk';
 
     final canInterested = !event.isOwner && !event.cancelled;
     final interestedText = event.interested
@@ -1877,16 +1924,34 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             _buildHostControlButtons(context, event, theme, isDark),
                           ],
 
+                          if (event.status == 'active' &&
+                              (event.isOwner ||
+                                  (currentUid != null &&
+                                      event.participantStates
+                                          .containsKey(currentUid)))) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () =>
+                                    _openActiveWalkScreen(context, event),
+                                icon: const Icon(Icons.directions_walk),
+                                label: const Text('Open Active Walk'),
+                              ),
+                            ),
+                          ],
+
                           if (event.isOwner && !event.cancelled && event.isPrivate) ...[
                             const SizedBox(height: 16),
                             _PrivateInviteManagement(event: event),
                           ],
 
                           // CP-4: Participant confirmation button (shown when walk is starting)
-                          if (!event.isOwner &&
+                            if (!event.isOwner &&
                               event.joined &&
                               !event.cancelled &&
-                              event.status == 'starting') ...[
+                              event.status == 'active' &&
+                              !isConfirmed) ...[
                             _buildParticipantConfirmationButton(
                               context,
                               event,

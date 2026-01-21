@@ -20,6 +20,7 @@ import '../services/firestore_sync_service.dart';
 import '../services/offline_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/walk_control_service.dart';
+import '../services/gps_tracking_service.dart';
 import '../services/tag_recommendation_service.dart';
 import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
@@ -33,6 +34,7 @@ import 'profile_screen.dart';
 import 'walks_screen.dart';
 import 'events_screen.dart';
 import 'walk_search_screen.dart';
+import 'active_walk_screen.dart';
 import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
 import '../providers/auth_provider.dart';
@@ -84,6 +86,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   late int _currentTab;
+  static const Duration _hostStartEarlyWindow = Duration(minutes: 10);
+  static const Duration _hostStartGraceWindow = Duration(minutes: 15);
   void _listenToWalks() {
     _walksSub?.cancel();
 
@@ -237,6 +241,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ..addAll(merged);
                 });
 
+                _refreshHostedCountdown();
+
                 OfflineService.instance.cacheWalks(merged);
               } catch (e, st) {
                 debugPrint('❌ Error processing walks snapshot: $e');
@@ -299,6 +305,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ..clear()
                             ..addAll(loaded);
                         });
+
+                        _refreshHostedCountdown();
 
                         OfflineService.instance.cacheWalks(loaded);
                       }
@@ -463,6 +471,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   StreamSubscription<StepCount>? _stepSubscription;
   int _sessionSteps = 0;
   int? _baselineSteps;
+  Timer? _hostedCountdownTimer;
+  WalkEvent? _nextHostedWalk;
+  Duration _hostedCountdownRemaining = Duration.zero;
+  bool _isStartingHostedWalk = false;
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -517,6 +529,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final d = DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day);
       return !d.isBefore(start) && d.isBefore(end);
     }).toList();
+  }
+
+  WalkEvent? _computeNextHostedWalk() {
+    if (_myHostedWalks.isEmpty) return null;
+
+    final now = DateTime.now();
+    final active = _myHostedWalks
+        .where((walk) => !walk.cancelled && walk.status == 'active')
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    if (active.isNotEmpty) {
+      return active.first;
+    }
+
+    final upcoming = _myHostedWalks
+        .where((walk) {
+          if (walk.cancelled) return false;
+          if (walk.status != 'scheduled') return false;
+          return walk.dateTime.isAfter(now.subtract(const Duration(hours: 6)));
+        })
+        .toList()
+      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    return upcoming.isNotEmpty ? upcoming.first : null;
+  }
+
+  void _refreshHostedCountdown() {
+    _hostedCountdownTimer?.cancel();
+    final next = _computeNextHostedWalk();
+
+    if (!mounted) {
+      _nextHostedWalk = next;
+      _hostedCountdownRemaining = Duration.zero;
+      return;
+    }
+
+    if (next == null) {
+      setState(() {
+        _nextHostedWalk = null;
+        _hostedCountdownRemaining = Duration.zero;
+      });
+      return;
+    }
+
+    void updateRemaining() {
+      if (!mounted) return;
+      final remaining = next.dateTime.difference(DateTime.now());
+      setState(() {
+        _nextHostedWalk = next;
+        _hostedCountdownRemaining =
+            remaining.isNegative ? Duration.zero : remaining;
+      });
+    }
+
+    updateRemaining();
+
+    if (next.status == 'scheduled') {
+      _hostedCountdownTimer =
+          Timer.periodic(const Duration(seconds: 1), (_) => updateRemaining());
+    }
+  }
+
+  String _formatHostedCountdown(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  bool _canHostStartWalk(WalkEvent walk) {
+    if (!walk.isOwner || walk.status != 'scheduled') {
+      return false;
+    }
+    final now = DateTime.now();
+    final earliest = walk.dateTime.subtract(_hostStartEarlyWindow);
+    final latest = walk.dateTime.add(_hostStartGraceWindow);
+    return !now.isBefore(earliest) && !now.isAfter(latest);
   }
 
   int get _weeklyWalkCount => _myWalksThisWeek.length;
@@ -764,6 +857,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _walksSub?.cancel();
     _stepSubscription?.cancel();
+    _hostedCountdownTimer?.cancel();
 
     OfflineService.instance.isOffline.removeListener(_offlineListener);
     OfflineService.instance.pendingActionCount.removeListener(_pendingListener);
@@ -917,6 +1011,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _events.add(newEvent);
     });
 
+    _refreshHostedCountdown();
+
     // 🔔 Schedule reminder for the walk you just created (host)
     NotificationService.instance.scheduleWalkReminder(newEvent);
   }
@@ -939,12 +1035,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
 
+    if (!event.joined && event.status == 'active') {
+      if (!mounted) return;
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'This walk is already active. Ask the host to invite you directly.',
+      );
+      return;
+    }
+
     // ✅ Always use Firestore doc id
     final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
     final docRef = FirebaseFirestore.instance.collection('walks').doc(walkId);
 
     final bool wasJoined = event.joined;
     final bool willJoin = !wasJoined;
+    final bool leavingActive = !willJoin && event.status == 'active';
 
     // Get current user info for optimistic update
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -964,6 +1070,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final newJoinedPhotos = List<String>.from(
         currentEvent.joinedUserPhotoUrls,
       );
+      final newParticipantStates =
+          Map<String, String>.from(currentEvent.participantStates);
 
       if (willJoin) {
         if (!newJoinedUids.contains(uid)) {
@@ -972,11 +1080,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (userPhotoUrl != null && !newJoinedPhotos.contains(userPhotoUrl)) {
           newJoinedPhotos.add(userPhotoUrl);
         }
+        newParticipantStates[uid] = 'joined';
       } else {
         newJoinedUids.remove(uid);
         if (userPhotoUrl != null) {
           newJoinedPhotos.remove(userPhotoUrl);
         }
+        newParticipantStates[uid] = 'left';
       }
 
       _events[index] = currentEvent.copyWith(
@@ -984,6 +1094,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         joinedUserUids: newJoinedUids,
         joinedUserPhotoUrls: newJoinedPhotos,
         joinedCount: newJoinedUids.length,
+        participantStates: newParticipantStates,
       );
     });
 
@@ -1012,6 +1123,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             : FieldValue.arrayRemove([userPhotoUrl]);
       }
 
+      updateData['participantStates.$uid'] = willJoin ? 'joined' : 'left';
+
       await docRef.update(updateData).timeout(const Duration(seconds: 15));
 
       if (_isOffline) {
@@ -1026,7 +1139,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await WalkHistoryService.instance.recordWalkJoin(walkId);
         await UserStatsService.instance.recordWalkJoined(uid);
       } else {
-        await WalkHistoryService.instance.recordWalkLeave(walkId);
+        if (leavingActive) {
+          await WalkHistoryService.instance.leaveWalkEarly(walkId);
+          await GPSTrackingService.instance.stopTracking(walkId);
+        } else {
+          await WalkHistoryService.instance.recordWalkLeave(walkId);
+        }
       }
 
       // 🔔 Notifications
@@ -1039,8 +1157,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (mounted) {
         final msg = _isOffline
-          ? "Saved offline. We'll sync when you're back online."
-            : (willJoin ? 'You joined the walk!' : 'You left the walk.');
+            ? "Saved offline. We'll sync when you're back online."
+            : (willJoin
+                ? 'You joined the walk!'
+                : (leavingActive
+                    ? 'You left the active walk.'
+                    : 'You cancelled your spot.'));
         ErrorHandler.showErrorSnackBar(
           context,
           msg,
@@ -1159,6 +1281,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  void _openActiveWalk(WalkEvent walk) {
+    final walkId = walk.firestoreId.isNotEmpty ? walk.firestoreId : walk.id;
+    if (walkId.isEmpty) {
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'Unable to open walk - missing identifier.',
+      );
+      return;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ActiveWalkScreen(
+          walkId: walkId,
+          initialWalk: walk,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleHostedStart(WalkEvent walk) async {
+    if (_isStartingHostedWalk) return;
+
+    final walkId = walk.firestoreId.isNotEmpty ? walk.firestoreId : walk.id;
+    if (walkId.isEmpty) {
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'Unable to start walk: missing walk ID.',
+      );
+      return;
+    }
+
+    setState(() {
+      _isStartingHostedWalk = true;
+    });
+
+    try {
+      await WalkControlService.instance.startWalk(walkId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Walk started. Participants are being notified.'),
+        ),
+      );
+
+      _refreshHostedCountdown();
+    } catch (e, st) {
+      CrashService.recordError(e, st);
+      if (mounted) {
+        final friendly = e.toString().replaceFirst('Exception: ', '');
+        ErrorHandler.showErrorSnackBar(
+          context,
+          friendly.isEmpty ? 'Failed to start walk.' : friendly,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStartingHostedWalk = false;
+        });
+      }
+    }
   }
 
   // === NEW: notification bottom sheet (uses stored notifications) ===
@@ -1370,6 +1558,151 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Text(
             'Syncing your pending actions...',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHostedWalkBanner(BuildContext context, bool isDark) {
+    final walk = _nextHostedWalk;
+    if (walk == null) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final Color headlineColor =
+      isDark ? Colors.white : const Color(0xFF0A3B3A);
+    final Color detailColor = isDark
+      ? Colors.white.withAlpha(220)
+      : const Color(0xFF0D5552).withValues(alpha: 0.85);
+    final Color chipColor =
+      isDark ? Colors.white : const Color(0xFF0D5552);
+    final bool isActive = walk.status == 'active';
+    final countdownText = isActive
+        ? 'Walk in progress'
+        : 'Starts in ${_formatHostedCountdown(_hostedCountdownRemaining)}';
+    final subtitle = walk.meetingPlaceName != null
+        ? '${walk.meetingPlaceName} • ${DateFormat('MMM d, hh:mm a').format(walk.dateTime)}'
+        : DateFormat('MMM d, hh:mm a').format(walk.dateTime);
+
+    final primaryLabel = isActive ? 'Open Active Walk' : 'Start Walk';
+    final bool canStart = _canHostStartWalk(walk);
+    final bool isStartLoading = _isStartingHostedWalk && !isActive;
+    final VoidCallback? primaryAction = isActive
+        ? () => _openActiveWalk(walk)
+        : (canStart ? () => _handleHostedStart(walk) : null);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: isDark
+            ? const LinearGradient(
+                colors: [Color(0xFF0F2734), Color(0xFF143D4B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFE2FBF7), Color(0xFFC6EEE7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        border: Border.all(
+            color: isDark
+              ? Colors.white.withAlpha(30)
+              : const Color(0xFF0A3B3A).withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flag, size: 18, color: chipColor),
+              const SizedBox(width: 8),
+              Text(
+                'Your next hosted walk',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: chipColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            walk.title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: headlineColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: detailColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                isActive ? Icons.run_circle : Icons.timer_outlined,
+                color: chipColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                countdownText,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: chipColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: isStartLoading ? null : primaryAction,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isDark
+                        ? Colors.white
+                        : const Color(0xFF0F8A7B),
+                    foregroundColor:
+                        isDark ? const Color(0xFF0F2734) : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: isStartLoading
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isDark
+                                  ? const Color(0xFF0F2734)
+                                  : Colors.white,
+                            ),
+                          ),
+                        )
+                      : Text(primaryLabel),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                onPressed: () => _navigateToDetails(walk),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: chipColor,
+                  side: BorderSide(color: chipColor.withValues(alpha: 0.4)),
+                ),
+                child: const Text('View details'),
+              ),
+            ],
           ),
         ],
       ),
@@ -1878,6 +2211,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (_nextHostedWalk != null) ...[
+                            _buildHostedWalkBanner(context, isDark),
+                            const SizedBox(height: 20),
+                          ],
                           // Big inner card: greeting + calendar + "Your walks"
                           Card(
                             color: isDark ? kDarkSurface : kLightSurface,
@@ -2011,7 +2348,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       icon: const Icon(
                                         Icons.directions_walk_outlined,
                                       ),
-                                      label: const Text('Start walk'),
+                                      label: const Text('Create walk'),
                                     ),
                                   ),
 

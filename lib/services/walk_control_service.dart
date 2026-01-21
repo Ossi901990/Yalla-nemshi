@@ -17,6 +17,8 @@ class WalkControlService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  static const Duration _hostStartEarlyWindow = Duration(minutes: 10);
+  static const Duration _hostStartGraceWindow = Duration(minutes: 15);
 
   /// Start a walk (only callable by host)
   /// Sets status to "starting" which triggers onWalkStarted Cloud Function
@@ -38,15 +40,34 @@ class WalkControlService {
         throw Exception('Only walk host can start the walk');
       }
 
-      // Update walk status to "starting"
-      // This triggers onWalkStarted Cloud Function
+      final normalizedStatus = _normalizeStatus(walk['status']);
+      if (normalizedStatus == 'active') {
+        throw Exception('Walk already active');
+      }
+      if (normalizedStatus == 'ended') {
+        throw Exception('Walk already ended');
+      }
+
+      final scheduledAt = _parseDateTime(walk['dateTime']) ?? DateTime.now();
+      final now = DateTime.now();
+      final earliestStart = scheduledAt.subtract(_hostStartEarlyWindow);
+      final latestStart = scheduledAt.add(_hostStartGraceWindow);
+
+      if (now.isBefore(earliestStart) || now.isAfter(latestStart)) {
+        throw Exception(
+          'You can only start the walk close to its scheduled time.',
+        );
+      }
+
       await walkRef.update({
-        'status': 'starting',
+        'status': 'active',
         'startedAt': Timestamp.now(),
         'startedByUid': uid,
+        'cancelled': false,
+        'participantStates.$uid': 'confirmed',
       });
 
-      CrashService.log('Walk $walkId started by $uid');
+      CrashService.log('Walk $walkId activated by $uid');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -89,12 +110,13 @@ class WalkControlService {
         actualDurationMinutes = now.difference(startedAt).inMinutes;
       }
 
-      // Update walk status to "completed"
+      // Update walk status to "ended"
       // This triggers onWalkEnded Cloud Function
       await walkRef.update({
-        'status': 'completed',
+        'status': 'ended',
         'completedAt': Timestamp.now(),
         'actualDurationMinutes': actualDurationMinutes,
+        'participantStates.$uid': 'confirmed',
       });
 
       // Award badges to all participants (async, no need to await)
@@ -141,9 +163,10 @@ class WalkControlService {
       }
 
       await walkRef.update({
-        'status': 'completed',
+        'status': 'ended',
         'completedAt': Timestamp.now(),
         'completed_early': true,
+        'participantStates.$uid': 'confirmed',
       });
 
       CrashService.log('Walk $walkId completed early by $uid');
@@ -176,16 +199,29 @@ class WalkControlService {
         throw Exception('Only walk host can cancel the walk');
       }
 
-      // Check if walk already started
-      final status = walk['status'] as String?;
-      if (status == 'starting' || status == 'completed') {
-        throw Exception('Cannot cancel a walk that has already started');
+      final normalizedStatus = _normalizeStatus(walk['status']);
+      if (normalizedStatus == 'ended') {
+        throw Exception('Cannot cancel a walk that already ended');
+      }
+
+      if (normalizedStatus == 'active') {
+        final participantStates =
+            _readParticipantStates(walk['participantStates']);
+        final hasConfirmed = participantStates.values
+            .whereType<String>()
+            .any((state) => state == 'confirmed');
+        if (hasConfirmed) {
+          throw Exception(
+            'Cannot cancel while participants are actively walking.',
+          );
+        }
       }
 
       await walkRef.update({
         'cancelled': true,
         'cancelledAt': Timestamp.now(),
         'cancellationReason': reason,
+        'status': 'cancelled',
       });
 
       // Mark all participants as cancelled
@@ -199,6 +235,7 @@ class WalkControlService {
         batch.update(doc.reference, {
           'status': 'host_cancelled',
           'cancelledAt': Timestamp.now(),
+          'participationState': 'left',
         });
       }
       await batch.commit();
@@ -258,14 +295,16 @@ class WalkControlService {
   /// Get count of active participants in a walk (status: "actively_walking")
   Future<int> getActiveParticipantCount(String walkId) async {
     try {
-      final snapshot = await _firestore
-          .collectionGroup('walks')
-          .where('walkId', isEqualTo: walkId)
-          .where('status', isEqualTo: 'actively_walking')
-          .count()
-          .get();
+      final doc = await _firestore.collection('walks').doc(walkId).get();
+      if (!doc.exists) {
+        return 0;
+      }
 
-      return snapshot.count ?? 0;
+      final participantStates =
+          _readParticipantStates(doc.data()?['participantStates']);
+      return participantStates.values
+          .where((state) => state == 'confirmed')
+          .length;
     } catch (e) {
       CrashService.recordError(
         e,
@@ -279,23 +318,12 @@ class WalkControlService {
   /// Get all participants with their confirmation status
   Future<Map<String, String>> getParticipationStatus(String walkId) async {
     try {
-      final snapshot = await _firestore
-          .collectionGroup('walks')
-          .where('walkId', isEqualTo: walkId)
-          .get();
-
-      final status = <String, String>{};
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final userId = data['userId'] as String?;
-        final participationStatus = data['status'] as String?;
-
-        if (userId != null && participationStatus != null) {
-          status[userId] = participationStatus;
-        }
+      final doc = await _firestore.collection('walks').doc(walkId).get();
+      if (!doc.exists) {
+        return {};
       }
 
-      return status;
+      return _readParticipantStates(doc.data()?['participantStates']);
     } catch (e) {
       CrashService.recordError(
         e,
@@ -304,5 +332,53 @@ class WalkControlService {
       );
       return {};
     }
+  }
+
+  Map<String, String> _readParticipantStates(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      return raw.map((key, value) => MapEntry(key, value?.toString() ?? ''));
+    }
+    if (raw is Map) {
+      final result = <String, String>{};
+      raw.forEach((key, value) {
+        if (key == null) return;
+        result[key.toString()] = (value ?? '').toString();
+      });
+      return result;
+    }
+    return const {};
+  }
+
+  String _normalizeStatus(dynamic value) {
+    final raw = (value ?? 'scheduled').toString().toLowerCase();
+    switch (raw) {
+      case 'active':
+      case 'starting':
+        return 'active';
+      case 'completed':
+      case 'ended':
+        return 'ended';
+      case 'cancelled':
+        return 'cancelled';
+      default:
+        return 'scheduled';
+    }
+  }
+
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    if (value is num) {
+      return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    }
+    return null;
   }
 }

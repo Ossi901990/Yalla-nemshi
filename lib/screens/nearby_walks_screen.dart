@@ -1122,7 +1122,11 @@ class _NearbyWalkCard extends StatelessWidget {
                           : (isDark ? Colors.white70 : const Color(0xFF374151)),
                       size: 22,
                     ),
-                    tooltip: event.joined ? 'Leave walk' : 'Join walk',
+                    tooltip: event.joined
+                      ? (event.status == 'active'
+                        ? 'Leave Walk'
+                        : 'Cancel Join')
+                      : 'Join walk',
                     onPressed: () => onToggleJoin(event),
                   ),
                 ],

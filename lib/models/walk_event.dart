@@ -48,11 +48,11 @@ class WalkEvent {
   /// Expected duration of the walk in minutes (host sets when creating walk)
   final int? plannedDurationMinutes;
 
-  /// Current status of the walk (open | starting | active | completed)
-  /// open: accepting participants, waiting to start
-  /// starting: host clicked "Start Walk", awaiting confirmations
-  /// active: walk is in progress
-  /// completed: walk has finished
+  /// Current status of the walk (scheduled | active | ended | cancelled)
+  /// scheduled: accepting participants, waiting to start
+  /// active: walk is in progress / confirmations happening
+  /// ended: walk has finished
+  /// cancelled: host cancelled the walk
   final String status;
 
   /// Timestamp when the walk actually started (when host pressed "Start Walk")
@@ -120,6 +120,9 @@ class WalkEvent {
   /// Count of users who joined (fallback to joinedUserUids.length if not provided)
   final int joinedCount;
 
+  /// Per-user participation state (invited/joined/confirmed/left)
+  final Map<String, String> participantStates;
+
   WalkEvent({
     required this.id,
     required this.firestoreId,
@@ -146,7 +149,7 @@ class WalkEvent {
     this.description,
     this.cancelled = false,
     this.plannedDurationMinutes,  // CP-4
-    this.status = 'open',  // CP-4
+    this.status = 'scheduled',  // CP-4
     this.startedAt,  // CP-4
     this.startedByUid,  // CP-4
     this.completedAt,  // CP-4
@@ -169,12 +172,14 @@ class WalkEvent {
     List<String>? joinedUserPhotoUrls,
     int? joinedCount,
     List<String>? searchKeywords,
+    Map<String, String>? participantStates,
   })  : tags = tags ?? const [],
         photoUrls = photoUrls ?? const [],
         joinedUserUids = joinedUserUids ?? const [],
         joinedUserPhotoUrls = joinedUserPhotoUrls ?? const [],
         joinedCount = joinedCount ?? (joinedUserUids?.length ?? 0),
-        searchKeywords = searchKeywords ?? const [];
+        searchKeywords = searchKeywords ?? const [],
+        participantStates = Map.unmodifiable(participantStates ?? const {});
 
   WalkEvent copyWith({
     String? id,
@@ -225,6 +230,7 @@ class WalkEvent {
     List<String>? joinedUserPhotoUrls,
     int? joinedCount,
     List<String>? searchKeywords,
+    Map<String, String>? participantStates,
   }) {
     return WalkEvent(
       id: id ?? this.id,
@@ -275,6 +281,7 @@ class WalkEvent {
         joinedUserPhotoUrls: joinedUserPhotoUrls ?? this.joinedUserPhotoUrls,
         joinedCount: joinedCount ?? this.joinedCount,
         searchKeywords: searchKeywords ?? this.searchKeywords,
+        participantStates: participantStates ?? this.participantStates,
     );
   }
 
@@ -320,6 +327,7 @@ class WalkEvent {
         'joinedUserPhotoUrls': joinedUserPhotoUrls,
         'joinedCount': joinedCount,
         'searchKeywords': searchKeywords,
+        'participantStates': participantStates,
     };
   }
 
@@ -360,6 +368,35 @@ class WalkEvent {
       return DateTime.fromMillisecondsSinceEpoch(millis);
     }
     return null;
+  }
+
+  static String _normalizeStatus(dynamic value) {
+    final raw = _toStringSafe(value, fallback: 'scheduled').toLowerCase();
+    switch (raw) {
+      case 'active':
+      case 'starting':
+        return 'active';
+      case 'completed':
+      case 'ended':
+        return 'ended';
+      case 'cancelled':
+        return 'cancelled';
+      default:
+        return 'scheduled';
+    }
+  }
+
+  static Map<String, String> _parseParticipantStates(dynamic value) {
+    if (value is Map) {
+      final buffer = <String, String>{};
+      value.forEach((key, val) {
+        final safeKey = key?.toString() ?? '';
+        if (safeKey.isEmpty) return;
+        buffer[safeKey] = (val ?? 'joined').toString();
+      });
+      return Map.unmodifiable(buffer);
+    }
+    return const {};
   }
 
   factory WalkEvent.fromMap(Map<String, dynamic> map) {
@@ -427,6 +464,12 @@ class WalkEvent {
       tags: parsedTags,
       comfortLevel: map['comfortLevel']?.toString(),
       experienceLevel: map['experienceLevel']?.toString() ?? 'All levels',
+        status: _normalizeStatus(map['status']),
+        startedAt: _toDateTime(map['startedAt']),
+        startedByUid: map['startedByUid']?.toString(),
+        completedAt: _toDateTime(map['completedAt']),
+        actualDurationMinutes:
+          (map['actualDurationMinutes'] as num?)?.toInt(),
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
       city: map['city']?.toString(),
@@ -458,6 +501,7 @@ class WalkEvent {
         searchKeywords: (map['searchKeywords'] is List)
           ? (map['searchKeywords'] as List).whereType<String>().toList()
           : const [],
+      participantStates: _parseParticipantStates(map['participantStates']),
     );
   }
 

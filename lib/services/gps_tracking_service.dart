@@ -92,7 +92,7 @@ class GPSTrackingService {
         'altitude': position.altitude,
         'speed': position.speed, // m/s
         'heading': position.heading, // degrees
-        'timestamp': Timestamp.fromDate(position.timestamp ?? DateTime.now()),
+        'timestamp': Timestamp.fromDate(position.timestamp),
       };
 
       // Store in local list

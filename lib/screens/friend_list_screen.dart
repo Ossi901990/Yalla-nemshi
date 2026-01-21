@@ -453,7 +453,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
   String _describeActivity(_FriendWalkActivity activity) {
     final status = activity.status?.toLowerCase() ?? '';
-    if (status.contains('completed')) {
+    if (status.contains('ended') || status.contains('completed')) {
       return 'Completed a walk';
     }
     if (status.contains('active')) {
@@ -462,7 +462,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
     if (status.contains('declined')) {
       return 'Declined a walk';
     }
-    if (status.contains('starting')) {
+    if (status.contains('scheduled')) {
       return 'Getting ready for a walk';
     }
     return 'Joined a walk';

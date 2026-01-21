@@ -9,6 +9,7 @@ class WalkParticipation {
   final DateTime joinedAt;  // When they first joined the walk
   final DateTime? confirmedAt;  // CP-4: When they confirmed at walk start prompt
   final String status;  // CP-4: open | starting | actively_walking | declined | completed | completed_early
+  final String participationState; // HP-5: invited | joined | confirmed | left
   final DateTime? completedAt;  // CP-4: When walk was marked complete
   final int? actualDurationMinutes;  // CP-4: Actual duration in minutes (confirmedAt → completedAt)
   final bool completed; // User marked walk as completed (deprecated - use status)
@@ -25,6 +26,7 @@ class WalkParticipation {
     required this.joinedAt,
     this.confirmedAt,
     this.status = 'open',  // CP-4: Default status
+    this.participationState = 'joined',
     this.completedAt,
     this.actualDurationMinutes,
     this.completed = false,
@@ -45,6 +47,10 @@ class WalkParticipation {
       joinedAt: (data['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       confirmedAt: (data['confirmedAt'] as Timestamp?)?.toDate(),  // CP-4
       status: data['status'] ?? 'open',  // CP-4
+      participationState: _deriveParticipationState(
+        data['participationState'],
+        fallbackStatus: data['status'],
+      ),
       completedAt: (data['completedAt'] as Timestamp?)?.toDate(),  // CP-4
       actualDurationMinutes: data['actualDurationMinutes'] as int?,  // CP-4
       completed: data['completed'] ?? false,
@@ -66,6 +72,7 @@ class WalkParticipation {
       'joinedAt': Timestamp.fromDate(joinedAt),
       'confirmedAt': confirmedAt != null ? Timestamp.fromDate(confirmedAt!) : null,  // CP-4
       'status': status,  // CP-4
+      'participationState': participationState,
       'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,  // CP-4
       'actualDurationMinutes': actualDurationMinutes,  // CP-4
       'completed': completed,
@@ -94,6 +101,7 @@ class WalkParticipation {
     DateTime? leftAt,
     bool? hostCancelled,
     String? notes,
+    String? participationState,
   }) {
     return WalkParticipation(
       userId: userId ?? this.userId,
@@ -110,7 +118,36 @@ class WalkParticipation {
       leftAt: leftAt ?? this.leftAt,
       hostCancelled: hostCancelled ?? this.hostCancelled,
       notes: notes ?? this.notes,
+      participationState: participationState ?? this.participationState,
     );
+  }
+
+  static String _deriveParticipationState(
+    dynamic explicitState, {
+    dynamic fallbackStatus,
+  }) {
+    if (explicitState is String && explicitState.isNotEmpty) {
+      return explicitState;
+    }
+
+    final status = (fallbackStatus ?? '').toString().toLowerCase();
+    switch (status) {
+      case 'actively_walking':
+      case 'starting':
+      case 'active':
+      case 'completed':
+      case 'ended':
+        return 'confirmed';
+      case 'completed_early':
+      case 'declined':
+      case 'host_cancelled':
+      case 'cancelled':
+        return 'left';
+      case 'invited':
+        return 'invited';
+      default:
+        return 'joined';
+    }
   }
 }
 

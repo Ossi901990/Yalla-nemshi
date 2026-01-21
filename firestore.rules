@@ -183,13 +183,15 @@ service cloud.firestore {
         resource.data.hostUid == request.auth.uid
         || (
           request.resource.data.diff(resource.data).changedKeys().hasOnly(
-            ['joinedUids','joinedUserUids','joinedUserPhotoUrls','joinedCount']
+            ['joinedUids','joinedUserUids','joinedUserPhotoUrls','joinedCount','participantStates']
           )
           && request.resource.data.joinedUids is list
           && request.resource.data.joinedUserUids is list
           && (!request.resource.data.keys().hasAny(['joinedUserPhotoUrls'])
               || request.resource.data.joinedUserPhotoUrls is list)
           && request.resource.data.joinedCount is number
+          && (!request.resource.data.keys().hasAny(['participantStates'])
+              || request.resource.data.participantStates is map)
         )
       );
 
