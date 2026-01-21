@@ -153,8 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   return WalkEvent.fromMap(data);
                 }).where((walk) {
                   // Filter out private walks unless user is host
-                  final visibility = walk.visibility ?? 'open';
-                  return visibility != 'private' || walk.isOwner;
+                  return walk.visibility != 'private' || walk.isOwner;
                 }).toList();
 
                 if (!mounted) return;

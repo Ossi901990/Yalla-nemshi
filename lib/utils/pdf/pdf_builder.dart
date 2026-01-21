@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:intl/intl.dart';
@@ -133,8 +132,9 @@ class PdfBuilder {
             ),
             child: pw.Padding(
               padding: const pw.EdgeInsets.all(12),
-              child: pw.CustomPaint(
-                painter: _RoutePainter(coordinates),
+              child: pw.Text(
+                'Route: ${coordinates.length} checkpoints',
+                style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
               ),
             ),
           ),
@@ -172,7 +172,7 @@ class PdfBuilder {
     );
   }
 
-  Uint8List build() {
+  Future<Uint8List> build() async {
     _document.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -180,7 +180,7 @@ class PdfBuilder {
         build: (_) => _content,
       ),
     );
-    return _document.save();
+    return await _document.save();
   }
 
   pw.Widget _metric(String label, String value) {
@@ -195,7 +195,7 @@ class PdfBuilder {
           pw.SizedBox(height: 2),
           pw.Text(
             value,
-            style: const pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
           ),
         ],
       ),
@@ -213,7 +213,7 @@ class PdfBuilder {
         pw.SizedBox(height: 4),
         pw.Text(
           value,
-          style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
         ),
       ],
     );
@@ -227,82 +227,4 @@ class PdfBuilder {
     }
     return '${hours}h ${mins}m';
   }
-}
-
-class _RoutePainter extends pw.CustomPainter {
-  _RoutePainter(this.coordinates);
-
-  final List<RouteCoordinate> coordinates;
-
-  @override
-  void paint(pw.Context context, pw.Canvas canvas, pw.Rect rect) {
-    final latitudes = coordinates.map((c) => c.latitude).toList();
-    final longitudes = coordinates.map((c) => c.longitude).toList();
-
-    final minLat = latitudes.reduce(math.min);
-    final maxLat = latitudes.reduce(math.max);
-    final minLng = longitudes.reduce(math.min);
-    final maxLng = longitudes.reduce(math.max);
-
-    final latRange = (maxLat - minLat).abs().clamp(0.000001, double.infinity);
-    final lngRange = (maxLng - minLng).abs().clamp(0.000001, double.infinity);
-
-    final padding = 6.0;
-    final usableWidth = rect.width - padding * 2;
-    final usableHeight = rect.height - padding * 2;
-
-    final path = pw.Path();
-    for (var i = 0; i < coordinates.length; i++) {
-      final coord = coordinates[i];
-      final dx = ((coord.longitude - minLng) / lngRange) * usableWidth + padding;
-      final dy = usableHeight -
-          ((coord.latitude - minLat) / latRange) * usableHeight +
-          padding;
-      if (i == 0) {
-        path.moveTo(dx, dy);
-      } else {
-        path.lineTo(dx, dy);
-      }
-    }
-
-    final paint = pw.Paint()
-      ..color = PdfColors.blue400
-      ..strokeWidth = 2
-      ..style = pw.PaintingStyle.stroke;
-
-    canvas.drawPath(path, paint);
-
-    final start = pw.Paint()
-      ..color = PdfColors.green
-      ..style = pw.PaintingStyle.fill;
-    final end = pw.Paint()
-      ..color = PdfColors.red
-      ..style = pw.PaintingStyle.fill;
-
-    final startCoord = coordinates.first;
-    final endCoord = coordinates.last;
-
-    canvas.drawCircle(
-      pw.Offset(
-        ((startCoord.longitude - minLng) / lngRange) * usableWidth + padding,
-        usableHeight -
-            ((startCoord.latitude - minLat) / latRange) * usableHeight + padding,
-      ),
-      3,
-      start,
-    );
-
-    canvas.drawCircle(
-      pw.Offset(
-        ((endCoord.longitude - minLng) / lngRange) * usableWidth + padding,
-        usableHeight -
-            ((endCoord.latitude - minLat) / latRange) * usableHeight + padding,
-      ),
-      3,
-      end,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_RoutePainter oldDelegate) => false;
 }
