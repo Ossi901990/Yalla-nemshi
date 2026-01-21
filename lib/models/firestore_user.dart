@@ -21,6 +21,8 @@ class FirestoreUser {
 
   // Privacy settings
   final bool profilePublic;
+  final bool monthlyDigestEnabled;
+  final DateTime? monthlyDigestUpdatedAt;
 
   FirestoreUser({
     required this.uid,
@@ -37,6 +39,8 @@ class FirestoreUser {
     this.walksHosted = 0,
     this.totalKm = 0.0,
     this.profilePublic = true,
+    this.monthlyDigestEnabled = false,
+    this.monthlyDigestUpdatedAt,
   }) : displayNameLower = (displayNameLower ?? displayName).toLowerCase();
 
   /// Convert to Firestore map
@@ -56,6 +60,10 @@ class FirestoreUser {
       'walksHosted': walksHosted,
       'totalKm': totalKm,
       'profilePublic': profilePublic,
+      'monthlyDigestEnabled': monthlyDigestEnabled,
+      'monthlyDigestUpdatedAt': monthlyDigestUpdatedAt != null
+          ? Timestamp.fromDate(monthlyDigestUpdatedAt!)
+          : null,
     };
   }
 
@@ -83,6 +91,9 @@ class FirestoreUser {
       walksHosted: map['walksHosted'] as int? ?? 0,
       totalKm: (map['totalKm'] as num?)?.toDouble() ?? 0.0,
       profilePublic: map['profilePublic'] as bool? ?? true,
+      monthlyDigestEnabled: map['monthlyDigestEnabled'] as bool? ?? false,
+      monthlyDigestUpdatedAt:
+          (map['monthlyDigestUpdatedAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -102,6 +113,8 @@ class FirestoreUser {
     int? walksHosted,
     double? totalKm,
     bool? profilePublic,
+    bool? monthlyDigestEnabled,
+    DateTime? monthlyDigestUpdatedAt,
   }) {
     return FirestoreUser(
       uid: uid ?? this.uid,
@@ -118,6 +131,9 @@ class FirestoreUser {
       walksHosted: walksHosted ?? this.walksHosted,
       totalKm: totalKm ?? this.totalKm,
       profilePublic: profilePublic ?? this.profilePublic,
+      monthlyDigestEnabled: monthlyDigestEnabled ?? this.monthlyDigestEnabled,
+      monthlyDigestUpdatedAt:
+          monthlyDigestUpdatedAt ?? this.monthlyDigestUpdatedAt,
     );
   }
 }

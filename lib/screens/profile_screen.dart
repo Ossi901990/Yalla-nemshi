@@ -1038,15 +1038,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ).push(MaterialPageRoute(builder: (_) => const SafetyTipsScreen()));
   }
 
-  Future<void> _exportWalkHistory() async {
+  Future<void> _exportWalkHistoryCsv() async {
+    await _runExport(() => WalkExportService.instance.exportHistoryCsv());
+  }
+
+  Future<void> _exportWalkSummaryPdf() async {
+    await _runExport(() => WalkExportService.instance.exportWalkSummaryPdf());
+  }
+
+  Future<void> _runExport(Future<void> Function() task) async {
     try {
-      // Show loading dialog
       if (!mounted) return;
+      final navigator = Navigator.of(context, rootNavigator: true);
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => const AlertDialog(
-          title: Text('Exporting...'),
+          title: Text('Preparing export'),
           content: SizedBox(
             height: 40,
             child: Center(child: CircularProgressIndicator()),
@@ -1054,41 +1062,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
 
-      // Generate CSV
-      final csv = await WalkExportService.instance
-          .generateWalkHistoryCSV();
+      await task();
 
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close loading dialog
-
-      // Show success dialog with option to copy or save
-      final theme = Theme.of(context);
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Walk history exported'),
-          content: Text(
-            'Your walk history has been exported to CSV format.\n\n'
-            'Total entries: ${csv.split('\n').length - 2}',
-            style: theme.textTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
-            ),
-            FilledButton(
-              onPressed: () {
-                // Copy to clipboard
-                _copyToClipboard(csv);
-                Navigator.pop(ctx);
-              },
-              child: const Text('Copy CSV'),
-            ),
-          ],
-        ),
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export ready to share.')),
       );
     } catch (e) {
+      if (mounted) {
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1097,19 +1086,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-  }
-
-  void _copyToClipboard(String text) {
-    // Note: This is a simplified version. In production, you'd use:
-    // import 'package:share_plus/share_plus.dart';
-    // or implement actual file saving
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'CSV content ready to share. You can paste it into a text file.',
-        ),
-      ),
-    );
   }
 
   Future<void> _signOut() async {
@@ -2013,26 +1989,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
 
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _exportWalkHistory,
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                          Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _exportWalkHistoryCsv,
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    side: BorderSide(
+                                      color: (isDark ? Colors.white : Colors.black)
+                                          .withAlpha((0.18 * 255).round()),
+                                    ),
+                                    foregroundColor: isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                  icon: const Icon(Icons.table_view),
+                                  label: const Text('Export walk history (CSV)'),
                                 ),
-                                side: BorderSide(
-                                  color: (isDark ? Colors.white : Colors.black)
-                                      .withAlpha((0.18 * 255).round()),
-                                ),
-                                foregroundColor: isDark
-                                    ? Colors.white
-                                    : Colors.black,
                               ),
-                              icon: const Icon(Icons.download),
-                              label: const Text('Export walk history'),
-                            ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _exportWalkSummaryPdf,
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    side: BorderSide(
+                                      color: (isDark ? Colors.white : Colors.black)
+                                          .withAlpha((0.18 * 255).round()),
+                                    ),
+                                    foregroundColor: isDark
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                  icon: const Icon(Icons.picture_as_pdf),
+                                  label: const Text('Export walk summary (PDF)'),
+                                ),
+                              ),
+                            ],
                           ),
 
                           const SizedBox(height: 8),

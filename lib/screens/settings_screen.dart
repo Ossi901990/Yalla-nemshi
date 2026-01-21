@@ -1,8 +1,11 @@
 // lib/screens/settings_screen.dart
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/firestore_user.dart';
 import '../services/app_preferences.dart';
+import '../services/firestore_user_service.dart';
 import '../widgets/redeem_invite_sheet.dart';
 import 'safety_tips_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -28,10 +31,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _defaultGender = AppPreferences.defaultGenderFallback;
 
   double _weeklyGoalKmLocal = AppPreferences.weeklyGoalKmFallback;
+  bool _monthlyDigestEnabled = false;
+  bool _monthlyDigestSaving = false;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     _bootstrap();
   }
 
@@ -70,6 +77,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (!mounted) return;
     setState(() => _loading = false);
+  }
+
+  Future<void> _onMonthlyDigestToggle(
+    String uid,
+    bool nextValue,
+    bool fallback,
+  ) async {
+    setState(() {
+      _monthlyDigestSaving = true;
+      _monthlyDigestEnabled = nextValue;
+    });
+
+    try {
+      await FirestoreUserService.setMonthlyDigestEnabled(
+        uid: uid,
+        enabled: nextValue,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _monthlyDigestEnabled = fallback;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update email digest: $e'),
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _monthlyDigestSaving = false;
+      });
+    }
+  }
+
+  Widget _buildMonthlyDigestTile(bool isDark) {
+    final uid = _currentUserId;
+    if (uid == null) {
+      return const SizedBox.shrink();
+    }
+
+    return StreamBuilder<FirestoreUser?>(
+      stream: FirestoreUserService.watchUser(uid),
+      builder: (context, snapshot) {
+        final serverValue = snapshot.data?.monthlyDigestEnabled ?? false;
+        final effectiveValue =
+            _monthlyDigestSaving ? _monthlyDigestEnabled : serverValue;
+
+        final waitingForData =
+          snapshot.connectionState == ConnectionState.waiting &&
+            !_monthlyDigestSaving &&
+            !snapshot.hasData;
+        final disableToggle = waitingForData || _monthlyDigestSaving;
+
+        return SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Monthly email digest'),
+          subtitle: const Text(
+            'Receive a monthly summary of your walks by email',
+          ),
+          value: effectiveValue,
+          onChanged: disableToggle
+              ? null
+              : (value) => _onMonthlyDigestToggle(uid, value, serverValue),
+        );
+      },
+    );
   }
 
   Future<void> _openRedeemInviteSheet() async {
@@ -379,6 +453,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   await _bootstrap();
                                 },
                               ),
+                              _buildMonthlyDigestTile(isDark),
                               const SizedBox(height: 16),
 
                               // ===== Preferences =====

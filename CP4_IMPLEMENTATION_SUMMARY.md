@@ -295,8 +295,8 @@ firebase deploy --only functions:onWalkAutoComplete
 - [ ] Social sharing features
 
 ### Phase 3 (Later)
-- [ ] Walk export (CSV, PDF)
-- [ ] Monthly email digest
+- [x] Walk export (CSV, PDF) — Completed Jan 21 2026. Files: lib/screens/profile_screen.dart, lib/services/walk_export_service.dart, lib/services/walk_history_service.dart, lib/services/file_saver.dart (+ platform impls), lib/models/route_snapshot.dart, lib/utils/pdf/pdf_builder.dart, pubspec.yaml.
+- [x] Monthly email digest — Completed Jan 21 2026. Files: lib/screens/settings_screen.dart, lib/services/firestore_user_service.dart, lib/models/firestore_user.dart, functions/index.js, functions/package.json, functions/package-lock.json. Manual test: toggle digest in Settings, verify Firestore /users/{uid} updates, then run `firebase functions:shell sendMonthlyDigests` with SENDGRID_API_KEY to send test email.
 - [ ] Advanced analytics
 - [ ] Custom date range queries
 - [ ] Social comparison features

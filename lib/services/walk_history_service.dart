@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/route_snapshot.dart';
 import '../models/walk_participation.dart';
 import 'crash_service.dart';
 
@@ -475,5 +477,72 @@ class WalkHistoryService {
         .doc('walkStats')
         .snapshots()
         .map((doc) => doc.data() ?? {});
+  }
+
+  /// Return most recent completed walk that has a tracked route
+  Future<RouteSnapshot?> getLatestRouteSnapshot({int maxPoints = 250}) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) throw Exception('User not authenticated');
+
+      final completed = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('walks')
+          .where('completed', isEqualTo: true)
+          .orderBy('joinedAt', descending: true)
+          .limit(5)
+          .get();
+
+      for (final doc in completed.docs) {
+        final walkId = doc.id;
+        final walkSnapshot =
+            await _firestore.collection('walks').doc(walkId).get();
+        final routePoints =
+            (walkSnapshot.data()?['routePointsCount'] as num?)?.toInt() ?? 0;
+
+        if (routePoints < 2) {
+          continue;
+        }
+
+        final tracking = await _firestore
+            .collection('walks')
+            .doc(walkId)
+            .collection('tracking')
+            .orderBy('timestamp')
+            .limit(maxPoints)
+            .get();
+
+        if (tracking.docs.length < 2) {
+          continue;
+        }
+
+        final coordinates = tracking.docs
+            .map((doc) {
+              final data = doc.data();
+              final lat = (data['latitude'] as num?)?.toDouble();
+              final lng = (data['longitude'] as num?)?.toDouble();
+              if (lat == null || lng == null) return null;
+              return RouteCoordinate(latitude: lat, longitude: lng);
+            })
+            .whereType<RouteCoordinate>()
+            .toList();
+
+        if (coordinates.length < 2) {
+          continue;
+        }
+
+        return RouteSnapshot(walkId: walkId, coordinates: coordinates);
+      }
+
+      return null;
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'WalkHistoryService.getLatestRouteSnapshot error',
+      );
+      return null;
+    }
   }
 }

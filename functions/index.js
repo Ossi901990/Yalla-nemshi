@@ -3,7 +3,10 @@ admin.initializeApp();
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { defineSecret } = require("firebase-functions/params");
+const sgMail = require("@sendgrid/mail");
 
 const db = admin.firestore();
 const friendProfiles = require("./friend_profiles")(admin);
@@ -16,6 +19,10 @@ const {
   deleteWalkSummaryForUser,
   enforceWalkSummaryLimit,
 } = friendProfiles;
+
+const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+const DIGEST_FROM_EMAIL = process.env.DIGEST_FROM_EMAIL || "no-reply@yallanemshi.app";
+const DIGEST_FROM_NAME = "Yalla Nemshi";
 
 // ===== SET GLOBAL REGION FOR HTTPS AND HTTPS-CALLABLE FUNCTIONS =====
 // HTTPS functions can be in europe-west1 (closer to Middle East)
@@ -393,6 +400,453 @@ exports.onWalkCancelled = onDocumentUpdated("walks/{walkId}", async (event) => {
     console.error("❌ Error in onWalkCancelled:", error);
   }
 });
+
+// ===== MONTHLY DIGEST SCHEDULER =====
+const COMPLETED_STATES = new Set([
+  "completed",
+  "completed_early",
+  "completed_late",
+  "ended",
+]);
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+exports.sendMonthlyDigests = onSchedule(
+  {
+    schedule: "0 6 1 * *", // 06:00 UTC on the first of every month
+    region: "europe-west1",
+    timeZone: "UTC",
+    secrets: [sendgridApiKey],
+  },
+  async () => {
+    const window = getPreviousMonthWindow();
+    sgMail.setApiKey(sendgridApiKey.value());
+
+    console.log(`📬 [Digest] Starting run for ${window.yearMonth} (${window.label})`);
+    const optInSnapshot = await db
+      .collection("users")
+      .where("monthlyDigestEnabled", "==", true)
+      .get();
+
+    console.log(`📬 [Digest] Found ${optInSnapshot.size} opted-in users`);
+    for (const userDoc of optInSnapshot.docs) {
+      // eslint-disable-next-line no-await-in-loop
+      await processMonthlyDigestForUser(userDoc, window);
+    }
+
+    console.log(`📬 [Digest] Completed run for ${window.yearMonth}`);
+  }
+);
+
+async function processMonthlyDigestForUser(userDoc, window) {
+  const uid = userDoc.id;
+  const userData = userDoc.data() || {};
+  const email = (userData.email || "").trim();
+
+  if (!email) {
+    console.log(`ℹ️ [Digest] Skipping ${uid} — no email on file.`);
+    return;
+  }
+
+  const logRef = db.collection("digest_logs").doc(`${uid}_${window.yearMonth}`);
+  const logSnap = await logRef.get();
+  if (logSnap.exists) {
+    const logData = logSnap.data() || {};
+    if (logData.status === "sent") {
+      console.log(`ℹ️ [Digest] Skipping ${uid} — already sent for ${window.yearMonth}.`);
+      return;
+    }
+    if (
+      logData.status === "sending" &&
+      logData.updatedAt?.toDate &&
+      Date.now() - logData.updatedAt.toDate().getTime() < SIX_HOURS_MS
+    ) {
+      console.log(`ℹ️ [Digest] Skipping ${uid} — existing run still in progress.`);
+      return;
+    }
+  }
+
+  await logRef.set(
+    {
+      uid,
+      yearMonth: window.yearMonth,
+      status: "sending",
+      startedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  try {
+    const walks = await loadMonthlyWalks(uid, window.start, window.end);
+    const stats = buildDigestStats(walks, window.monthLabel);
+
+    await sendDigestEmail({
+      email,
+      displayName: userData.displayName || userData.email,
+      monthLabel: window.label,
+      stats,
+    });
+
+    await logRef.set(
+      {
+        status: "sent",
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        totals: {
+          totalWalks: stats.totalWalks,
+          totalDistanceKm: stats.totalDistanceKm,
+          totalMinutes: stats.totalMinutes,
+          averagePace: stats.averagePace,
+        },
+        highlights: {
+          bestDay: stats.bestDay,
+          bestWeek: stats.bestWeek,
+          longestWalk: stats.longestWalk,
+          fastestPace: stats.fastestPace,
+          mostRecentWalk: stats.mostRecentWalk,
+        },
+      },
+      { merge: true }
+    );
+
+    console.log(`✅ [Digest] Sent monthly digest to ${email} for ${window.yearMonth}`);
+  } catch (error) {
+    console.error(`❌ [Digest] Failed digest for ${uid}`, error);
+    await logRef.set(
+      {
+        status: "error",
+        errorMessage: error?.message || String(error),
+        failedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+}
+
+async function loadMonthlyWalks(uid, startDate, endDate) {
+  const walksRef = db.collection("users").doc(uid).collection("walks");
+  const startTs = admin.firestore.Timestamp.fromDate(startDate);
+  const endTs = admin.firestore.Timestamp.fromDate(endDate);
+
+  const docs = new Map();
+
+  const [joinedSnap, completedSnap] = await Promise.all([
+    walksRef
+      .where("joinedAt", ">=", startTs)
+      .where("joinedAt", "<", endTs)
+      .orderBy("joinedAt")
+      .get(),
+    walksRef
+      .where("completedAt", ">=", startTs)
+      .where("completedAt", "<", endTs)
+      .orderBy("completedAt")
+      .get(),
+  ]);
+
+  joinedSnap.forEach((doc) => docs.set(doc.id, doc.data()));
+  completedSnap.forEach((doc) => docs.set(doc.id, doc.data()));
+
+  const completed = [];
+  docs.forEach((data, id) => {
+    if (isCompletedEntry(data)) {
+      completed.push({ id, data });
+    }
+  });
+
+  return completed;
+}
+
+function isCompletedEntry(data) {
+  if (!data) return false;
+  if (data.completed === true) return true;
+  if (data.completedAt) return true;
+  const status = (data.status || "").toString().toLowerCase();
+  return COMPLETED_STATES.has(status);
+}
+
+function buildDigestStats(walks, monthLabel) {
+  let totalDistance = 0;
+  let totalMinutes = 0;
+  const dayTotals = new Map();
+  const weekTotals = new Map();
+  let longestWalk = null;
+  let fastestPace = null;
+  let mostRecentWalk = null;
+
+  walks.forEach(({ id, data }) => {
+    const distance = getDistanceKm(data);
+    const durationMinutes = resolveDurationMinutes(data);
+    const completedAt = getCompletionDate(data);
+
+    totalDistance += distance;
+    totalMinutes += durationMinutes;
+
+    const dayKey = formatShortDate(completedAt);
+    dayTotals.set(dayKey, (dayTotals.get(dayKey) || 0) + distance);
+
+    const weekBucket = getWeekBucket(completedAt);
+    const existingWeek = weekTotals.get(weekBucket.key) || {
+      label: weekBucket.label,
+      distance: 0,
+    };
+    existingWeek.distance += distance;
+    weekTotals.set(weekBucket.key, existingWeek);
+
+    if (!longestWalk || distance > longestWalk.distanceKm) {
+      longestWalk = {
+        walkId: id,
+        distanceKm: distance,
+        date: completedAt,
+      };
+    }
+
+    if (distance > 0 && durationMinutes > 0) {
+      const pace = durationMinutes / distance;
+      if (!fastestPace || pace < fastestPace.pace) {
+        fastestPace = {
+          walkId: id,
+          pace,
+          distanceKm: distance,
+          date: completedAt,
+        };
+      }
+    }
+
+    if (!mostRecentWalk || completedAt > mostRecentWalk.date) {
+      mostRecentWalk = {
+        walkId: id,
+        distanceKm: distance,
+        date: completedAt,
+      };
+    }
+  });
+
+  const averagePace = totalDistance > 0 ? totalMinutes / totalDistance : 0;
+  const bestDay = pickTopEntry(dayTotals, (label, distanceKm) => ({
+    label,
+    distanceKm: distanceKm.toFixed(2),
+  }));
+  const bestWeek = pickTopEntry(weekTotals, (key, aggregate) => ({
+    label: aggregate.label,
+    distanceKm: aggregate.distance.toFixed(2),
+  }));
+
+  return {
+    totalWalks: walks.length,
+    totalDistanceKm: Number(totalDistance.toFixed(2)),
+    totalMinutes: Math.round(totalMinutes),
+    averagePace,
+    bestDay,
+    bestWeek,
+    longestWalk,
+    fastestPace,
+    mostRecentWalk,
+    monthLabel,
+  };
+}
+
+function pickTopEntry(map, mapper) {
+  let bestKey = null;
+  let bestValue = -Infinity;
+  map.forEach((value, key) => {
+    const numeric = typeof value === "number" ? value : value.distance;
+    if (numeric > bestValue) {
+      bestValue = numeric;
+      bestKey = key;
+    }
+  });
+
+  if (bestKey == null) {
+    return null;
+  }
+
+  return mapper(bestKey, map.get(bestKey));
+}
+
+function getDistanceKm(data) {
+  const fields = [
+    data.actualDistanceKm,
+    data.distanceKm,
+    data.plannedDistanceKm,
+  ];
+  const value = fields.find((num) => typeof num === "number");
+  return value ? Number(value) : 0;
+}
+
+function resolveDurationMinutes(data) {
+  if (typeof data.actualDurationMinutes === "number") {
+    return data.actualDurationMinutes;
+  }
+  if (typeof data.actualDuration === "number") {
+    return Math.round(data.actualDuration / 60);
+  }
+  if (data.confirmedAt?.toDate && data.completedAt?.toDate) {
+    const confirmed = data.confirmedAt.toDate();
+    const completed = data.completedAt.toDate();
+    return Math.max(0, Math.round((completed - confirmed) / 60000));
+  }
+  if (typeof data.plannedDurationMinutes === "number") {
+    return data.plannedDurationMinutes;
+  }
+  return 0;
+}
+
+function getCompletionDate(data) {
+  if (data.completedAt?.toDate) {
+    return data.completedAt.toDate();
+  }
+  if (data.joinedAt?.toDate) {
+    return data.joinedAt.toDate();
+  }
+  return new Date();
+}
+
+function getWeekBucket(date) {
+  const dayOfWeek = date.getUTCDay();
+  const diffToMonday = (dayOfWeek + 6) % 7;
+  const start = new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() - diffToMonday
+    )
+  );
+  const end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+  const key = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    start.getUTCDate()
+  ).padStart(2, "0")}`;
+  const label = `${formatShortDate(start)} – ${formatShortDate(end)}`;
+  return { key, label };
+}
+
+function formatShortDate(date) {
+  const month = new Intl.DateTimeFormat("en", { month: "short" }).format(date);
+  return `${month} ${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function formatDuration(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
+function formatPace(paceMinutes) {
+  if (!paceMinutes || !Number.isFinite(paceMinutes)) {
+    return "–";
+  }
+  const minutes = Math.floor(paceMinutes);
+  const seconds = Math.round((paceMinutes - minutes) * 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${seconds} min/km`;
+}
+
+function buildDigestHtml({ displayName, monthLabel, stats }) {
+  const highlights = [];
+  if (stats.longestWalk) {
+    highlights.push(
+      `Longest walk: ${stats.longestWalk.distanceKm.toFixed(2)} km on ${formatShortDate(
+        stats.longestWalk.date
+      )}`
+    );
+  }
+  if (stats.fastestPace) {
+    highlights.push(
+      `Fastest pace: ${formatPace(stats.fastestPace.pace)} over ${stats.fastestPace.distanceKm.toFixed(
+        2
+      )} km`
+    );
+  }
+  if (stats.bestDay) {
+    highlights.push(`Best day: ${stats.bestDay.label} (${stats.bestDay.distanceKm} km)`);
+  }
+  if (stats.bestWeek) {
+    highlights.push(
+      `Most active week: ${stats.bestWeek.label} (${stats.bestWeek.distanceKm} km)`
+    );
+  }
+  if (stats.mostRecentWalk) {
+    highlights.push(
+      `Most recent walk: ${formatShortDate(stats.mostRecentWalk.date)} (${stats.mostRecentWalk.distanceKm.toFixed(
+        2
+      )} km)`
+    );
+  }
+
+  if (highlights.length === 0) {
+    highlights.push('No walk highlights this month — lace up and get moving!');
+  }
+
+  return `
+    <div style="font-family: 'Inter', 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto;">
+      <h2 style="color:#0f766e;">Hi ${displayName || 'walker'},</h2>
+      <p>Here is your ${monthLabel} walking summary with Yalla Nemshi.</p>
+      <table style="width:100%; border-collapse:collapse; margin:24px 0;">
+        <tr>
+          <td style="padding:8px 0; font-weight:600;">Total walks</td>
+          <td style="text-align:right;">${stats.totalWalks}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0; font-weight:600;">Total distance</td>
+          <td style="text-align:right;">${stats.totalDistanceKm.toFixed(2)} km</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0; font-weight:600;">Total time</td>
+          <td style="text-align:right;">${formatDuration(stats.totalMinutes)}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0; font-weight:600;">Average pace</td>
+          <td style="text-align:right;">${formatPace(stats.averagePace)}</td>
+        </tr>
+      </table>
+      <h3 style="color:#0f766e;">Highlights</h3>
+      <ul>
+        ${highlights.map((item) => `<li>${item}</li>`).join('')}
+      </ul>
+      <p>Keep walking and stay safe!<br/>— The Yalla Nemshi team</p>
+    </div>
+  `;
+}
+
+async function sendDigestEmail({ email, displayName, monthLabel, stats }) {
+  const html = buildDigestHtml({ displayName, monthLabel, stats });
+  await sgMail.send({
+    to: email,
+    from: {
+      email: DIGEST_FROM_EMAIL,
+      name: DIGEST_FROM_NAME,
+    },
+    subject: `Your ${monthLabel} walking summary`,
+    html,
+  });
+}
+
+function getPreviousMonthWindow() {
+  const now = new Date();
+  const startOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const startOfPreviousMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+  );
+
+  const label = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(
+    startOfPreviousMonth
+  );
+  const yearMonth = `${startOfPreviousMonth.getUTCFullYear()}-${String(
+    startOfPreviousMonth.getUTCMonth() + 1
+  ).padStart(2, "0")}`;
+
+  return {
+    start: startOfPreviousMonth,
+    end: startOfCurrentMonth,
+    label,
+    yearMonth,
+    monthLabel: label,
+  };
+}
 
 /**
  * Trigger: When walk details are updated (title, dateTime, meetingPlace, etc.)

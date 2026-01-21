@@ -329,4 +329,43 @@ class FirestoreUserService {
       return FirestoreUser.fromFirestore(doc);
     });
   }
+
+  /// Get monthly digest preference (defaults to false)
+  static Future<bool> getMonthlyDigestEnabled(String uid) async {
+    try {
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      return doc.data()?['monthlyDigestEnabled'] as bool? ?? false;
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'FirestoreUserService.getMonthlyDigestEnabled',
+      );
+      return false;
+    }
+  }
+
+  /// Enable/disable monthly digest for a user
+  static Future<void> setMonthlyDigestEnabled({
+    required String uid,
+    required bool enabled,
+  }) async {
+    try {
+      await _firestore.collection(_usersCollection).doc(uid).set(
+        {
+          'monthlyDigestEnabled': enabled,
+          'monthlyDigestUpdatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      CrashService.log('Monthly digest ${enabled ? 'enabled' : 'disabled'} for $uid');
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'FirestoreUserService.setMonthlyDigestEnabled',
+      );
+      rethrow;
+    }
+  }
 }
