@@ -51,6 +51,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
   fonts:
     # Poppins - Headlines and bold text
     - family: Poppins

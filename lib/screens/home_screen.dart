@@ -252,13 +252,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               debugPrint('❌ WALKS STREAM ERROR: $e');
               CrashService.recordError(e, st);
 
-              // Attempt to recover by resetting listener
-              Future.delayed(const Duration(seconds: 5), () {
-                if (mounted) {
-                  debugPrint('↻ Attempting to reconnect to walks stream...');
-                  _listenToWalks();
-                }
-              });
+              // Don't auto-reconnect - avoid infinite loop of permission errors
+              // User can manually refresh by pulling down on the screen
             },
           );
         })
@@ -271,8 +266,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           try {
             _walksSub = FirebaseFirestore.instance
                 .collection('walks')
-                .where('visibility', isNotEqualTo: 'private')
-                .orderBy('visibility')
                 .where('cancelled', isEqualTo: false)
                 .limit(_walksPerPage)
                 .snapshots()
@@ -296,6 +289,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             currentUid != null &&
                             joinedUids.contains(currentUid);
                         return WalkEvent.fromMap(data);
+                      }).where((walk) {
+                        // Filter out private walks unless user is host
+                        return walk.visibility != 'private' || walk.isOwner;
                       }).toList();
 
                       if (mounted) {
@@ -345,8 +341,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
-          .where('visibility', isNotEqualTo: 'private')
-          .orderBy('visibility')
           .where('cancelled', isEqualTo: false)
           .startAfterDocument(_lastDocument!);
 
@@ -387,6 +381,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             (currentUid != null && joinedUids.contains(currentUid));
 
         return WalkEvent.fromMap(data);
+      }).where((walk) {
+        // Filter out private walks unless user is host
+        return walk.visibility != 'private' || walk.isOwner;
       }).toList();
 
       setState(() {
@@ -841,15 +838,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // 🔹 Sync user profile to Firestore (if missing)
     FirestoreSyncService.syncCurrentUser();
 
-    Future.microtask(() async {
-      try {
-        final currentUserId = ref.read(currentUserIdProvider);
-        final snap = await FirebaseFirestore.instance.collection('walks').get();
-        debugPrint('WALKS GET: docs=${snap.docs.length} uid=$currentUserId');
-      } catch (e) {
-        debugPrint('WALKS GET ERROR: $e');
-      }
-    });
   }
 
   @override
