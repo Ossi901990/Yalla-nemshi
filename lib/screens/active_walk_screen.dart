@@ -65,7 +65,6 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     _ticker?.cancel();
     _trackingPoller?.cancel();
     _trackingStatus.dispose();
-    _stopTrackingIfNeeded();
     _waveController?.dispose();
     super.dispose();
   }
@@ -76,7 +75,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (!shouldRun) {
       _ticker?.cancel();
       _ticker = null;
-      _stopTrackingIfNeeded();
+      if (walk != null && (walk.status == 'ended' || walk.status == 'cancelled')) {
+        _stopTrackingIfNeeded(force: true);
+      }
       return;
     }
     if (_ticker != null) return;
@@ -92,8 +93,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (walk == null) return;
     if (walk.status == 'active') {
       _startTrackingIfNeeded(walk);
-    } else {
-      _stopTrackingIfNeeded();
+    } else if (walk.status == 'ended' || walk.status == 'cancelled') {
+      _stopTrackingIfNeeded(force: true);
     }
   }
 
@@ -107,14 +108,20 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     }
   }
 
-  void _stopTrackingIfNeeded() {
+  void _stopTrackingIfNeeded({bool force = false}) {
+    final walk = _latestWalk;
+    final shouldStopForStatus = walk != null &&
+        (walk.status == 'ended' || walk.status == 'cancelled');
+    if (!force && !shouldStopForStatus) {
+      return;
+    }
     if (GPSTrackingService.instance.isTracking(widget.walkId)) {
       unawaited(GPSTrackingService.instance.stopTracking(widget.walkId));
     }
   }
 
   String _formatDuration(Duration? duration) {
-    if (duration == null) return '--:--';
+    if (duration == null) return '\u2014';
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final hours = duration.inHours;
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -236,9 +243,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
           final status = walk.status;
           final isHost = FirebaseAuth.instance.currentUser?.uid == walk.hostUid;
           final participantState = _participantStateFor(walk);
-          final elapsed = (walk.startedAt != null && status == 'active')
-              ? DateTime.now().difference(walk.startedAt!)
-              : null;
+          final elapsed = _elapsedDuration(walk);
 
           final showFallback = status == 'ended' || status == 'cancelled';
 
@@ -383,14 +388,100 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     );
   }
 
+  double? _resolveDistanceKm(WalkEvent walk) {
+    final storedDistance = walk.actualDistanceKm;
+    if (storedDistance != null && storedDistance > 0) {
+      return storedDistance;
+    }
+    final liveRoute = GPSTrackingService.instance.getCurrentRoute(widget.walkId);
+    if (liveRoute.length < 2) {
+      return null;
+    }
+    return _distanceFromRoute(liveRoute);
+  }
+
+  double? _distanceFromRoute(List<Map<String, dynamic>> route) {
+    double meters = 0;
+    for (var i = 1; i < route.length; i++) {
+      final prev = route[i - 1];
+      final curr = route[i];
+      final prevLat = (prev['latitude'] as num?)?.toDouble();
+      final prevLng = (prev['longitude'] as num?)?.toDouble();
+      final currLat = (curr['latitude'] as num?)?.toDouble();
+      final currLng = (curr['longitude'] as num?)?.toDouble();
+      if (prevLat == null || prevLng == null || currLat == null || currLng == null) {
+        continue;
+      }
+      meters += _haversineMeters(prevLat, prevLng, currLat, currLng);
+    }
+    if (meters <= 0) {
+      return null;
+    }
+    return meters / 1000;
+  }
+
+  double _haversineMeters(double lat1, double lng1, double lat2, double lng2) {
+    const earthRadius = 6371000.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLng = _toRadians(lng2 - lng1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(lat1)) *
+            math.cos(_toRadians(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  double _toRadians(double degrees) => degrees * (math.pi / 180);
+
+  String _paceDisplay(WalkEvent walk) {
+    final averageSpeedMph = walk.averageSpeedMph;
+    if (averageSpeedMph == null || averageSpeedMph <= 0) {
+      return '\u2014';
+    }
+    final speedKmh = averageSpeedMph * 1.60934;
+    if (speedKmh <= 0) {
+      return '\u2014';
+    }
+    final minutesPerKm = 60 / speedKmh;
+    var minutes = minutesPerKm.floor();
+    var seconds = ((minutesPerKm - minutes) * 60).round();
+    if (seconds == 60) {
+      minutes += 1;
+      seconds = 0;
+    }
+    final mm = minutes.toString().padLeft(2, '0');
+    final ss = seconds.toString().padLeft(2, '0');
+    return '$mm:$ss /km';
+  }
+
+  Duration? _elapsedDuration(WalkEvent walk) {
+    final started = walk.startedAt;
+    if (started == null) return null;
+    final hasEnded = walk.status == 'ended' || walk.status == 'cancelled';
+    final comparisonPoint = hasEnded && walk.completedAt != null
+        ? walk.completedAt!
+        : DateTime.now();
+    final elapsed = comparisonPoint.difference(started);
+    if (elapsed.isNegative) {
+      return null;
+    }
+    return elapsed;
+  }
+
   Widget _buildMetricsCard(
     BuildContext context,
     WalkEvent walk,
     Duration? elapsed,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final distanceDisplay = '--.--';
+    final distanceKm = _resolveDistanceKm(walk);
+    final distanceDisplay = (distanceKm != null && distanceKm > 0)
+        ? distanceKm.toStringAsFixed(2)
+        : '\u2014';
     final durationText = _formatDuration(elapsed);
+    final paceDisplay = _paceDisplay(walk);
 
     return Container(
       width: double.infinity,
@@ -443,7 +534,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
           ),
           const SizedBox(height: 4),
           const Text(
-            'GPS feed arrives with Phase 3 - metrics are placeholders for now.',
+            'Live GPS data updates once tracking is active.',
             style: TextStyle(color: Colors.white60),
           ),
           const SizedBox(height: 16),
@@ -455,13 +546,13 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
                 label: 'Elapsed',
                 value: durationText,
               ),
-              const _MetricChip(
+              _MetricChip(
                 label: 'Pace',
-                value: '--:-- /km',
+                value: paceDisplay,
               ),
               const _MetricChip(
                 label: 'Steps',
-                value: '--',
+                value: '\u2014',
               ),
             ],
           ),

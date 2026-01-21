@@ -67,6 +67,27 @@ class WalkEvent {
   /// Actual duration in minutes (calculated from startedAt to completedAt)
   final int? actualDurationMinutes;
 
+  /// Actual GPS distance recorded for this walk (in kilometers)
+  final double? actualDistanceKm;
+
+  /// Average walking speed recorded by GPS (miles per hour)
+  final double? averageSpeedMph;
+
+  /// Peak walking speed recorded by GPS (miles per hour)
+  final double? maxSpeedMph;
+
+  /// True once GPS tracking has flushed and summarized the route
+  final bool trackingCompleted;
+
+  /// Count of GPS points stored while tracking was active
+  final int? trackingPointsCount;
+
+  /// Count of GPS points kept in the summary collection
+  final int? routePointsCount;
+
+  /// Last time GPS data was written to Firestore
+  final DateTime? lastTrackingUpdate;
+
   /// Optional: tags for a walk, e.g. ["Scenic", "Dog friendly"] (for future use)
   final List<String> tags;
 
@@ -154,6 +175,13 @@ class WalkEvent {
     this.startedByUid,  // CP-4
     this.completedAt,  // CP-4
     this.actualDurationMinutes,  // CP-4
+    this.actualDistanceKm,
+    this.averageSpeedMph,
+    this.maxSpeedMph,
+    this.trackingCompleted = false,
+    this.trackingPointsCount,
+    this.routePointsCount,
+    this.lastTrackingUpdate,
     List<String>? tags,
     this.comfortLevel,
     this.experienceLevel = 'All levels',
@@ -212,6 +240,13 @@ class WalkEvent {
     String? startedByUid,  // CP-4
     DateTime? completedAt,  // CP-4
     int? actualDurationMinutes,  // CP-4
+    double? actualDistanceKm,
+    double? averageSpeedMph,
+    double? maxSpeedMph,
+    bool? trackingCompleted,
+    int? trackingPointsCount,
+    int? routePointsCount,
+    DateTime? lastTrackingUpdate,
     List<String>? tags,
     String? comfortLevel,
     String? experienceLevel,
@@ -263,6 +298,13 @@ class WalkEvent {
       startedByUid: startedByUid ?? this.startedByUid,  // CP-4
       completedAt: completedAt ?? this.completedAt,  // CP-4
       actualDurationMinutes: actualDurationMinutes ?? this.actualDurationMinutes,  // CP-4
+      actualDistanceKm: actualDistanceKm ?? this.actualDistanceKm,
+      averageSpeedMph: averageSpeedMph ?? this.averageSpeedMph,
+      maxSpeedMph: maxSpeedMph ?? this.maxSpeedMph,
+      trackingCompleted: trackingCompleted ?? this.trackingCompleted,
+      trackingPointsCount: trackingPointsCount ?? this.trackingPointsCount,
+      routePointsCount: routePointsCount ?? this.routePointsCount,
+      lastTrackingUpdate: lastTrackingUpdate ?? this.lastTrackingUpdate,
       tags: tags ?? this.tags,
         comfortLevel: comfortLevel ?? this.comfortLevel,
         experienceLevel: experienceLevel ?? this.experienceLevel,
@@ -309,6 +351,13 @@ class WalkEvent {
       'endLng': endLng,
       'description': description,
       'cancelled': cancelled,
+      'actualDistanceKm': actualDistanceKm,
+      'averageSpeed': averageSpeedMph,
+      'maxSpeed': maxSpeedMph,
+      'trackingCompleted': trackingCompleted,
+      'trackingPointsCount': trackingPointsCount,
+      'routePointsCount': routePointsCount,
+      'lastTrackingUpdate': lastTrackingUpdate?.toIso8601String(),
       'tags': tags,
         'comfortLevel': comfortLevel,
         'experienceLevel': experienceLevel,
@@ -470,6 +519,13 @@ class WalkEvent {
         completedAt: _toDateTime(map['completedAt']),
         actualDurationMinutes:
           (map['actualDurationMinutes'] as num?)?.toInt(),
+          actualDistanceKm: (map['actualDistanceKm'] as num?)?.toDouble(),
+          averageSpeedMph: (map['averageSpeed'] as num?)?.toDouble(),
+          maxSpeedMph: (map['maxSpeed'] as num?)?.toDouble(),
+          trackingCompleted: _toBool(map['trackingCompleted']),
+          trackingPointsCount: (map['trackingPointsCount'] as num?)?.toInt(),
+          routePointsCount: (map['routePointsCount'] as num?)?.toInt(),
+          lastTrackingUpdate: _toDateTime(map['lastTrackingUpdate']),
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
       city: map['city']?.toString(),
