@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "403871427941-jj99ujigcdkpet9qibv59ofh0vb0gspj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.yalla_nemshi",
+            "certificate_hash": "def90bf822b874a795c64cc64e9d665ad6bf8468"
+          }
+        },
+        {
           "client_id": "403871427941-i0p5ff5vhp1hv6sed0358a6l0njsfrq1.apps.googleusercontent.com",
           "client_type": 3
         }
