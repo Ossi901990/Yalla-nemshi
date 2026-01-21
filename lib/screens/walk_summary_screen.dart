@@ -188,7 +188,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
                           icon: Icons.speed,
                           label: 'Avg Speed',
                           value:
-                              '${widget.routeStats['averageSpeedMph']} mph',
+                              '${widget.routeStats['averageSpeed']} mph',
                           isDark: isDark,
                         ),
                         const SizedBox(height: 12),
@@ -197,7 +197,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
                         _StatCard(
                           icon: Icons.trending_up,
                           label: 'Max Speed',
-                          value: '${widget.routeStats['maxSpeedMph']} mph',
+                          value: '${widget.routeStats['maxSpeed']} mph',
                           isDark: isDark,
                         ),
                         const SizedBox(height: 12),

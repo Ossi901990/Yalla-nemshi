@@ -71,10 +71,10 @@ class WalkEvent {
   final double? actualDistanceKm;
 
   /// Average walking speed recorded by GPS (miles per hour)
-  final double? averageSpeedMph;
+  final double? averageSpeed;
 
   /// Peak walking speed recorded by GPS (miles per hour)
-  final double? maxSpeedMph;
+  final double? maxSpeed;
 
   /// True once GPS tracking has flushed and summarized the route
   final bool trackingCompleted;
@@ -176,8 +176,8 @@ class WalkEvent {
     this.completedAt,  // CP-4
     this.actualDurationMinutes,  // CP-4
     this.actualDistanceKm,
-    this.averageSpeedMph,
-    this.maxSpeedMph,
+    this.averageSpeed,
+    this.maxSpeed,
     this.trackingCompleted = false,
     this.trackingPointsCount,
     this.routePointsCount,
@@ -241,8 +241,8 @@ class WalkEvent {
     DateTime? completedAt,  // CP-4
     int? actualDurationMinutes,  // CP-4
     double? actualDistanceKm,
-    double? averageSpeedMph,
-    double? maxSpeedMph,
+    double? averageSpeed,
+    double? maxSpeed,
     bool? trackingCompleted,
     int? trackingPointsCount,
     int? routePointsCount,
@@ -299,8 +299,8 @@ class WalkEvent {
       completedAt: completedAt ?? this.completedAt,  // CP-4
       actualDurationMinutes: actualDurationMinutes ?? this.actualDurationMinutes,  // CP-4
       actualDistanceKm: actualDistanceKm ?? this.actualDistanceKm,
-      averageSpeedMph: averageSpeedMph ?? this.averageSpeedMph,
-      maxSpeedMph: maxSpeedMph ?? this.maxSpeedMph,
+      averageSpeed: averageSpeed ?? this.averageSpeed,
+      maxSpeed: maxSpeed ?? this.maxSpeed,
       trackingCompleted: trackingCompleted ?? this.trackingCompleted,
       trackingPointsCount: trackingPointsCount ?? this.trackingPointsCount,
       routePointsCount: routePointsCount ?? this.routePointsCount,
@@ -352,8 +352,8 @@ class WalkEvent {
       'description': description,
       'cancelled': cancelled,
       'actualDistanceKm': actualDistanceKm,
-      'averageSpeed': averageSpeedMph,
-      'maxSpeed': maxSpeedMph,
+      'averageSpeed': averageSpeed,
+      'maxSpeed': maxSpeed,
       'trackingCompleted': trackingCompleted,
       'trackingPointsCount': trackingPointsCount,
       'routePointsCount': routePointsCount,
@@ -520,8 +520,8 @@ class WalkEvent {
         actualDurationMinutes:
           (map['actualDurationMinutes'] as num?)?.toInt(),
           actualDistanceKm: (map['actualDistanceKm'] as num?)?.toDouble(),
-          averageSpeedMph: (map['averageSpeed'] as num?)?.toDouble(),
-          maxSpeedMph: (map['maxSpeed'] as num?)?.toDouble(),
+          averageSpeed: (map['averageSpeed'] as num?)?.toDouble(),
+          maxSpeed: (map['maxSpeed'] as num?)?.toDouble(),
           trackingCompleted: _toBool(map['trackingCompleted']),
           trackingPointsCount: (map['trackingPointsCount'] as num?)?.toInt(),
           routePointsCount: (map['routePointsCount'] as num?)?.toInt(),

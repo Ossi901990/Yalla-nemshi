@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/walk_event.dart';
@@ -38,6 +39,12 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
   bool _isConfirming = false;
   bool _isDeclining = false;
   bool _isLeaving = false;
+
+  void _debug(String message) {
+    if (kDebugMode) {
+      debugPrint('[ActiveWalkScreen:${widget.walkId}] $message');
+    }
+  }
 
   @override
   void initState() {
@@ -92,20 +99,31 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     final walk = _latestWalk;
     if (walk == null) return;
     if (walk.status == 'active') {
+      _debug('Initial walk snapshot is active; ensuring tracking is running');
       _startTrackingIfNeeded(walk);
     } else if (walk.status == 'ended' || walk.status == 'cancelled') {
+      _debug('Initial walk snapshot is ${walk.status}; forcing tracking stop');
       _stopTrackingIfNeeded(force: true);
     }
   }
 
   void _startTrackingIfNeeded([WalkEvent? walk]) {
     final resolved = walk ?? _latestWalk;
-    final isHost = resolved != null &&
-        FirebaseAuth.instance.currentUser?.uid == resolved.hostUid;
-    if (!isHost) return;
-    if (!GPSTrackingService.instance.isTracking(widget.walkId)) {
-      unawaited(GPSTrackingService.instance.startTracking(widget.walkId));
+    if (resolved == null) {
+      _debug('startTrackingIfNeeded skipped - walk snapshot unavailable');
+      return;
     }
+    final isHost = FirebaseAuth.instance.currentUser?.uid == resolved.hostUid;
+    if (!isHost) {
+      _debug('startTrackingIfNeeded skipped - current user is not the host');
+      return;
+    }
+    if (GPSTrackingService.instance.isTracking(widget.walkId)) {
+      _debug('startTrackingIfNeeded skipped - already tracking this walk');
+      return;
+    }
+    _debug('Host is starting GPS tracking for status ${resolved.status}');
+    unawaited(GPSTrackingService.instance.startTracking(widget.walkId));
   }
 
   void _stopTrackingIfNeeded({bool force = false}) {
@@ -115,8 +133,12 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (!force && !shouldStopForStatus) {
       return;
     }
+    final statusLabel = walk?.status ?? 'unknown';
+    _debug('stopTrackingIfNeeded invoked (force=$force, status=$statusLabel)');
     if (GPSTrackingService.instance.isTracking(widget.walkId)) {
       unawaited(GPSTrackingService.instance.stopTracking(widget.walkId));
+    } else {
+      _debug('stopTrackingIfNeeded skipped - already stopped');
     }
   }
 
@@ -135,6 +157,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (_isEnding) return;
     setState(() => _isEnding = true);
     try {
+      _debug('Host requested to end walk; stopping tracking after control update');
       await WalkControlService.instance.endWalk(widget.walkId);
       await GPSTrackingService.instance.stopTracking(widget.walkId);
       if (!mounted) return;
@@ -159,7 +182,12 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     setState(() => _isConfirming = true);
     try {
       await WalkHistoryService.instance.confirmParticipation(widget.walkId);
-      await GPSTrackingService.instance.startTracking(widget.walkId);
+      if (GPSTrackingService.instance.isTracking(widget.walkId)) {
+        _debug('Participant confirm completed but tracking already active');
+      } else {
+        _debug('Participant confirmed; starting personal GPS tracking');
+        await GPSTrackingService.instance.startTracking(widget.walkId);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Great! You\'re marked as walking.')),
@@ -204,7 +232,12 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     setState(() => _isLeaving = true);
     try {
       await WalkHistoryService.instance.leaveWalkEarly(widget.walkId);
-      await GPSTrackingService.instance.stopTracking(widget.walkId);
+      if (GPSTrackingService.instance.isTracking(widget.walkId)) {
+        _debug('Participant leaving early; stopping personal tracking');
+        await GPSTrackingService.instance.stopTracking(widget.walkId);
+      } else {
+        _debug('Participant leaving early but tracking already stopped');
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You left the walk.')),
@@ -436,11 +469,11 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
   double _toRadians(double degrees) => degrees * (math.pi / 180);
 
   String _paceDisplay(WalkEvent walk) {
-    final averageSpeedMph = walk.averageSpeedMph;
-    if (averageSpeedMph == null || averageSpeedMph <= 0) {
+    final averageSpeed = walk.averageSpeed;
+    if (averageSpeed == null || averageSpeed <= 0) {
       return '\u2014';
     }
-    final speedKmh = averageSpeedMph * 1.60934;
+    final speedKmh = averageSpeed * 1.60934;
     if (speedKmh <= 0) {
       return '\u2014';
     }

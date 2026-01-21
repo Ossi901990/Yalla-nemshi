@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'crash_service.dart';
@@ -21,6 +22,12 @@ class GPSTrackingService {
   final Map<String, StreamSubscription<Position>> _trackingSubscriptions = {};
   final Map<String, List<Map<String, dynamic>>> _routeData = {};
 
+  void _debug(String message) {
+    if (kDebugMode) {
+      debugPrint('[GPSTrackingService] $message');
+    }
+  }
+
   /// Start tracking a walk in real-time
   /// Stores GPS positions to Firestore every 10 seconds (configurable)
   Future<void> startTracking(
@@ -28,9 +35,11 @@ class GPSTrackingService {
     Duration updateInterval = const Duration(seconds: 10),
   }) async {
     try {
+      _debug('startTracking requested for $walkId');
       // Check if already tracking
       if (_trackingSubscriptions.containsKey(walkId)) {
         CrashService.log('Already tracking walk $walkId');
+        _debug('startTracking($walkId) ignored - subscription already active');
         return;
       }
 
@@ -49,6 +58,7 @@ class GPSTrackingService {
 
       // Initialize route storage
       _routeData[walkId] = [];
+      _debug('Initialized route buffer for $walkId');
 
       // Start listening to position updates
       final subscription = Geolocator.getPositionStream(
@@ -72,6 +82,7 @@ class GPSTrackingService {
 
       _trackingSubscriptions[walkId] = subscription;
       CrashService.log('Started tracking walk $walkId');
+      _debug('startTracking($walkId) subscribed to GPS stream');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -152,9 +163,14 @@ class GPSTrackingService {
   /// Stop tracking a walk and return final route data
   Future<Map<String, dynamic>> stopTracking(String walkId) async {
     try {
+      _debug('stopTracking requested for $walkId');
+      final hadActive = _trackingSubscriptions.containsKey(walkId);
       // Cancel subscription
       _trackingSubscriptions[walkId]?.cancel();
       _trackingSubscriptions.remove(walkId);
+      if (!hadActive) {
+        _debug('stopTracking($walkId) invoked without an active subscription');
+      }
 
       // Save remaining points
       if ((_routeData[walkId]?.length ?? 0) > 0) {
@@ -169,15 +185,17 @@ class GPSTrackingService {
       await _firestore.collection('walks').doc(walkId).update({
         'trackingCompleted': true,
         'actualDistanceKm': stats['totalDistanceKm'],
-        'averageSpeed': stats['averageSpeedMph'],
-        'maxSpeed': stats['maxSpeedMph'],
+        'averageSpeed': stats['averageSpeed'],
+        'maxSpeed': stats['maxSpeed'],
         'routePointsCount': route.length,
       });
 
       // Clear local cache
       _routeData.remove(walkId);
+      _debug('stopTracking($walkId) cleared local buffers and updated summary');
 
       CrashService.log('Stopped tracking walk $walkId. Distance: ${stats['totalDistanceKm']} km');
+      _debug('stopTracking($walkId) complete with distance ${stats['totalDistanceKm']} km and ${route.length} points');
 
       return stats;
     } catch (e) {
@@ -195,8 +213,8 @@ class GPSTrackingService {
     if (route.isEmpty) {
       return {
         'totalDistanceKm': 0.0,
-        'averageSpeedMph': 0.0,
-        'maxSpeedMph': 0.0,
+        'averageSpeed': 0.0,
+        'maxSpeed': 0.0,
       };
     }
 
@@ -233,8 +251,8 @@ class GPSTrackingService {
 
     return {
       'totalDistanceKm': double.parse(distanceKm.toStringAsFixed(2)),
-      'averageSpeedMph': double.parse(avgSpeedMph.toStringAsFixed(1)),
-      'maxSpeedMph': double.parse(maxSpeedMph.toStringAsFixed(1)),
+      'averageSpeed': double.parse(avgSpeedMph.toStringAsFixed(1)),
+      'maxSpeed': double.parse(maxSpeedMph.toStringAsFixed(1)),
     };
   }
 
@@ -275,12 +293,14 @@ class GPSTrackingService {
   /// Stop all active tracking
   Future<void> stopAllTracking() async {
     try {
+      _debug('stopAllTracking invoked for ${_trackingSubscriptions.length} active walks');
       for (final subscription in _trackingSubscriptions.values) {
         subscription.cancel();
       }
       _trackingSubscriptions.clear();
       _routeData.clear();
       CrashService.log('Stopped all walk tracking');
+      _debug('All tracking subscriptions cancelled');
     } catch (e) {
       CrashService.recordError(
         e,
