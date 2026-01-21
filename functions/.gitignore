@@ -1,2 +1,9 @@
 node_modules/
 *.local
+
+# Java/Android heap dumps
+*.hprof
+android/*.hprof
+**/*.hprof
+
+
