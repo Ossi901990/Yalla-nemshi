@@ -105,10 +105,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _monthlyDigestSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _monthlyDigestSaving = false;
+        });
+      }
     }
   }
 

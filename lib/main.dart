@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/notification_service.dart';
 import 'services/geocoding_service.dart';
 import 'services/app_preferences.dart';
@@ -29,16 +28,6 @@ import 'screens/per_badge_leaderboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 🔹 Load environment variables (only on mobile, not on web)
-  if (!kIsWeb) {
-    try {
-      await dotenv.load(fileName: ".env");
-    } catch (e) {
-      debugPrint('⚠️ .env file not found or failed to load: $e');
-      // Continue anyway - mobile uses google-services.json
-    }
-  }
 
   if (kIsWeb) {
     // 🔹 Web: Use hardcoded Firebase config

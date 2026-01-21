@@ -1,6 +1,7 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:convert';
 import 'dart:typed_data';
+
+import 'package:web/web.dart' as web;
 
 /// Triggers a browser download using an in-memory blob.
 Future<void> triggerFileDownload(
@@ -8,14 +9,17 @@ Future<void> triggerFileDownload(
   String filename,
   String mimeType,
 ) async {
-  final blob = html.Blob([bytes], mimeType);
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  final anchor = html.AnchorElement(href: url)
+  final base64Data = base64Encode(bytes);
+  final dataUrl = 'data:$mimeType;base64,$base64Data';
+
+  final anchor =
+      web.document.createElement('a') as web.HTMLAnchorElement;
+  anchor
     ..style.display = 'none'
+    ..href = dataUrl
     ..download = filename;
 
-  html.document.body?.children.add(anchor);
+  web.document.body?.append(anchor);
   anchor.click();
   anchor.remove();
-  html.Url.revokeObjectUrl(url);
 }

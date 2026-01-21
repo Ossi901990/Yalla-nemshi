@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -9,7 +8,6 @@ import '../../models/route_snapshot.dart';
 class PdfBuilder {
   final pw.Document _document = pw.Document();
   final List<pw.Widget> _content = [];
-  final DateFormat _dateFormat = DateFormat.yMMMMd();
 
   void addTitle(String text) {
     _content.add(
@@ -37,46 +35,43 @@ class PdfBuilder {
     _content.add(pw.SizedBox(height: 16));
   }
 
-  void addWalkEntry({
-    required String title,
-    required DateTime date,
-    required double distanceKm,
-    required int durationMinutes,
-    required String pace,
+  void addWalkTable({
+    required List<String> headers,
+    required List<List<String>> rows,
   }) {
+    if (rows.isEmpty) {
+      return;
+    }
+    _content.add(pw.SizedBox(height: 12));
     _content.add(
-      pw.Container(
-        margin: const pw.EdgeInsets.only(bottom: 8),
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-          borderRadius: pw.BorderRadius.circular(8),
+      pw.TableHelper.fromTextArray(
+        headers: headers,
+        data: rows,
+        headerStyle: pw.TextStyle(
+          fontSize: 10,
+          fontWeight: pw.FontWeight.bold,
+          color: PdfColors.grey800,
         ),
-        child: pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text(
-              title,
-              style: pw.TextStyle(
-                fontSize: 14,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              _dateFormat.format(date),
-              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-            ),
-            pw.SizedBox(height: 10),
-            pw.Row(
-              children: [
-                _metric('Distance', '${distanceKm.toStringAsFixed(2)} km'),
-                _metric('Duration', _formatDuration(durationMinutes)),
-                _metric('Pace', pace),
-              ],
-            ),
-          ],
+        cellStyle: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+        headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+        border: pw.TableBorder.symmetric(
+          inside: const pw.BorderSide(color: PdfColors.grey300, width: 0.3),
+          outside: const pw.BorderSide(color: PdfColors.grey400, width: 0.5),
         ),
+        cellAlignment: pw.Alignment.centerLeft,
+        columnWidths: const {
+          0: pw.FlexColumnWidth(1.4),
+          1: pw.FlexColumnWidth(2.4),
+          2: pw.FlexColumnWidth(2.1),
+          3: pw.FlexColumnWidth(2.1),
+          4: pw.FlexColumnWidth(1.1),
+          5: pw.FlexColumnWidth(1.4),
+          6: pw.FlexColumnWidth(1.4),
+          7: pw.FlexColumnWidth(1.3),
+          8: pw.FlexColumnWidth(2.6),
+          9: pw.FlexColumnWidth(1.6),
+          10: pw.FlexColumnWidth(1.8),
+        },
       ),
     );
   }
@@ -183,25 +178,6 @@ class PdfBuilder {
     return await _document.save();
   }
 
-  pw.Widget _metric(String label, String value) {
-    return pw.Expanded(
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            label,
-            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
-          ),
-          pw.SizedBox(height: 2),
-          pw.Text(
-            value,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
   pw.Widget _summaryMetric(String label, String value) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -219,12 +195,4 @@ class PdfBuilder {
     );
   }
 
-  String _formatDuration(int minutes) {
-    final hours = minutes ~/ 60;
-    final mins = minutes % 60;
-    if (hours == 0) {
-      return '${mins}m';
-    }
-    return '${hours}h ${mins}m';
-  }
 }

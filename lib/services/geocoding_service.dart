@@ -1,23 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'crash_service.dart';
 import '../models/app_exception.dart';
 
 /// Service to convert coordinates (lat/lng) → city name using Google Geocoding API
 class GeocodingService {
-  /// Get Google Geocoding API key from environment
+  static const String _kGeocodingApiKey =
+      String.fromEnvironment('GOOGLE_GEOCODING_API_KEY');
+
+  /// Get Google Geocoding API key supplied via --dart-define
   static String? get _googleGeocodingApiKey {
-    if (dotenv.isInitialized) {
-      final value = dotenv.env['GOOGLE_GEOCODING_API_KEY'];
-      if (value != null && value.trim().isNotEmpty) {
-        return value.trim();
-      }
-    }
-    const dartDefineValue = String.fromEnvironment('GOOGLE_GEOCODING_API_KEY');
-    if (dartDefineValue.isNotEmpty) {
-      return dartDefineValue;
+    if (_kGeocodingApiKey.isNotEmpty) {
+      return _kGeocodingApiKey;
     }
     return null;
   }
@@ -32,7 +27,8 @@ class GeocodingService {
       final apiKey = _googleGeocodingApiKey;
       if (apiKey == null) {
         throw LocationException(
-          message: 'Missing Google Geocoding API key. Set GOOGLE_GEOCODING_API_KEY in your .env file or via --dart-define.',
+            message:
+              'Missing Google Geocoding API key. Pass GOOGLE_GEOCODING_API_KEY via --dart-define at build time.',
           code: 'geocoding/missing-api-key',
         );
       }

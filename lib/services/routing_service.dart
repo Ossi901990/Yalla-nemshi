@@ -2,18 +2,20 @@
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/route_result.dart';
 
 class RoutingService {
+  static const String _kOrsApiKey =
+      String.fromEnvironment('OPENROUTESERVICE_API_KEY');
+
   final String? apiKey;
   final http.Client _client;
 
   RoutingService({String? apiKey, http.Client? client})
-      : apiKey = apiKey ?? dotenv.env['OPENROUTESERVICE_API_KEY'],
+      : apiKey = apiKey ?? (_kOrsApiKey.isNotEmpty ? _kOrsApiKey : null),
         _client = client ?? http.Client();
 
   // ----------------------------------------------------------
@@ -47,7 +49,10 @@ class RoutingService {
     try {
       final response = await _client.post(
         url,
-        headers: {"Authorization": apiKey ?? "", "Content-Type": "application/json"},
+        headers: {
+          "Authorization": apiKey ?? "",
+          "Content-Type": "application/json",
+        },
         body: jsonEncode(body),
       );
 
@@ -97,7 +102,10 @@ class RoutingService {
     try {
       final response = await _client.post(
         url,
-        headers: {"Authorization": apiKey ?? "", "Content-Type": "application/json"},
+        headers: {
+          "Authorization": apiKey ?? "",
+          "Content-Type": "application/json",
+        },
         body: jsonEncode(body),
       );
 
