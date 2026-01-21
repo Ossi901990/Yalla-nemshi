@@ -399,6 +399,143 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     return '$start → $end';
   }
 
+  int _countActiveFilters() {
+    int count = 0;
+    if (_filters.tags.isNotEmpty) count++;
+    if (_filters.paces.isNotEmpty) count++;
+    if (_filters.genders.isNotEmpty) count++;
+    if (_filters.cities.isNotEmpty) count++;
+    if (_filters.startDate != null || _filters.endDate != null) count++;
+    if (_filters.comfortLevel != null) count++;
+    if (_filters.experienceLevel != null) count++;
+    if (_filters.recurringOnly) count++;
+    if (_filters.withPhotosOnly) count++;
+    if (_filters.sort != WalkSearchSort.soonest) count++;
+    return count;
+  }
+
+  Widget _buildActiveFiltersBar(ThemeData theme) {
+    final filters = <Widget>[];
+
+    if (_filters.tags.isNotEmpty) {
+      filters.add(
+        InputChip(
+          label: Text('Tags (${_filters.tags.length})'),
+          onDeleted: () {
+            setState(() => _filters = _filters.copyWith(tags: const {}));
+            _runSearch(reset: true);
+          },
+        ),
+      );
+    }
+
+    if (_filters.paces.isNotEmpty) {
+      filters.add(
+        InputChip(
+          label: Text('Pace (${_filters.paces.length})'),
+          onDeleted: () {
+            setState(() => _filters = _filters.copyWith(paces: const {}));
+            _runSearch(reset: true);
+          },
+        ),
+      );
+    }
+
+    if (_filters.genders.isNotEmpty) {
+      filters.add(
+        InputChip(
+          label: Text('Gender (${_filters.genders.length})'),
+          onDeleted: () {
+            setState(() => _filters = _filters.copyWith(genders: const {}));
+            _runSearch(reset: true);
+          },
+        ),
+      );
+    }
+
+    if (_filters.cities.isNotEmpty) {
+      filters.add(
+        InputChip(
+          label: Text('Cities (${_filters.cities.length})'),
+          onDeleted: () {
+            setState(() => _filters = _filters.copyWith(cities: const {}));
+            _runSearch(reset: true);
+          },
+        ),
+      );
+    }
+
+    if (_filters.startDate != null || _filters.endDate != null) {
+      filters.add(
+        InputChip(
+          label: Text(_dateRangeLabel()),
+          onDeleted: _clearDateRange,
+        ),
+      );
+    }
+
+    if (_filters.comfortLevel != null) {
+      filters.add(
+        InputChip(
+          label: Text('Comfort: ${_filters.comfortLevel}'),
+          onDeleted: () {
+            setState(() => _filters = _filters.copyWith(comfortLevel: null));
+            _runSearch(reset: true);
+          },
+        ),
+      );
+    }
+
+    if (_filters.experienceLevel != null) {
+      filters.add(
+        InputChip(
+          label: Text('Level: ${_filters.experienceLevel}'),
+          onDeleted: () {
+            setState(() => _filters = _filters.copyWith(experienceLevel: null));
+            _runSearch(reset: true);
+          },
+        ),
+      );
+    }
+
+    if (filters.isEmpty) return const SizedBox();
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: filters,
+    );
+  }
+
+  void _showFilterModal(BuildContext context, ThemeData theme, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _FilterModal(
+        filters: _filters,
+        onFiltersChanged: (updatedFilters) {
+          setState(() => _filters = updatedFilters);
+          _runSearch(reset: true);
+        },
+        tagOptions: _tagOptions,
+        paceOptions: _paceOptions,
+        genderOptions: _genderOptions,
+        comfortOptions: _comfortOptions,
+        experienceOptions: _experienceOptions,
+        cityStarterList: _cityStarterList,
+        onAddCity: _promptForCity,
+        onRemoveCity: _removeCity,
+        onPickDateRange: _pickDateRange,
+        onClearDateRange: _clearDateRange,
+        dateRangeLabel: _dateRangeLabel,
+        onSaveFilters: _saveCurrentFilters,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -416,61 +553,49 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _saveCurrentFilters,
-        backgroundColor: kPrimaryTeal,
-        icon: const Icon(Icons.push_pin_outlined),
-        label: const Text('Save filter set'),
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => _runSearch(reset: true),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
             children: [
               _buildSearchBox(theme),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _buildSuggestionList(theme),
+              const SizedBox(height: 16),
               _buildHistorySection(theme),
+              const SizedBox(height: 16),
               _buildPopularTagsSection(theme),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               _buildSavedFiltersSection(theme),
               const SizedBox(height: 24),
               _buildSortSection(theme),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildVisibilityToggles(theme),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildCitySection(theme, isDark),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildTagSection(theme, isDark),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildChipSection(
                 theme,
                 title: 'Pace',
                 options: _paceOptions,
                 selected: _filters.paces,
-                onToggle: (value) => _toggleSetValue(
-                  _filters.paces,
-                  value,
-                  _updatePaces,
-                ),
+                onToggle: (pace) => _toggleSetValue(_filters.paces, pace, _updatePaces),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildChipSection(
                 theme,
-                title: 'Who is this walk for?',
+                title: 'Gender preference',
                 options: _genderOptions,
                 selected: _filters.genders,
-                onToggle: (value) => _toggleSetValue(
-                  _filters.genders,
-                  value,
-                  _updateGenders,
-                ),
+                onToggle: (gender) => _toggleSetValue(_filters.genders, gender, _updateGenders),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildComfortExperience(theme, isDark),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               _buildDateRangeCard(theme, isDark),
               const SizedBox(height: 32),
               _buildResultHeader(theme),
@@ -945,6 +1070,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     );
   }
 
+
   Widget _buildDateRangeCard(ThemeData theme, bool isDark) {
     return _FilterCard(
       title: 'Date range',
@@ -1263,3 +1389,357 @@ class _FilterCard extends StatelessWidget {
     );
   }
 }
+
+/// Bottom sheet modal for advanced filtering
+class _FilterModal extends StatefulWidget {
+  final WalkSearchFilters filters;
+  final Function(WalkSearchFilters) onFiltersChanged;
+  final List<String> tagOptions;
+  final List<String> paceOptions;
+  final List<String> genderOptions;
+  final List<String> comfortOptions;
+  final List<String> experienceOptions;
+  final List<String> cityStarterList;
+  final Function() onAddCity;
+  final Function(String) onRemoveCity;
+  final Function() onPickDateRange;
+  final Function() onClearDateRange;
+  final String Function() dateRangeLabel;
+  final Function() onSaveFilters;
+
+  const _FilterModal({
+    required this.filters,
+    required this.onFiltersChanged,
+    required this.tagOptions,
+    required this.paceOptions,
+    required this.genderOptions,
+    required this.comfortOptions,
+    required this.experienceOptions,
+    required this.cityStarterList,
+    required this.onAddCity,
+    required this.onRemoveCity,
+    required this.onPickDateRange,
+    required this.onClearDateRange,
+    required this.dateRangeLabel,
+    required this.onSaveFilters,
+  });
+
+  @override
+  State<_FilterModal> createState() => _FilterModalState();
+}
+
+class _FilterModalState extends State<_FilterModal> {
+  late WalkSearchFilters _localFilters;
+
+  @override
+  void initState() {
+    super.initState();
+    _localFilters = widget.filters;
+  }
+
+  @override
+  void didUpdateWidget(covariant _FilterModal oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync _localFilters when parent updates filters (e.g., from active filter bar deletion)
+    setState(() => _localFilters = widget.filters);
+  }
+
+  void _updateFilter(WalkSearchFilters updated) {
+    setState(() => _localFilters = updated);
+    widget.onFiltersChanged(updated);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: getBackgroundColor(isDark),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Header with close button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filters',
+                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // Filter content
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                children: [
+                  // Tags
+                  _buildFilterSection(
+                    title: 'Walk Type',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.tagOptions
+                          .map(
+                            (tag) => FilterChip(
+                              label: Text(tag),
+                              selected: _localFilters.tags.contains(tag),
+                              onSelected: (selected) {
+                                final updated = Set<String>.from(_localFilters.tags);
+                                if (selected) {
+                                  updated.add(tag);
+                                } else {
+                                  updated.remove(tag);
+                                }
+                                _updateFilter(_localFilters.copyWith(tags: updated));
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Pace
+                  _buildFilterSection(
+                    title: 'Pace',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.paceOptions
+                          .map(
+                            (pace) => FilterChip(
+                              label: Text(pace),
+                              selected: _localFilters.paces.contains(pace),
+                              onSelected: (selected) {
+                                final updated = Set<String>.from(_localFilters.paces);
+                                if (selected) {
+                                  updated.add(pace);
+                                } else {
+                                  updated.remove(pace);
+                                }
+                                _updateFilter(_localFilters.copyWith(paces: updated));
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Gender
+                  _buildFilterSection(
+                    title: 'Who is this walk for?',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.genderOptions
+                          .map(
+                            (gender) => FilterChip(
+                              label: Text(gender),
+                              selected: _localFilters.genders.contains(gender),
+                              onSelected: (selected) {
+                                final updated = Set<String>.from(_localFilters.genders);
+                                if (selected) {
+                                  updated.add(gender);
+                                } else {
+                                  updated.remove(gender);
+                                }
+                                _updateFilter(_localFilters.copyWith(genders: updated));
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Comfort Level
+                  _buildFilterSection(
+                    title: 'Vibe',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.comfortOptions
+                          .map(
+                            (comfort) => FilterChip(
+                              label: Text(comfort),
+                              selected: _localFilters.comfortLevel == comfort,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  _updateFilter(_localFilters.copyWith(comfortLevel: comfort));
+                                } else {
+                                  _updateFilter(_localFilters.copyWith(comfortLevel: null));
+                                }
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Experience Level
+                  _buildFilterSection(
+                    title: 'Experience Level',
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.experienceOptions
+                          .map(
+                            (exp) => FilterChip(
+                              label: Text(exp),
+                              selected: _localFilters.experienceLevel == exp,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  _updateFilter(_localFilters.copyWith(experienceLevel: exp));
+                                } else {
+                                  _updateFilter(_localFilters.copyWith(experienceLevel: null));
+                                }
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Cities
+                  _buildFilterSection(
+                    title: 'Cities',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_localFilters.cities.isNotEmpty)
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _localFilters.cities
+                                .map(
+                                  (city) => InputChip(
+                                    label: Text(city),
+                                    onDeleted: () {
+                                      final updated = Set<String>.from(_localFilters.cities);
+                                      updated.remove(city);
+                                      _updateFilter(_localFilters.copyWith(cities: updated));
+                                    },
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            widget.onAddCity();
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add city'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Date Range
+                  _buildFilterSection(
+                    title: 'Date Range',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            widget.onPickDateRange();
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.calendar_today),
+                          label: Text(widget.dateRangeLabel()),
+                        ),
+                        if (_localFilters.startDate != null || _localFilters.endDate != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: TextButton.icon(
+                              onPressed: () {
+                                widget.onClearDateRange();
+                                _updateFilter(_localFilters.copyWith(startDate: null, endDate: null));
+                              },
+                              icon: const Icon(Icons.clear),
+                              label: const Text('Clear dates'),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Toggles
+                  _buildFilterSection(
+                    title: 'More Options',
+                    child: Column(
+                      children: [
+                        CheckboxListTile(
+                          title: const Text('Recurring walks only'),
+                          value: _localFilters.recurringOnly,
+                          onChanged: (value) {
+                            _updateFilter(_localFilters.copyWith(recurringOnly: value ?? false));
+                          },
+                        ),
+                        CheckboxListTile(
+                          title: const Text('With photos only'),
+                          value: _localFilters.withPhotosOnly,
+                          onChanged: (value) {
+                            _updateFilter(_localFilters.copyWith(withPhotosOnly: value ?? false));
+                          },
+                        ),
+                        CheckboxListTile(
+                          title: const Text('Include private walks'),
+                          value: _localFilters.includePrivate,
+                          onChanged: (value) {
+                            _updateFilter(_localFilters.copyWith(includePrivate: value ?? false));
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Save filter set button
+                  FilledButton.icon(
+                    onPressed: widget.onSaveFilters,
+                    icon: const Icon(Icons.bookmark_add),
+                    label: const Text('Save this filter set'),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterSection({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        child,
+      ],
+    );
+  }
+}
+
