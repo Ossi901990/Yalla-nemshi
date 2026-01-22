@@ -33,6 +33,8 @@ extension WalkSearchSortStorage on WalkSearchSort {
 }
 
 class WalkSearchFilters {
+  static const Object _unset = Object();
+
   const WalkSearchFilters({
     this.keywords = '',
     Set<String>? cities,
@@ -80,12 +82,12 @@ class WalkSearchFilters {
     Set<String>? tags,
     Set<String>? paces,
     Set<String>? genders,
-    String? comfortLevel,
-    String? experienceLevel,
-    DateTime? startDate,
-    DateTime? endDate,
-    double? minDistanceKm,
-    double? maxDistanceKm,
+    Object? comfortLevel = _unset,
+    Object? experienceLevel = _unset,
+    Object? startDate = _unset,
+    Object? endDate = _unset,
+    Object? minDistanceKm = _unset,
+    Object? maxDistanceKm = _unset,
     bool? includePrivate,
     bool? recurringOnly,
     bool? withPhotosOnly,
@@ -97,12 +99,12 @@ class WalkSearchFilters {
       tags: tags ?? this.tags,
       paces: paces ?? this.paces,
       genders: genders ?? this.genders,
-      comfortLevel: comfortLevel ?? this.comfortLevel,
-      experienceLevel: experienceLevel ?? this.experienceLevel,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
-      minDistanceKm: minDistanceKm ?? this.minDistanceKm,
-      maxDistanceKm: maxDistanceKm ?? this.maxDistanceKm,
+      comfortLevel: identical(comfortLevel, _unset) ? this.comfortLevel : comfortLevel as String?,
+      experienceLevel: identical(experienceLevel, _unset) ? this.experienceLevel : experienceLevel as String?,
+      startDate: identical(startDate, _unset) ? this.startDate : startDate as DateTime?,
+      endDate: identical(endDate, _unset) ? this.endDate : endDate as DateTime?,
+      minDistanceKm: identical(minDistanceKm, _unset) ? this.minDistanceKm : minDistanceKm as double?,
+      maxDistanceKm: identical(maxDistanceKm, _unset) ? this.maxDistanceKm : maxDistanceKm as double?,
       includePrivate: includePrivate ?? this.includePrivate,
       recurringOnly: recurringOnly ?? this.recurringOnly,
       withPhotosOnly: withPhotosOnly ?? this.withPhotosOnly,

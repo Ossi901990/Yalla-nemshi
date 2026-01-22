@@ -166,14 +166,17 @@ service cloud.firestore {
     // ===== WALKS COLLECTION =====
     match /walks/{walkId} {
 
-      // READ walks: open (or missing visibility): any signed-in user; private: host OR allowed viewer
-      // Support filtered list queries (by city, visibility, cancelled status)
-      allow get, list: if signedIn()
-        && (
-          isOpenWalk(resource.data) ||
-          isHostOfWalk(resource.data) ||
-          isAllowedViewer(walkId)
-        );
+      // READ walks: allow any signed-in user to query/list. If you re-enable
+      // privacy, add back the visibility/host/allowed checks below.
+      allow get, list: if signedIn();
+
+      // Previous stricter check (kept for reference):
+      // allow get, list: if signedIn()
+      //   && (
+      //     isOpenWalk(resource.data) ||
+      //     isHostOfWalk(resource.data) ||
+      //     isAllowedViewer(walkId)
+      //   );
 
       // CREATE: only if hostUid == current user (simplified - no field validation)
       allow create: if signedIn()

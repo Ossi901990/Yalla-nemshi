@@ -329,12 +329,16 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
   }
 
   void _setComfort(String? value) {
-    setState(() => _filters = _filters.copyWith(comfortLevel: value));
+    // Allow tapping the same chip to clear the selection and return to "Any"
+    final next = _filters.comfortLevel == value ? null : value;
+    setState(() => _filters = _filters.copyWith(comfortLevel: next));
     _runSearch(reset: true);
   }
 
   void _setExperience(String? value) {
-    setState(() => _filters = _filters.copyWith(experienceLevel: value));
+    // Mirror comfort toggle behaviour so chips can be deselected
+    final next = _filters.experienceLevel == value ? null : value;
+    setState(() => _filters = _filters.copyWith(experienceLevel: next));
     _runSearch(reset: true);
   }
 

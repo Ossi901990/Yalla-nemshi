@@ -33,7 +33,7 @@ Future<void> main() async {
     // 🔹 Web: Use hardcoded Firebase config
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyBtTVB_MUrlh2dN-3BoJsulupBP8zKQR6g",
+        apiKey: "AIzaSyAeeUDsBUghrf5gkD2NHZnd7UxSWzZ39u8",
         authDomain: "yalla-nemshi-app.firebaseapp.com",
         projectId: "yalla-nemshi-app",
         storageBucket: "yalla-nemshi-app.firebasestorage.app",

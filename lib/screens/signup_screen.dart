@@ -148,14 +148,6 @@ class _SignupScreenState extends State<SignupScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 🔹 Background image behind everything
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/walk_group.jpg',
-              fit: BoxFit.cover,
-            ),
-          ),
-
           // 🔹 Semi-transparent dark gradient overlay
           Positioned.fill(
             child: Container(
