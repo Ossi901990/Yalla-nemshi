@@ -60,6 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Web: use Firebase popup (no google_sign_in plugin)
         final googleProvider = GoogleAuthProvider();
         googleProvider.addScope('email');
+        googleProvider.addScope('profile'); // ensure name/photo are available
 
         await _auth.signInWithPopup(googleProvider);
 
@@ -70,7 +71,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Mobile (Android/iOS): Use google_sign_in plugin
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email'],
+        // Request both email and profile to keep displayName/photoURL populated
+        scopes: ['email', 'profile'],
       );
 
       // Trigger Google Sign-In flow

@@ -3068,34 +3068,31 @@ class _HeaderAvatar extends StatelessWidget {
 
     ImageProvider? img;
 
-// 1) Base64 avatar (web testing)
-final base64Str = p?.profileImageBase64;
-if (base64Str != null && base64Str.trim().isNotEmpty) {
-  try {
-    final bytes = base64Decode(base64Str);
-    img = MemoryImage(bytes);
-  } catch (_) {
-    // ignore
-  }
-}
-
-// 2) Local file avatar path (mobile only)
-if (img == null && !kIsWeb) {
-  final path = p?.profileImagePath;
-  if (path != null && path.trim().isNotEmpty) {
-    final f = File(path);
-    if (f.existsSync()) {
-      img = FileImage(f);
+    // Prefer Auth photo (Google sign-in) if present
+    final authUrl = FirebaseAuth.instance.currentUser?.photoURL;
+    if (authUrl != null && authUrl.trim().isNotEmpty) {
+      img = NetworkImage(authUrl);
     }
-  }
-}
 
+    // Base64 avatar (web testing)
+    final base64Str = p?.profileImageBase64;
+    if (img == null && base64Str != null && base64Str.trim().isNotEmpty) {
+      try {
+        final bytes = base64Decode(base64Str);
+        img = MemoryImage(bytes);
+      } catch (_) {
+        // ignore
+      }
+    }
 
-    // 3) Fallback to Firebase photoURL
-    if (img == null) {
-      final url = FirebaseAuth.instance.currentUser?.photoURL;
-      if (url != null && url.trim().isNotEmpty) {
-        img = NetworkImage(url);
+    // Local file avatar path (mobile only)
+    if (img == null && !kIsWeb) {
+      final path = p?.profileImagePath;
+      if (path != null && path.trim().isNotEmpty) {
+        final f = File(path);
+        if (f.existsSync()) {
+          img = FileImage(f);
+        }
       }
     }
 

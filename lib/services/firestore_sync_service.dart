@@ -26,6 +26,33 @@ class FirestoreSyncService {
       
       if (exists) {
         debugPrint('✅ User already exists in Firestore: ${user.uid}');
+
+        // Backfill displayName/photoURL from Auth if they are present there but
+        // missing in Firestore (common when the profile was created without
+        // Google info).
+        final authName = user.displayName?.trim();
+        final authPhoto = user.photoURL;
+
+        if ((authName != null && authName.isNotEmpty) || (authPhoto != null && authPhoto.isNotEmpty)) {
+          final profile = await FirestoreUserService.getUser(user.uid);
+          if (profile != null) {
+            final needsName = authName != null && authName.isNotEmpty &&
+              (profile.displayName.isEmpty || profile.displayName == 'User' || profile.displayName != authName);
+
+            final needsPhoto = authPhoto != null && authPhoto.isNotEmpty &&
+              ((profile.photoURL == null || profile.photoURL!.isEmpty) || profile.photoURL != authPhoto);
+
+            if (needsName || needsPhoto) {
+              await FirestoreUserService.updateUser(
+                uid: user.uid,
+                displayName: needsName ? authName : null,
+                photoURL: needsPhoto ? authPhoto : null,
+              );
+              debugPrint('✅ Backfilled profile data from Auth for: ${user.uid}');
+            }
+          }
+        }
+
         return true;
       }
 

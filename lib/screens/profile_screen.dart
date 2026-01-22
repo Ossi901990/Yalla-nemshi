@@ -2130,6 +2130,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
+    // Firebase Auth photo (e.g., Google sign-in)
+    final authPhoto = FirebaseAuth.instance.currentUser?.photoURL;
+    if (authPhoto != null && authPhoto.isNotEmpty) {
+      return CircleAvatar(
+        radius: 48,
+        backgroundImage: NetworkImage(authPhoto),
+      );
+    }
+
     return const CircleAvatar(
       radius: 48,
       backgroundColor: Color(0xFFB7E76A),
