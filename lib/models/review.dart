@@ -7,9 +7,14 @@ class Review {
   final String userId;
   final String userName;
   final String? userProfileUrl;
-  final double rating; // 1.0 to 5.0
-  final String reviewText;
+  final double walkRating; // 1.0 to 5.0
+  final double? hostRating; // 1.0 to 5.0 (participants only)
+  final String? reviewText;
   final DateTime createdAt;
+  final DateTime? updatedAt;
+  final List<String> photoUrls;
+  final bool leftEarly;
+  final bool reviewerIsHost;
   final int helpfulCount; // Count of people who found it helpful
   final List<String> helpfulBy; // User IDs who marked helpful
 
@@ -19,12 +24,21 @@ class Review {
     required this.userId,
     required this.userName,
     this.userProfileUrl,
-    required this.rating,
-    required this.reviewText,
+    required this.walkRating,
+    this.hostRating,
+    this.reviewText,
     required this.createdAt,
+    this.updatedAt,
+    List<String>? photoUrls,
+    this.leftEarly = false,
+    this.reviewerIsHost = false,
     this.helpfulCount = 0,
     List<String>? helpfulBy,
-  }) : helpfulBy = helpfulBy ?? const <String>[];
+  }) :
+        helpfulBy = helpfulBy ?? const <String>[],
+        photoUrls = photoUrls ?? const <String>[];
+
+  double get rating => walkRating;
 
   /// Create Review from Firestore document
   factory Review.fromFirestore(DocumentSnapshot doc) {
@@ -35,9 +49,17 @@ class Review {
       userId: data['userId'] ?? '',
       userName: data['userName'] ?? 'Anonymous',
       userProfileUrl: data['userProfileUrl'],
-      rating: (data['rating'] ?? 5.0).toDouble(),
-      reviewText: data['reviewText'] ?? '',
+      walkRating: (data['walkRating'] ?? data['rating'] ?? 5.0).toDouble(),
+      hostRating: (data['hostRating'] as num?)?.toDouble(),
+      reviewText: data['reviewText'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      photoUrls: (data['photoUrls'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          const <String>[],
+      leftEarly: data['leftEarly'] as bool? ?? false,
+      reviewerIsHost: data['reviewerIsHost'] as bool? ?? false,
       helpfulCount: data['helpfulCount'] ?? 0,
       helpfulBy:
           (data['helpfulBy'] as List<dynamic>?)
@@ -54,9 +76,14 @@ class Review {
       'userId': userId,
       'userName': userName,
       'userProfileUrl': userProfileUrl,
-      'rating': rating,
+      'walkRating': walkRating,
+      'hostRating': hostRating,
       'reviewText': reviewText,
       'createdAt': Timestamp.fromDate(createdAt),
+      if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
+      'photoUrls': photoUrls,
+      'leftEarly': leftEarly,
+      'reviewerIsHost': reviewerIsHost,
       'helpfulCount': helpfulCount,
       'helpfulBy': helpfulBy,
     };
@@ -69,9 +96,14 @@ class Review {
     String? userId,
     String? userName,
     String? userProfileUrl,
-    double? rating,
+    double? walkRating,
+    double? hostRating,
     String? reviewText,
     DateTime? createdAt,
+    DateTime? updatedAt,
+    List<String>? photoUrls,
+    bool? leftEarly,
+    bool? reviewerIsHost,
     int? helpfulCount,
     List<String>? helpfulBy,
   }) {
@@ -81,9 +113,14 @@ class Review {
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userProfileUrl: userProfileUrl ?? this.userProfileUrl,
-      rating: rating ?? this.rating,
+      walkRating: walkRating ?? this.walkRating,
+      hostRating: hostRating ?? this.hostRating,
       reviewText: reviewText ?? this.reviewText,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      photoUrls: photoUrls ?? this.photoUrls,
+      leftEarly: leftEarly ?? this.leftEarly,
+      reviewerIsHost: reviewerIsHost ?? this.reviewerIsHost,
       helpfulCount: helpfulCount ?? this.helpfulCount,
       helpfulBy: helpfulBy ?? this.helpfulBy,
     );
@@ -119,9 +156,10 @@ class ReviewStats {
     double totalRating = 0;
 
     for (final review in reviews) {
-      final ratingInt = review.rating.toInt();
+      final clamped = review.walkRating.round().clamp(1, 5) as num;
+      final ratingInt = clamped.toInt();
       distribution[ratingInt] = (distribution[ratingInt] ?? 0) + 1;
-      totalRating += review.rating;
+      totalRating += review.walkRating;
     }
 
     return ReviewStats(

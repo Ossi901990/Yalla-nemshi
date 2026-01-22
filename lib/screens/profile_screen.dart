@@ -26,6 +26,7 @@ import 'login_screen.dart'; // for routeName
 import 'settings_screen.dart';
 import 'home_screen.dart';
 import 'badge_leaderboard_screen.dart';
+import 'analytics_screen.dart';
 import '../services/app_preferences.dart';
 import '../services/profile_cache_service.dart';
 import '../services/offline_service.dart';
@@ -1963,6 +1964,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 24),
 
                           // Actions
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).pushNamed(
+                                  AnalyticsScreen.routeName,
+                                );
+                              },
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              icon: const Icon(Icons.insights_outlined),
+                              label: const Text('Analytics'),
+                            ),
+                          ),
+
                           const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,

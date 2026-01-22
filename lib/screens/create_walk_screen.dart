@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -127,7 +128,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   String _experienceLevel = _experienceOptions.first;
 
   // ===== Photo picker fields =====
-  final List<File> _selectedPhotos = [];
+  final List<_SelectedPhoto> _selectedPhotos = [];
   final ImagePicker _imagePicker = ImagePicker();
 
   // ===== Recurring walk fields =====
@@ -664,11 +665,19 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
       if (pickedFiles.isEmpty) return;
 
+      // Limit to 10 photos max
+      final available = 10 - _selectedPhotos.length;
+      final limited = pickedFiles.take(available).toList();
+      if (limited.isEmpty) return;
+
+      final newPhotos = <_SelectedPhoto>[];
+      for (final xf in limited) {
+        newPhotos.add(await _createSelectedPhoto(xf));
+      }
+
+      if (!mounted) return;
       setState(() {
-        // Limit to 10 photos max
-        final available = 10 - _selectedPhotos.length;
-        final toAdd = pickedFiles.take(available);
-        _selectedPhotos.addAll(toAdd.map((xf) => File(xf.path)));
+        _selectedPhotos.addAll(newPhotos);
       });
 
       if (mounted && _selectedPhotos.length >= 10) {
@@ -696,6 +705,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     });
   }
 
+  Future<_SelectedPhoto> _createSelectedPhoto(XFile file) async {
+    if (kIsWeb) {
+      final bytes = await file.readAsBytes();
+      return _SelectedPhoto(bytes: bytes, mimeType: file.mimeType);
+    }
+    return _SelectedPhoto(file: File(file.path), mimeType: file.mimeType);
+  }
+
   /// Upload selected photos to Firebase Storage and return URLs
   Future<List<String>> _uploadPhotos(String walkId) async {
     if (_selectedPhotos.isEmpty) return [];
@@ -709,7 +726,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
         final url = await StorageService.uploadWalkPhoto(
           walkId: walkId,
-          photoFile: photo,
+          photoFile: photo.file,
+          photoBytes: photo.bytes,
+          contentType: photo.mimeType,
           photoIndex: photoIndex,
         );
 
@@ -2031,6 +2050,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                   itemCount:
                                                       _selectedPhotos.length,
                                                   itemBuilder: (ctx, idx) {
+                                                    final photo =
+                                                        _selectedPhotos[idx];
                                                     return Stack(
                                                       children: [
                                                         Container(
@@ -2040,9 +2061,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                                   12,
                                                                 ),
                                                             image: DecorationImage(
-                                                              image: FileImage(
-                                                                _selectedPhotos[idx],
-                                                              ),
+                                                              image:
+                                                                  photo.imageProvider,
                                                               fit: BoxFit.cover,
                                                             ),
                                                           ),
@@ -2406,6 +2426,21 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
         ],
       ),
     );
+  }
+}
+
+class _SelectedPhoto {
+  const _SelectedPhoto({this.file, this.bytes, this.mimeType});
+
+  final File? file;
+  final Uint8List? bytes;
+  final String? mimeType;
+
+  ImageProvider<Object> get imageProvider {
+    if (file != null) {
+      return FileImage(file!);
+    }
+    return MemoryImage(bytes!);
   }
 }
 

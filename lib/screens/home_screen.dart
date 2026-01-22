@@ -101,14 +101,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               .collection('walks');
 
           if (userCity != null && userCity.isNotEmpty) {
-            debugPrint('🏙️ Filtering walks by city: $userCity');
-            query = query.where('city', isEqualTo: userCity);
+            debugPrint('🏙️ Filtering walks by city (including cityless): $userCity');
+            query = query.where(
+              Filter.or(
+                Filter('city', isEqualTo: userCity),
+                Filter('city', isNull: true),
+              ),
+            );
           } else {
             debugPrint('⚠️ No user city set; showing all walks');
           }
 
           // Exclude cancelled walks only - filter private walks in code after fetching
           query = query.where('cancelled', isEqualTo: false);
+
+          // Show most recent walks first so newly created ones stay visible
+          query = query.orderBy('createdAt', descending: true);
 
           // Add pagination limit
           query = query.limit(_walksPerPage);
@@ -339,13 +347,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final userCity = await AppPreferences.getUserCity();
 
-      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
           .startAfterDocument(_lastDocument!);
 
       if (userCity != null && userCity.isNotEmpty) {
-        query = query.where('city', isEqualTo: userCity);
+        query = query.where(
+          Filter.or(
+            Filter('city', isEqualTo: userCity),
+            Filter('city', isNull: true),
+          ),
+        );
       }
 
       query = query.limit(_walksPerPage);

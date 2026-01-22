@@ -5,6 +5,24 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function walkData(walkId) {
+      return firestore.get(/databases/(default)/documents/walks/$(walkId)).data;
+    }
+
+    function isWalkMember(walkId) {
+      let walk = walkData(walkId);
+      let participantStates = walk == null ? null : walk.participantStates;
+      let participantState = participantStates == null ? null : participantStates[request.auth.uid];
+      return signedIn()
+        && walk != null
+        && (
+          walk.hostUid == request.auth.uid
+          || (participantState != null && participantState != 'declined')
+          || (walk.joinedUserUids != null && request.auth.uid in walk.joinedUserUids)
+          || (walk.joinedUids != null && request.auth.uid in walk.joinedUids)
+        );
+    }
+
     function dmThread(threadId) {
       return firestore.get(/databases/(default)/documents/dm_threads/$(threadId)).data;
     }
@@ -32,6 +50,18 @@ service firebase.storage {
       allow read: if isDmParticipant(threadId);
       allow delete: if isDmParticipant(threadId);
       allow write: if isDmParticipant(threadId)
+        && request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Walk review photos: only participants/hosts can upload to their folder
+    match /walk_reviews/{walkId}/{userId}/{fileName} {
+      allow read: if signedIn() && isWalkMember(walkId);
+      allow delete: if signedIn() && request.auth.uid == userId && isWalkMember(walkId);
+      allow write: if signedIn()
+        && request.auth.uid == userId
+        && isWalkMember(walkId)
         && request.resource != null
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');

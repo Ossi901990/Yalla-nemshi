@@ -62,9 +62,14 @@ class _ReviewWalkScreenState extends State<ReviewWalkScreen> {
       final userName =
           widget.userName ?? currentUser.displayName ?? 'Anonymous';
 
+      final walkId = widget.walk.firestoreId.isNotEmpty
+          ? widget.walk.firestoreId
+          : widget.walk.id;
+      final isHostReviewer = widget.walk.hostUid == userId;
+
       // Prevent duplicate reviews per user per walk
       final hasReviewed = await ReviewService.userAlreadyReviewed(
-        widget.walk.id,
+        walkId,
         userId,
       ).timeout(const Duration(seconds: 10));
       if (hasReviewed) {
@@ -76,12 +81,16 @@ class _ReviewWalkScreenState extends State<ReviewWalkScreen> {
       }
 
       await ReviewService.addReview(
-        walkId: widget.walk.id,
+        walkId: walkId,
+        hostUid: widget.walk.hostUid,
         userId: userId,
         userName: userName,
         userProfileUrl: currentUser.photoURL,
-        rating: _rating,
+        walkRating: _rating,
+        hostRating: isHostReviewer ? null : _rating,
         reviewText: _reviewController.text.trim(),
+        leftEarly: false,
+        reviewerIsHost: isHostReviewer,
       ).timeout(const Duration(seconds: 15));
 
       if (!mounted) return;

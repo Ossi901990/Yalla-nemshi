@@ -11,6 +11,7 @@ import '../services/gps_tracking_service.dart';
 import '../services/walk_control_service.dart';
 import '../services/walk_history_service.dart';
 import '../utils/error_handler.dart';
+import 'walk_summary_screen.dart';
 
 class ActiveWalkScreen extends StatefulWidget {
   final String walkId;
@@ -39,6 +40,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
   bool _isConfirming = false;
   bool _isDeclining = false;
   bool _isLeaving = false;
+  bool _summaryOpened = false;
+  bool _summaryErrorShown = false;
 
   void _debug(String message) {
     if (kDebugMode) {
@@ -142,6 +145,46 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     }
   }
 
+  void _openSummaryIfPossible({WalkEvent? walk, String? overrideWalkId}) {
+    if (_summaryOpened) return;
+    final resolvedWalk = walk ?? _latestWalk ?? widget.initialWalk;
+    String candidateId = '';
+    if (overrideWalkId != null && overrideWalkId.isNotEmpty) {
+      candidateId = overrideWalkId;
+    } else if (resolvedWalk?.firestoreId.isNotEmpty == true) {
+      candidateId = resolvedWalk!.firestoreId;
+    } else if (resolvedWalk?.id.isNotEmpty == true) {
+      candidateId = resolvedWalk!.id;
+    } else if (widget.walkId.isNotEmpty) {
+      candidateId = widget.walkId;
+    }
+
+    if (candidateId.isEmpty) {
+      if (!_summaryErrorShown && mounted) {
+        _summaryErrorShown = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Walk summary unavailable right now.')),
+        );
+      }
+      return;
+    }
+
+    final summaryId = candidateId;
+    final seedWalk = resolvedWalk;
+    _summaryOpened = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => WalkSummaryScreen(
+            walkId: summaryId,
+            initialWalk: seedWalk,
+          ),
+        ),
+      );
+    });
+  }
+
   String _formatDuration(Duration? duration) {
     if (duration == null) return '\u2014';
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -163,6 +206,10 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Walk ended. Collecting stats...')),
+      );
+      _openSummaryIfPossible(
+        walk: _latestWalk ?? widget.initialWalk,
+        overrideWalkId: widget.walkId,
       );
     } catch (e, st) {
       CrashService.recordError(e, st);
@@ -274,11 +321,15 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
           }
 
           final status = walk.status;
+          final isEnded = status == 'ended' || status == 'completed';
+          if (isEnded) {
+            _openSummaryIfPossible(walk: walk);
+          }
+
           final isHost = FirebaseAuth.instance.currentUser?.uid == walk.hostUid;
           final participantState = _participantStateFor(walk);
           final elapsed = _elapsedDuration(walk);
-
-          final showFallback = status == 'ended' || status == 'cancelled';
+          final showCancelledFallback = status == 'cancelled';
 
           return Stack(
             children: [
@@ -309,15 +360,17 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
                       _buildTopBar(context, status),
                       const SizedBox(height: 16),
                       Expanded(
-                        child: showFallback
+                        child: showCancelledFallback
                             ? _buildFallback(context, status)
-                            : _buildScrollContent(
-                                context,
-                                walk,
-                                elapsed,
-                                participantState,
-                                isHost,
-                              ),
+                            : isEnded
+                                ? _buildSummaryTransition()
+                                : _buildScrollContent(
+                                    context,
+                                    walk,
+                                    elapsed,
+                                    participantState,
+                                    isHost,
+                                  ),
                       ),
                     ],
                   ),
@@ -738,7 +791,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
   Widget _buildFallback(BuildContext context, String status) {
     final message = status == 'cancelled'
         ? 'This walk was cancelled by the host.'
-        : 'Walk completed! Summary view arrives in Phase 4.';
+        : 'Walk completed! Summary will be available shortly.';
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -764,6 +817,27 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text('Back to Home'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryTransition() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: 16),
+          Text(
+            'Preparing your walk summary...',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

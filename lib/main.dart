@@ -25,6 +25,7 @@ import 'screens/friend_profile_screen.dart';
 import 'screens/dm_chat_screen.dart';
 import 'screens/badge_leaderboard_screen.dart';
 import 'screens/per_badge_leaderboard_screen.dart';
+import 'screens/analytics_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -158,6 +159,7 @@ class MyApp extends StatelessWidget {
         },
         PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
         TermsScreen.routeName: (context) => const TermsScreen(),
+        AnalyticsScreen.routeName: (context) => const AnalyticsScreen(),
         SignupScreen.routeName: (context) => const SignupScreen(),
         '/home': (context) => const HomeScreen(),
         '/friends': (context) => FriendListScreen(),

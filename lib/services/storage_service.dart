@@ -7,6 +7,7 @@ import 'crash_service.dart';
 class StorageService {
   static final FirebaseStorage _storage = FirebaseStorage.instance;
   static const String _walksPhotosPath = 'walks';
+  static const String _walkReviewPhotosPath = 'walk_reviews';
 
   /// Upload a photo for a walk
   /// [walkId] - The walk document ID
@@ -15,18 +16,31 @@ class StorageService {
   /// Returns the download URL of the uploaded photo
   static Future<String> uploadWalkPhoto({
     required String walkId,
-    required File photoFile,
+    File? photoFile,
+    Uint8List? photoBytes,
+    String? contentType,
     required String photoIndex,
   }) async {
     try {
+      if (photoFile == null && photoBytes == null) {
+        throw ArgumentError('Provide either photoFile or photoBytes.');
+      }
       // Create storage path: walks/{walkId}/{photoIndex}.jpg
       final storagePath = '$_walksPhotosPath/$walkId/$photoIndex.jpg';
       final ref = _storage.ref(storagePath);
 
       debugPrint('📸 Uploading photo to: $storagePath');
 
-      // Upload file
-      final uploadTask = ref.putFile(photoFile);
+      // Upload file or bytes
+      final metadata = contentType != null
+          ? SettableMetadata(contentType: contentType)
+          : null;
+      UploadTask uploadTask;
+      if (photoFile != null) {
+        uploadTask = ref.putFile(photoFile, metadata);
+      } else {
+        uploadTask = ref.putData(photoBytes!, metadata);
+      }
       final snapshot = await uploadTask;
 
       // Get download URL
@@ -42,6 +56,69 @@ class StorageService {
         e,
         st,
         reason: 'StorageService.uploadWalkPhoto',
+      );
+      rethrow;
+    }
+  }
+
+  /// Upload a photo for a review (scoped per user per walk)
+  static Future<String> uploadReviewPhoto({
+    required String walkId,
+    required String userId,
+    File? photoFile,
+    Uint8List? photoBytes,
+    String? contentType,
+    required String fileName,
+  }) async {
+    try {
+      if (photoFile == null && photoBytes == null) {
+        throw ArgumentError('Provide either photoFile or photoBytes.');
+      }
+
+      final storagePath =
+          '$_walkReviewPhotosPath/$walkId/$userId/$fileName.jpg';
+      final ref = _storage.ref(storagePath);
+      final metadata = contentType != null
+          ? SettableMetadata(contentType: contentType)
+          : null;
+
+      UploadTask uploadTask;
+      if (photoFile != null) {
+        uploadTask = ref.putFile(photoFile, metadata);
+      } else {
+        uploadTask = ref.putData(photoBytes!, metadata);
+      }
+
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      CrashService.log('Uploaded review photo: $storagePath');
+      return downloadUrl;
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'StorageService.uploadReviewPhoto',
+      );
+      rethrow;
+    }
+  }
+
+  static Future<void> deleteReviewPhoto({
+    required String walkId,
+    required String userId,
+    required String fileName,
+  }) async {
+    try {
+      final storagePath =
+          '$_walkReviewPhotosPath/$walkId/$userId/$fileName.jpg';
+      final ref = _storage.ref(storagePath);
+      await ref.delete();
+      CrashService.log('Deleted review photo: $storagePath');
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'StorageService.deleteReviewPhoto',
       );
       rethrow;
     }

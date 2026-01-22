@@ -544,12 +544,47 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final activeFilterCount = _countActiveFilters();
 
     return Scaffold(
       backgroundColor: getBackgroundColor(isDark),
       appBar: AppBar(
         title: const Text('Walk search'),
         actions: [
+          IconButton(
+            onPressed: () => _showFilterModal(context, theme, isDark),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.tune),
+                if (activeFilterCount > 0)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18),
+                      alignment: Alignment.center,
+                      child: Text(
+                        activeFilterCount > 9 ? '9+' : '$activeFilterCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: activeFilterCount > 0
+                ? 'Filters ($activeFilterCount active)'
+                : 'Filters',
+          ),
           IconButton(
             onPressed: _saveCurrentFilters,
             icon: const Icon(Icons.bookmark_add_outlined),
@@ -575,6 +610,10 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               _buildSavedFiltersSection(theme),
               const SizedBox(height: 24),
               _buildSortSection(theme),
+              if (activeFilterCount > 0) ...[
+                const SizedBox(height: 16),
+                _buildActiveFiltersBar(theme),
+              ],
               const SizedBox(height: 24),
               _buildVisibilityToggles(theme),
               const SizedBox(height: 24),

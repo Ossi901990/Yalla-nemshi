@@ -1132,8 +1132,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     if (confirmed != true) return;
 
     try {
-      // Stop GPS tracking and get route stats
-      final routeStats = await GPSTrackingService.instance.stopTracking(event.firestoreId);
+      // Stop GPS tracking and persist stats server-side
+      await GPSTrackingService.instance.stopTracking(event.firestoreId);
       
       // End the walk on Firestore
       await WalkControlService.instance.endWalk(event.firestoreId);
@@ -1144,8 +1144,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => WalkSummaryScreen(
-            walk: event,
-            routeStats: routeStats,
+            walkId: event.firestoreId,
+            initialWalk: event,
           ),
         ),
       );
@@ -2073,12 +2073,21 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                                 review: review,
                                                 onDelete:
                                                     currentUser?.uid ==
-                                                        review.userId
-                                                    ? () async {
-                                                        await ReviewService.deleteReview(
-                                                          review.id,
-                                                          widget.event.id,
-                                                        );
+                                                            review.userId
+                                                        ? () async {
+                                                            final walkId = widget
+                                                                    .event
+                                                                    .firestoreId
+                                                                .isNotEmpty
+                                                            ? widget.event
+                                                                .firestoreId
+                                                            : widget
+                                                                .event.id;
+                                                            await ReviewService
+                                                                .deleteReview(
+                                                              walkId,
+                                                              review.userId,
+                                                            );
                                                         if (context.mounted) {
                                                           ScaffoldMessenger.of(
                                                             context,
@@ -2116,8 +2125,15 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                                     );
                                                     return;
                                                   }
-                                                  await ReviewService.markHelpful(
-                                                    review.id,
+                                                  final walkId = widget
+                                                          .event.firestoreId
+                                                      .isNotEmpty
+                                                  ? widget.event.firestoreId
+                                                  : widget.event.id;
+                                                  await ReviewService
+                                                      .markHelpful(
+                                                    walkId,
+                                                    review.userId,
                                                     currentUser.uid,
                                                   );
                                                   if (!context.mounted) return;

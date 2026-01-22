@@ -63,14 +63,16 @@ class ReviewCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            // Review text
-            Text(
-              review.reviewText,
-              style: theme.textTheme.bodyMedium,
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
+            if ((review.reviewText ?? '').isNotEmpty) ...[
+              // Review text
+              Text(
+                review.reviewText!,
+                style: theme.textTheme.bodyMedium,
+                maxLines: 5,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+            ],
             // Actions
             Row(
               children: [
