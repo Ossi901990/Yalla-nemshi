@@ -1,36 +1,7 @@
 import 'walk_event.dart';
 import '../utils/search_utils.dart';
 
-enum WalkSearchSort {
-  soonest,
-  recentlyAdded,
-  distance,
-}
 
-extension WalkSearchSortStorage on WalkSearchSort {
-  String get storageValue {
-    switch (this) {
-      case WalkSearchSort.recentlyAdded:
-        return 'recently_added';
-      case WalkSearchSort.distance:
-        return 'distance';
-      case WalkSearchSort.soonest:
-        return 'soonest';
-    }
-  }
-
-  static WalkSearchSort fromStorage(String? raw) {
-    switch (raw) {
-      case 'recently_added':
-        return WalkSearchSort.recentlyAdded;
-      case 'distance':
-        return WalkSearchSort.distance;
-      case 'soonest':
-      default:
-        return WalkSearchSort.soonest;
-    }
-  }
-}
 
 class WalkSearchFilters {
   static const Object _unset = Object();
@@ -47,10 +18,8 @@ class WalkSearchFilters {
     this.endDate,
     this.minDistanceKm,
     this.maxDistanceKm,
-    this.includePrivate = false,
     this.recurringOnly = false,
     this.withPhotosOnly = false,
-    this.sort = WalkSearchSort.soonest,
   })  : cities = cities ?? const <String>{},
         tags = tags ?? const <String>{},
         paces = paces ?? const <String>{},
@@ -67,10 +36,8 @@ class WalkSearchFilters {
   final DateTime? endDate;
   final double? minDistanceKm;
   final double? maxDistanceKm;
-  final bool includePrivate;
   final bool recurringOnly;
   final bool withPhotosOnly;
-  final WalkSearchSort sort;
 
   bool get hasKeywordQuery => keywords.trim().isNotEmpty;
 
@@ -88,10 +55,8 @@ class WalkSearchFilters {
     Object? endDate = _unset,
     Object? minDistanceKm = _unset,
     Object? maxDistanceKm = _unset,
-    bool? includePrivate,
     bool? recurringOnly,
     bool? withPhotosOnly,
-    WalkSearchSort? sort,
   }) {
     return WalkSearchFilters(
       keywords: keywords ?? this.keywords,
@@ -105,10 +70,8 @@ class WalkSearchFilters {
       endDate: identical(endDate, _unset) ? this.endDate : endDate as DateTime?,
       minDistanceKm: identical(minDistanceKm, _unset) ? this.minDistanceKm : minDistanceKm as double?,
       maxDistanceKm: identical(maxDistanceKm, _unset) ? this.maxDistanceKm : maxDistanceKm as double?,
-      includePrivate: includePrivate ?? this.includePrivate,
       recurringOnly: recurringOnly ?? this.recurringOnly,
       withPhotosOnly: withPhotosOnly ?? this.withPhotosOnly,
-      sort: sort ?? this.sort,
     );
   }
 
@@ -125,10 +88,8 @@ class WalkSearchFilters {
       'endDate': endDate?.toIso8601String(),
       'minDistanceKm': minDistanceKm,
       'maxDistanceKm': maxDistanceKm,
-      'includePrivate': includePrivate,
       'recurringOnly': recurringOnly,
       'withPhotosOnly': withPhotosOnly,
-      'sort': sort.storageValue,
     };
   }
 
@@ -160,15 +121,14 @@ class WalkSearchFilters {
       maxDistanceKm: json['maxDistanceKm'] != null
           ? double.tryParse(json['maxDistanceKm'].toString())
           : null,
-      includePrivate: json['includePrivate'] == true,
       recurringOnly: json['recurringOnly'] == true,
       withPhotosOnly: json['withPhotosOnly'] == true,
-      sort: WalkSearchSortStorage.fromStorage(json['sort']?.toString()),
     );
   }
 
   bool matches(WalkEvent walk) {
-    if (!includePrivate && walk.visibility == 'private') {
+    // Never match private walks in search
+    if (walk.visibility == 'private') {
       return false;
     }
 

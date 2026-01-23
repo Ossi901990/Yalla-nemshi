@@ -214,43 +214,6 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     _runSearch(reset: true);
   }
 
-  void _setSort(WalkSearchSort sort) {
-    if (_filters.sort == sort) return;
-    setState(() => _filters = _filters.copyWith(sort: sort));
-    _runSearch(reset: true);
-  }
-
-  void _toggleBoolFilter({bool? includePrivate, bool? recurringOnly, bool? withPhotosOnly}) {
-    setState(() {
-      _filters = _filters.copyWith(
-        includePrivate: includePrivate ?? _filters.includePrivate,
-        recurringOnly: recurringOnly ?? _filters.recurringOnly,
-        withPhotosOnly: withPhotosOnly ?? _filters.withPhotosOnly,
-      );
-    });
-    _runSearch(reset: true);
-  }
-
-  void _toggleSetValue(Set<String> current, String value, ValueSetter<Set<String>> onChanged) {
-    final updated = current.contains(value)
-        ? (Set<String>.from(current)..remove(value))
-        : (Set<String>.from(current)..add(value));
-    onChanged(updated);
-    _runSearch(reset: true);
-  }
-
-  void _updateTags(Set<String> updated) {
-    setState(() => _filters = _filters.copyWith(tags: updated));
-  }
-
-  void _updatePaces(Set<String> updated) {
-    setState(() => _filters = _filters.copyWith(paces: updated));
-  }
-
-  void _updateGenders(Set<String> updated) {
-    setState(() => _filters = _filters.copyWith(genders: updated));
-  }
-
   Future<void> _pickDateRange() async {
     final now = DateTime.now();
     final existingStart = _filters.startDate ?? now;
@@ -328,20 +291,6 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     _runSearch(reset: true);
   }
 
-  void _setComfort(String? value) {
-    // Allow tapping the same chip to clear the selection and return to "Any"
-    final next = _filters.comfortLevel == value ? null : value;
-    setState(() => _filters = _filters.copyWith(comfortLevel: next));
-    _runSearch(reset: true);
-  }
-
-  void _setExperience(String? value) {
-    // Mirror comfort toggle behaviour so chips can be deselected
-    final next = _filters.experienceLevel == value ? null : value;
-    setState(() => _filters = _filters.copyWith(experienceLevel: next));
-    _runSearch(reset: true);
-  }
-
   Future<void> _saveCurrentFilters() async {
     final controller = TextEditingController(text: 'My filter ${_savedFilters.length + 1}');
     final label = await showDialog<String>(
@@ -414,101 +363,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     if (_filters.experienceLevel != null) count++;
     if (_filters.recurringOnly) count++;
     if (_filters.withPhotosOnly) count++;
-    if (_filters.sort != WalkSearchSort.soonest) count++;
     return count;
-  }
-
-  Widget _buildActiveFiltersBar(ThemeData theme) {
-    final filters = <Widget>[];
-
-    if (_filters.tags.isNotEmpty) {
-      filters.add(
-        InputChip(
-          label: Text('Tags (${_filters.tags.length})'),
-          onDeleted: () {
-            setState(() => _filters = _filters.copyWith(tags: const {}));
-            _runSearch(reset: true);
-          },
-        ),
-      );
-    }
-
-    if (_filters.paces.isNotEmpty) {
-      filters.add(
-        InputChip(
-          label: Text('Pace (${_filters.paces.length})'),
-          onDeleted: () {
-            setState(() => _filters = _filters.copyWith(paces: const {}));
-            _runSearch(reset: true);
-          },
-        ),
-      );
-    }
-
-    if (_filters.genders.isNotEmpty) {
-      filters.add(
-        InputChip(
-          label: Text('Gender (${_filters.genders.length})'),
-          onDeleted: () {
-            setState(() => _filters = _filters.copyWith(genders: const {}));
-            _runSearch(reset: true);
-          },
-        ),
-      );
-    }
-
-    if (_filters.cities.isNotEmpty) {
-      filters.add(
-        InputChip(
-          label: Text('Cities (${_filters.cities.length})'),
-          onDeleted: () {
-            setState(() => _filters = _filters.copyWith(cities: const {}));
-            _runSearch(reset: true);
-          },
-        ),
-      );
-    }
-
-    if (_filters.startDate != null || _filters.endDate != null) {
-      filters.add(
-        InputChip(
-          label: Text(_dateRangeLabel()),
-          onDeleted: _clearDateRange,
-        ),
-      );
-    }
-
-    if (_filters.comfortLevel != null) {
-      filters.add(
-        InputChip(
-          label: Text('Comfort: ${_filters.comfortLevel}'),
-          onDeleted: () {
-            setState(() => _filters = _filters.copyWith(comfortLevel: null));
-            _runSearch(reset: true);
-          },
-        ),
-      );
-    }
-
-    if (_filters.experienceLevel != null) {
-      filters.add(
-        InputChip(
-          label: Text('Level: ${_filters.experienceLevel}'),
-          onDeleted: () {
-            setState(() => _filters = _filters.copyWith(experienceLevel: null));
-            _runSearch(reset: true);
-          },
-        ),
-      );
-    }
-
-    if (filters.isEmpty) return const SizedBox();
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: filters,
-    );
   }
 
   void _showFilterModal(BuildContext context, ThemeData theme, bool isDark) {
@@ -550,47 +405,6 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
       backgroundColor: getBackgroundColor(isDark),
       appBar: AppBar(
         title: const Text('Walk search'),
-        actions: [
-          IconButton(
-            onPressed: () => _showFilterModal(context, theme, isDark),
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.tune),
-                if (activeFilterCount > 0)
-                  Positioned(
-                    right: -6,
-                    top: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.error,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      constraints: const BoxConstraints(minWidth: 18),
-                      alignment: Alignment.center,
-                      child: Text(
-                        activeFilterCount > 9 ? '9+' : '$activeFilterCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            tooltip: activeFilterCount > 0
-                ? 'Filters ($activeFilterCount active)'
-                : 'Filters',
-          ),
-          IconButton(
-            onPressed: _saveCurrentFilters,
-            icon: const Icon(Icons.bookmark_add_outlined),
-            tooltip: 'Save current filters',
-          ),
-        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -599,7 +413,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
             children: [
-              _buildSearchBox(theme),
+              _buildSearchBox(theme, isDark, activeFilterCount),
               const SizedBox(height: 12),
               _buildSuggestionList(theme),
               const SizedBox(height: 16),
@@ -608,38 +422,6 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               _buildPopularTagsSection(theme),
               const SizedBox(height: 16),
               _buildSavedFiltersSection(theme),
-              const SizedBox(height: 24),
-              _buildSortSection(theme),
-              if (activeFilterCount > 0) ...[
-                const SizedBox(height: 16),
-                _buildActiveFiltersBar(theme),
-              ],
-              const SizedBox(height: 24),
-              _buildVisibilityToggles(theme),
-              const SizedBox(height: 24),
-              _buildCitySection(theme, isDark),
-              const SizedBox(height: 24),
-              _buildTagSection(theme, isDark),
-              const SizedBox(height: 24),
-              _buildChipSection(
-                theme,
-                title: 'Pace',
-                options: _paceOptions,
-                selected: _filters.paces,
-                onToggle: (pace) => _toggleSetValue(_filters.paces, pace, _updatePaces),
-              ),
-              const SizedBox(height: 24),
-              _buildChipSection(
-                theme,
-                title: 'Gender preference',
-                options: _genderOptions,
-                selected: _filters.genders,
-                onToggle: (gender) => _toggleSetValue(_filters.genders, gender, _updateGenders),
-              ),
-              const SizedBox(height: 24),
-              _buildComfortExperience(theme, isDark),
-              const SizedBox(height: 24),
-              _buildDateRangeCard(theme, isDark),
               const SizedBox(height: 32),
               _buildResultHeader(theme),
               const SizedBox(height: 12),
@@ -664,7 +446,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     );
   }
 
-  Widget _buildSearchBox(ThemeData theme) {
+  Widget _buildSearchBox(ThemeData theme, bool isDark, int activeFilterCount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -672,7 +454,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
           'Find a walk that matches your vibe',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: theme.brightness == Brightness.dark ? Colors.white : kTextPrimary,
+            color: isDark ? Colors.white : kTextPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -685,19 +467,55 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
           decoration: InputDecoration(
             hintText: 'Search by title, tags, city...',
             prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchController.text.isEmpty
-                ? null
-                : IconButton(
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
                     icon: const Icon(Icons.clear),
                     onPressed: () {
                       _searchController.clear();
                       _onSearchChanged('');
                     },
                   ),
+                IconButton(
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.tune),
+                      if (activeFilterCount > 0)
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.error,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 18),
+                            alignment: Alignment.center,
+                            child: Text(
+                              activeFilterCount > 9 ? '9+' : '$activeFilterCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onPressed: () => _showFilterModal(context, theme, isDark),
+                  tooltip: activeFilterCount > 0
+                      ? 'Filters ($activeFilterCount active)'
+                      : 'Filters',
+                ),
+              ],
+            ),
             filled: true,
-            fillColor: theme.brightness == Brightness.dark
-                ? Colors.white12
-                : Colors.white,
+            fillColor: isDark ? Colors.white12 : Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
               borderSide: BorderSide.none,
@@ -875,272 +693,6 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSortSection(ThemeData theme) {
-    final options = {
-      WalkSearchSort.soonest: 'Soonest',
-      WalkSearchSort.recentlyAdded: 'Recently added',
-      WalkSearchSort.distance: 'Shortest distance',
-    };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Sort order',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: options.entries.map((entry) {
-            final selected = _filters.sort == entry.key;
-            return ChoiceChip(
-              label: Text(entry.value),
-              selected: selected,
-              onSelected: (_) => _setSort(entry.key),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVisibilityToggles(ThemeData theme) {
-    final chips = [
-      (
-        label: 'Include private walks',
-        value: _filters.includePrivate,
-        icon: Icons.lock_open,
-        onTap: () => _toggleBoolFilter(includePrivate: !_filters.includePrivate),
-      ),
-      (
-        label: 'Recurring only',
-        value: _filters.recurringOnly,
-        icon: Icons.repeat,
-        onTap: () => _toggleBoolFilter(recurringOnly: !_filters.recurringOnly),
-      ),
-      (
-        label: 'With photos only',
-        value: _filters.withPhotosOnly,
-        icon: Icons.photo_library_outlined,
-        onTap: () => _toggleBoolFilter(withPhotosOnly: !_filters.withPhotosOnly),
-      ),
-    ];
-
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: chips
-          .map(
-            (item) => FilterChip(
-              label: Text(item.label),
-              avatar: Icon(item.icon, size: 16),
-              selected: item.value,
-              onSelected: (_) => item.onTap(),
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildCitySection(ThemeData theme, bool isDark) {
-    final chips = _filters.cities
-        .map(
-          (city) => InputChip(
-            label: Text(city),
-            onDeleted: () => _removeCity(city),
-          ),
-        )
-        .toList();
-
-    return _FilterCard(
-      title: 'Cities',
-      subtitle: 'Focus on walks hosted in specific cities',
-      isDark: isDark,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ...chips,
-              ActionChip(
-                avatar: const Icon(Icons.add_location_alt_outlined, size: 18),
-                label: const Text('Add city'),
-                onPressed: _promptForCity,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _cityStarterList.map((city) {
-                final selected = _filters.cities.contains(city);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(city),
-                    selected: selected,
-                    onSelected: (_) {
-                      final updated = Set<String>.from(_filters.cities);
-                      if (selected) {
-                        updated.remove(city);
-                      } else {
-                        updated.add(city);
-                      }
-                      setState(() => _filters = _filters.copyWith(cities: updated));
-                      _runSearch(reset: true);
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTagSection(ThemeData theme, bool isDark) {
-    return _FilterCard(
-      title: 'Tags',
-      subtitle: 'Stack multiple moods or vibe markers',
-      isDark: isDark,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: _tagOptions.map((tag) {
-          final selected = _filters.tags.contains(tag);
-          return FilterChip(
-            label: Text(tag),
-            selected: selected,
-            onSelected: (_) => _toggleSetValue(
-              _filters.tags,
-              tag,
-              _updateTags,
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildChipSection(
-    ThemeData theme, {
-    required String title,
-    required List<String> options,
-    required Set<String> selected,
-    required ValueChanged<String> onToggle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.map((value) {
-            return FilterChip(
-              label: Text(value),
-              selected: selected.contains(value),
-              onSelected: (_) => onToggle(value),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComfortExperience(ThemeData theme, bool isDark) {
-    return _FilterCard(
-      title: 'Comfort & experience',
-      subtitle: 'Match the energy level and guidance you need',
-      isDark: isDark,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Comfort vibe', style: theme.textTheme.labelLarge),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Any comfort'),
-                selected: (_filters.comfortLevel ?? '').isEmpty,
-                onSelected: (_) => _setComfort(null),
-              ),
-              ..._comfortOptions.map((option) {
-                return ChoiceChip(
-                  label: Text(option),
-                  selected: _filters.comfortLevel == option,
-                  onSelected: (_) => _setComfort(option),
-                );
-              }),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('Experience level', style: theme.textTheme.labelLarge),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Any experience'),
-                selected: (_filters.experienceLevel ?? '').isEmpty,
-                onSelected: (_) => _setExperience(null),
-              ),
-              ..._experienceOptions.map((option) {
-                return ChoiceChip(
-                  label: Text(option),
-                  selected: _filters.experienceLevel == option,
-                  onSelected: (_) => _setExperience(option),
-                );
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildDateRangeCard(ThemeData theme, bool isDark) {
-    return _FilterCard(
-      title: 'Date range',
-      subtitle: 'Pin down the window you are free to walk',
-      isDark: isDark,
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _pickDateRange,
-              icon: const Icon(Icons.calendar_today),
-              label: Text(_dateRangeLabel()),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            tooltip: 'Clear range',
-            onPressed: (_filters.startDate == null && _filters.endDate == null)
-                ? null
-                : _clearDateRange,
-            icon: const Icon(Icons.clear_all),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1388,51 +940,6 @@ class _WalkSearchResultCard extends StatelessWidget {
   }
 }
 
-class _FilterCard extends StatelessWidget {
-  const _FilterCard({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-    required this.isDark,
-  });
-
-  final String title;
-  final String subtitle;
-  final Widget child;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: getSurfaceColor(isDark),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.black.withAlpha(12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withAlpha(200)),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 /// Bottom sheet modal for advanced filtering
 class _FilterModal extends StatefulWidget {
   final WalkSearchFilters filters;
@@ -1509,15 +1016,25 @@ class _FilterModalState extends State<_FilterModal> {
         ),
         child: Column(
           children: [
-            // Header with close button
+            // Header with save and close buttons
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Filters',
-                    style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      Text(
+                        'Filters',
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        icon: const Icon(Icons.bookmark_add_outlined),
+                        onPressed: widget.onSaveFilters,
+                        tooltip: 'Save filter set',
+                      ),
+                    ],
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -1541,19 +1058,22 @@ class _FilterModalState extends State<_FilterModal> {
                       runSpacing: 8,
                       children: widget.tagOptions
                           .map(
-                            (tag) => FilterChip(
-                              label: Text(tag),
-                              selected: _localFilters.tags.contains(tag),
-                              onSelected: (selected) {
-                                final updated = Set<String>.from(_localFilters.tags);
-                                if (selected) {
-                                  updated.add(tag);
-                                } else {
-                                  updated.remove(tag);
-                                }
-                                _updateFilter(_localFilters.copyWith(tags: updated));
-                              },
-                            ),
+                            (tag) {
+                              final selected = _localFilters.tags.contains(tag);
+                              return _buildStyledChip(
+                                label: tag,
+                                selected: selected,
+                                onTap: () {
+                                  final updated = Set<String>.from(_localFilters.tags);
+                                  if (selected) {
+                                    updated.remove(tag);
+                                  } else {
+                                    updated.add(tag);
+                                  }
+                                  _updateFilter(_localFilters.copyWith(tags: updated));
+                                },
+                              );
+                            },
                           )
                           .toList(),
                     ),
@@ -1567,19 +1087,22 @@ class _FilterModalState extends State<_FilterModal> {
                       runSpacing: 8,
                       children: widget.paceOptions
                           .map(
-                            (pace) => FilterChip(
-                              label: Text(pace),
-                              selected: _localFilters.paces.contains(pace),
-                              onSelected: (selected) {
-                                final updated = Set<String>.from(_localFilters.paces);
-                                if (selected) {
-                                  updated.add(pace);
-                                } else {
-                                  updated.remove(pace);
-                                }
-                                _updateFilter(_localFilters.copyWith(paces: updated));
-                              },
-                            ),
+                            (pace) {
+                              final selected = _localFilters.paces.contains(pace);
+                              return _buildStyledChip(
+                                label: pace,
+                                selected: selected,
+                                onTap: () {
+                                  final updated = Set<String>.from(_localFilters.paces);
+                                  if (selected) {
+                                    updated.remove(pace);
+                                  } else {
+                                    updated.add(pace);
+                                  }
+                                  _updateFilter(_localFilters.copyWith(paces: updated));
+                                },
+                              );
+                            },
                           )
                           .toList(),
                     ),
@@ -1593,19 +1116,22 @@ class _FilterModalState extends State<_FilterModal> {
                       runSpacing: 8,
                       children: widget.genderOptions
                           .map(
-                            (gender) => FilterChip(
-                              label: Text(gender),
-                              selected: _localFilters.genders.contains(gender),
-                              onSelected: (selected) {
-                                final updated = Set<String>.from(_localFilters.genders);
-                                if (selected) {
-                                  updated.add(gender);
-                                } else {
-                                  updated.remove(gender);
-                                }
-                                _updateFilter(_localFilters.copyWith(genders: updated));
-                              },
-                            ),
+                            (gender) {
+                              final selected = _localFilters.genders.contains(gender);
+                              return _buildStyledChip(
+                                label: gender,
+                                selected: selected,
+                                onTap: () {
+                                  final updated = Set<String>.from(_localFilters.genders);
+                                  if (selected) {
+                                    updated.remove(gender);
+                                  } else {
+                                    updated.add(gender);
+                                  }
+                                  _updateFilter(_localFilters.copyWith(genders: updated));
+                                },
+                              );
+                            },
                           )
                           .toList(),
                     ),
@@ -1619,17 +1145,20 @@ class _FilterModalState extends State<_FilterModal> {
                       runSpacing: 8,
                       children: widget.comfortOptions
                           .map(
-                            (comfort) => FilterChip(
-                              label: Text(comfort),
-                              selected: _localFilters.comfortLevel == comfort,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  _updateFilter(_localFilters.copyWith(comfortLevel: comfort));
-                                } else {
-                                  _updateFilter(_localFilters.copyWith(comfortLevel: null));
-                                }
-                              },
-                            ),
+                            (comfort) {
+                              final selected = _localFilters.comfortLevel == comfort;
+                              return _buildStyledChip(
+                                label: comfort,
+                                selected: selected,
+                                onTap: () {
+                                  if (selected) {
+                                    _updateFilter(_localFilters.copyWith(comfortLevel: null));
+                                  } else {
+                                    _updateFilter(_localFilters.copyWith(comfortLevel: comfort));
+                                  }
+                                },
+                              );
+                            },
                           )
                           .toList(),
                     ),
@@ -1643,17 +1172,20 @@ class _FilterModalState extends State<_FilterModal> {
                       runSpacing: 8,
                       children: widget.experienceOptions
                           .map(
-                            (exp) => FilterChip(
-                              label: Text(exp),
-                              selected: _localFilters.experienceLevel == exp,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  _updateFilter(_localFilters.copyWith(experienceLevel: exp));
-                                } else {
-                                  _updateFilter(_localFilters.copyWith(experienceLevel: null));
-                                }
-                              },
-                            ),
+                            (exp) {
+                              final selected = _localFilters.experienceLevel == exp;
+                              return _buildStyledChip(
+                                label: exp,
+                                selected: selected,
+                                onTap: () {
+                                  if (selected) {
+                                    _updateFilter(_localFilters.copyWith(experienceLevel: null));
+                                  } else {
+                                    _updateFilter(_localFilters.copyWith(experienceLevel: exp));
+                                  }
+                                },
+                              );
+                            },
                           )
                           .toList(),
                     ),
@@ -1744,22 +1276,8 @@ class _FilterModalState extends State<_FilterModal> {
                             _updateFilter(_localFilters.copyWith(withPhotosOnly: value ?? false));
                           },
                         ),
-                        CheckboxListTile(
-                          title: const Text('Include private walks'),
-                          value: _localFilters.includePrivate,
-                          onChanged: (value) {
-                            _updateFilter(_localFilters.copyWith(includePrivate: value ?? false));
-                          },
-                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Save filter set button
-                  FilledButton.icon(
-                    onPressed: widget.onSaveFilters,
-                    icon: const Icon(Icons.bookmark_add),
-                    label: const Text('Save this filter set'),
                   ),
                   const SizedBox(height: 32),
                 ],
@@ -1782,6 +1300,40 @@ class _FilterModalState extends State<_FilterModal> {
         const SizedBox(height: 12),
         child,
       ],
+    );
+  }
+
+  /// Build a styled filter chip matching Walks_screen tag style
+  Widget _buildStyledChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? Colors.teal.shade100 : Colors.transparent,
+          border: Border.all(
+            color: selected ? Colors.teal : Colors.grey.shade400,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.teal : Colors.grey.shade700,
+          ),
+        ),
+      ),
     );
   }
 }

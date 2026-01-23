@@ -34,11 +34,8 @@ class WalkSearchService {
   }) async {
     Query<Map<String, dynamic>> query = _firestore
         .collection('walks')
-        .where('cancelled', isEqualTo: false);
-
-    if (!filters.includePrivate) {
-      query = query.where('visibility', isEqualTo: 'open');
-    }
+        .where('cancelled', isEqualTo: false)
+        .where('visibility', isEqualTo: 'open');
 
     if (filters.recurringOnly) {
       query = query.where('isRecurring', isEqualTo: true);
@@ -92,16 +89,8 @@ class WalkSearchService {
       return WalkEvent.fromMap(data);
     }).where(filters.matches).toList();
 
-    walks.sort((a, b) {
-      switch (filters.sort) {
-        case WalkSearchSort.recentlyAdded:
-          return b.dateTime.compareTo(a.dateTime);
-        case WalkSearchSort.distance:
-          return a.distanceKm.compareTo(b.distanceKm);
-        case WalkSearchSort.soonest:
-          return a.dateTime.compareTo(b.dateTime);
-      }
-    });
+    // Sort by date (soonest first)
+    walks.sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     return WalkSearchPage(
       results: walks,
