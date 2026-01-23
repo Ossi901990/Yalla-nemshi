@@ -77,7 +77,7 @@ const EdgeInsets kBtnPadding = EdgeInsets.symmetric(vertical: kSpace2);
 
 class HomeScreen extends ConsumerStatefulWidget {
   final int initialTab;
-  
+
   const HomeScreen({super.key, this.initialTab = 0});
 
   @override
@@ -101,7 +101,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               .collection('walks');
 
           if (userCity != null && userCity.isNotEmpty) {
-            debugPrint('🏙️ Filtering walks by city (including cityless): $userCity');
+            debugPrint(
+              '🏙️ Filtering walks by city (including cityless): $userCity',
+            );
             query = query.where(
               Filter.or(
                 Filter('city', isEqualTo: userCity),
@@ -112,11 +114,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             debugPrint('⚠️ No user city set; showing all walks');
           }
 
-          // Exclude cancelled walks only - filter private walks in code after fetching
-          query = query.where('cancelled', isEqualTo: false);
+          // Exclude cancelled and past walks (show upcoming only)
+          query = query
+              .where('cancelled', isEqualTo: false)
+              .where('dateTime', isGreaterThan: Timestamp.now());
 
-          // Show most recent walks first so newly created ones stay visible
-          query = query.orderBy('createdAt', descending: true);
+          // Order by soonest upcoming, then newest created to break ties
+          query = query
+              .orderBy('dateTime')
+              .orderBy('createdAt', descending: true);
 
           // Add pagination limit
           query = query.limit(_walksPerPage);
@@ -129,7 +135,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   'WALKS SNAP: docs=${snap.docs.length} uid=$currentUid city=$userCity',
                 );
 
-
                 // Track last document for pagination
                 if (snap.docs.isNotEmpty) {
                   _lastDocument = snap.docs.last;
@@ -139,30 +144,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _hasMoreWalks = false;
                 }
 
-                final List<WalkEvent> loaded = snap.docs.map((doc) {
-                  final data = Map<String, dynamic>.from(doc.data());
-                  data['firestoreId'] = doc.id;
-                  data['id'] ??= doc.id;
+                final List<WalkEvent> loaded = snap.docs
+                    .map((doc) {
+                      final data = Map<String, dynamic>.from(doc.data());
+                      data['firestoreId'] = doc.id;
+                      data['id'] ??= doc.id;
 
-                  final hostUid = data['hostUid'] as String?;
-                  data['isOwner'] =
-                      (currentUid != null &&
-                      hostUid != null &&
-                      hostUid == currentUid);
+                      final hostUid = data['hostUid'] as String?;
+                      data['isOwner'] =
+                          (currentUid != null &&
+                          hostUid != null &&
+                          hostUid == currentUid);
 
-                  final joinedUids =
-                      (data['joinedUids'] as List?)
-                          ?.whereType<String>()
-                          .toList() ??
-                      [];
-                  data['joined'] =
-                      (currentUid != null && joinedUids.contains(currentUid));
+                      final joinedUids =
+                          (data['joinedUids'] as List?)
+                              ?.whereType<String>()
+                              .toList() ??
+                          [];
+                      data['joined'] =
+                          (currentUid != null &&
+                          joinedUids.contains(currentUid));
 
-                  return WalkEvent.fromMap(data);
-                }).where((walk) {
-                  // Filter out private walks unless user is host
-                  return walk.visibility != 'private' || walk.isOwner;
-                }).toList();
+                      return WalkEvent.fromMap(data);
+                    })
+                    .where((walk) {
+                      // Filter out private walks unless user is host
+                      return walk.visibility != 'private' || walk.isOwner;
+                    })
+                    .toList();
 
                 if (!mounted) return;
 
@@ -275,32 +284,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _walksSub = FirebaseFirestore.instance
                 .collection('walks')
                 .where('cancelled', isEqualTo: false)
+                .where('dateTime', isGreaterThan: Timestamp.now())
+                .orderBy('dateTime')
+                .orderBy('createdAt', descending: true)
                 .limit(_walksPerPage)
                 .snapshots()
                 .listen(
                   (snap) {
                     try {
                       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-                      final List<WalkEvent> loaded = snap.docs.map((doc) {
-                        final data = Map<String, dynamic>.from(doc.data());
-                        data['firestoreId'] = doc.id;
-                        data['id'] ??= doc.id;
-                        final hostUid = data['hostUid'] as String?;
-                        data['isOwner'] =
-                            currentUid != null && hostUid == currentUid;
-                        final joinedUids =
-                            (data['joinedUids'] as List?)
-                                ?.whereType<String>()
-                                .toList() ??
-                            [];
-                        data['joined'] =
-                            currentUid != null &&
-                            joinedUids.contains(currentUid);
-                        return WalkEvent.fromMap(data);
-                      }).where((walk) {
-                        // Filter out private walks unless user is host
-                        return walk.visibility != 'private' || walk.isOwner;
-                      }).toList();
+                      final List<WalkEvent> loaded = snap.docs
+                          .map((doc) {
+                            final data = Map<String, dynamic>.from(doc.data());
+                            data['firestoreId'] = doc.id;
+                            data['id'] ??= doc.id;
+                            final hostUid = data['hostUid'] as String?;
+                            data['isOwner'] =
+                                currentUid != null && hostUid == currentUid;
+                            final joinedUids =
+                                (data['joinedUids'] as List?)
+                                    ?.whereType<String>()
+                                    .toList() ??
+                                [];
+                            data['joined'] =
+                                currentUid != null &&
+                                joinedUids.contains(currentUid);
+                            return WalkEvent.fromMap(data);
+                          })
+                          .where((walk) {
+                            // Filter out private walks unless user is host
+                            return walk.visibility != 'private' || walk.isOwner;
+                          })
+                          .toList();
 
                       if (mounted) {
                         setState(() {
@@ -347,9 +362,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final userCity = await AppPreferences.getUserCity();
 
-        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false)
+          .where('dateTime', isGreaterThan: Timestamp.now())
+          .orderBy('dateTime')
           .orderBy('createdAt', descending: true)
           .startAfterDocument(_lastDocument!);
 
@@ -380,25 +397,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _hasMoreWalks = snap.docs.length >= _walksPerPage;
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final List<WalkEvent> newWalks = snap.docs.map((doc) {
-        final data = Map<String, dynamic>.from(doc.data());
-        data['firestoreId'] = doc.id;
-        data['id'] ??= doc.id;
+      final List<WalkEvent> newWalks = snap.docs
+          .map((doc) {
+            final data = Map<String, dynamic>.from(doc.data());
+            data['firestoreId'] = doc.id;
+            data['id'] ??= doc.id;
 
-        final hostUid = data['hostUid'] as String?;
-        data['isOwner'] =
-            (currentUid != null && hostUid != null && hostUid == currentUid);
+            final hostUid = data['hostUid'] as String?;
+            data['isOwner'] =
+                (currentUid != null &&
+                hostUid != null &&
+                hostUid == currentUid);
 
-        final joinedUids =
-            (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
-        data['joined'] =
-            (currentUid != null && joinedUids.contains(currentUid));
+            final joinedUids =
+                (data['joinedUids'] as List?)?.whereType<String>().toList() ??
+                [];
+            data['joined'] =
+                (currentUid != null && joinedUids.contains(currentUid));
 
-        return WalkEvent.fromMap(data);
-      }).where((walk) {
-        // Filter out private walks unless user is host
-        return walk.visibility != 'private' || walk.isOwner;
-      }).toList();
+            return WalkEvent.fromMap(data);
+          })
+          .where((walk) {
+            // Filter out private walks unless user is host
+            return walk.visibility != 'private' || walk.isOwner;
+          })
+          .toList();
 
       setState(() {
         _events.addAll(newWalks);
@@ -443,7 +466,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
-  List<WalkEvent> _recommendations = []; // For future UI recommendations section
+  List<WalkEvent> _recommendations =
+      []; // For future UI recommendations section
   bool _isOffline = false;
   int _pendingActions = 0;
 
@@ -545,23 +569,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_myHostedWalks.isEmpty) return null;
 
     final now = DateTime.now();
-    final active = _myHostedWalks
-        .where((walk) => !walk.cancelled && walk.status == 'active')
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final active =
+        _myHostedWalks
+            .where((walk) => !walk.cancelled && walk.status == 'active')
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     if (active.isNotEmpty) {
       return active.first;
     }
 
-    final upcoming = _myHostedWalks
-        .where((walk) {
-          if (walk.cancelled) return false;
-          if (walk.status != 'scheduled') return false;
-          return walk.dateTime.isAfter(now.subtract(const Duration(hours: 6)));
-        })
-        .toList()
-      ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final upcoming = _myHostedWalks.where((walk) {
+      if (walk.cancelled) return false;
+      if (walk.status != 'scheduled') return false;
+      return walk.dateTime.isAfter(now.subtract(const Duration(hours: 6)));
+    }).toList()..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
     return upcoming.isNotEmpty ? upcoming.first : null;
   }
@@ -589,16 +611,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final remaining = next.dateTime.difference(DateTime.now());
       setState(() {
         _nextHostedWalk = next;
-        _hostedCountdownRemaining =
-            remaining.isNegative ? Duration.zero : remaining;
+        _hostedCountdownRemaining = remaining.isNegative
+            ? Duration.zero
+            : remaining;
       });
     }
 
     updateRemaining();
 
     if (next.status == 'scheduled') {
-      _hostedCountdownTimer =
-          Timer.periodic(const Duration(seconds: 1), (_) => updateRemaining());
+      _hostedCountdownTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => updateRemaining(),
+      );
     }
   }
 
@@ -851,7 +876,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // 🔹 Sync user profile to Firestore (if missing)
     FirestoreSyncService.syncCurrentUser();
-
   }
 
   @override
@@ -903,11 +927,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _recommendations = recs; // Can be used for "Recommended" section in UI
       });
     } catch (e, st) {
-      CrashService.recordError(
-        e,
-        st,
-        reason: 'HomeScreen.loadRecommendations',
-      );
+      CrashService.recordError(e, st, reason: 'HomeScreen.loadRecommendations');
     }
   }
 
@@ -1071,8 +1091,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final newJoinedPhotos = List<String>.from(
         currentEvent.joinedUserPhotoUrls,
       );
-      final newParticipantStates =
-          Map<String, String>.from(currentEvent.participantStates);
+      final newParticipantStates = Map<String, String>.from(
+        currentEvent.participantStates,
+      );
 
       if (willJoin) {
         if (!newJoinedUids.contains(uid)) {
@@ -1160,10 +1181,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final msg = _isOffline
             ? "Saved offline. We'll sync when you're back online."
             : (willJoin
-                ? 'You joined the walk!'
-                : (leavingActive
-                    ? 'You left the active walk.'
-                    : 'You cancelled your spot.'));
+                  ? 'You joined the walk!'
+                  : (leavingActive
+                        ? 'You left the active walk.'
+                        : 'You cancelled your spot.'));
         ErrorHandler.showErrorSnackBar(
           context,
           msg,
@@ -1229,17 +1250,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
 
     // ✅ Save cancellation to Firestore FIRST
-    WalkControlService.instance.cancelWalk(walkId).then((_) {
-      // Firestore listener will auto-update UI via snapshot
-      debugPrint('✅ Walk $walkId cancelled on Firestore');
-    }).catchError((e, st) {
-      debugPrint('❌ Error cancelling walk: $e');
-      CrashService.recordError(e, st);
-      // Show error to user
-      if (mounted) {
-        ErrorHandler.showErrorSnackBar(context, 'Failed to cancel walk: $e');
-      }
-    });
+    WalkControlService.instance
+        .cancelWalk(walkId)
+        .then((_) {
+          // Firestore listener will auto-update UI via snapshot
+          debugPrint('✅ Walk $walkId cancelled on Firestore');
+        })
+        .catchError((e, st) {
+          debugPrint('❌ Error cancelling walk: $e');
+          CrashService.recordError(e, st);
+          // Show error to user
+          if (mounted) {
+            ErrorHandler.showErrorSnackBar(
+              context,
+              'Failed to cancel walk: $e',
+            );
+          }
+        });
 
     // Optimistic UI update (will be confirmed by listener)
     setState(() {
@@ -1296,10 +1323,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ActiveWalkScreen(
-          walkId: walkId,
-          initialWalk: walk,
-        ),
+        builder: (_) => ActiveWalkScreen(walkId: walkId, initialWalk: walk),
       ),
     );
   }
@@ -1572,13 +1596,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     final theme = Theme.of(context);
-    final Color headlineColor =
-      isDark ? Colors.white : const Color(0xFF0A3B3A);
+    final Color headlineColor = isDark ? Colors.white : const Color(0xFF0A3B3A);
     final Color detailColor = isDark
-      ? Colors.white.withAlpha(220)
-      : const Color(0xFF0D5552).withValues(alpha: 0.85);
-    final Color chipColor =
-      isDark ? Colors.white : const Color(0xFF0D5552);
+        ? Colors.white.withAlpha(220)
+        : const Color(0xFF0D5552).withValues(alpha: 0.85);
+    final Color chipColor = isDark ? Colors.white : const Color(0xFF0D5552);
     final bool isActive = walk.status == 'active';
     final countdownText = isActive
         ? 'Walk in progress'
@@ -1610,7 +1632,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 end: Alignment.bottomRight,
               ),
         border: Border.all(
-            color: isDark
+          color: isDark
               ? Colors.white.withAlpha(30)
               : const Color(0xFF0A3B3A).withValues(alpha: 0.15),
         ),
@@ -1642,9 +1664,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: detailColor,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: detailColor),
           ),
           const SizedBox(height: 12),
           Row(
@@ -1674,8 +1694,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     backgroundColor: isDark
                         ? Colors.white
                         : const Color(0xFF0F8A7B),
-                    foregroundColor:
-                        isDark ? const Color(0xFF0F2734) : Colors.white,
+                    foregroundColor: isDark
+                        ? const Color(0xFF0F2734)
+                        : Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: isStartLoading
@@ -1685,9 +1706,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark
-                                  ? const Color(0xFF0F2734)
-                                  : Colors.white,
+                              isDark ? const Color(0xFF0F2734) : Colors.white,
                             ),
                           ),
                         )
@@ -1939,34 +1958,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       size: 22,
                                     ),
                                   ),
-                                if (_unreadNotifCount > 0)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red,
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 18,
-                                        minHeight: 18,
-                                      ),
-                                      child: Text(
-                                        _unreadNotifCount > 99
-                                            ? '99+'
-                                            : '$_unreadNotifCount',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.0,
+                                  if (_unreadNotifCount > 0)
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.red,
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 18,
+                                          minHeight: 18,
+                                        ),
+                                        child: Text(
+                                          _unreadNotifCount > 99
+                                              ? '99+'
+                                              : '$_unreadNotifCount',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            height: 1.0,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -1985,7 +2004,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withAlpha((0.2 * 255).round()),
+                                color: Colors.white.withAlpha(
+                                  (0.2 * 255).round(),
+                                ),
                                 width: 2,
                               ),
                             ),
@@ -2042,7 +2063,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           offset: const Offset(0, -2),
                           child: Text(
                             'Yalla Nemshi',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style:
+                                Theme.of(
+                                  context,
+                                ).textTheme.titleLarge?.copyWith(
                                   fontFamily: 'Poppins',
                                   color: Colors.white,
                                   fontSize: 20,
@@ -2106,34 +2130,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       size: 22,
                                     ),
                                   ),
-                                if (_unreadNotifCount > 0)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red,
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 18,
-                                        minHeight: 18,
-                                      ),
-                                      child: Text(
-                                        _unreadNotifCount > 99
-                                            ? '99+'
-                                            : '$_unreadNotifCount',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          height: 1.0,
+                                  if (_unreadNotifCount > 0)
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.red,
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 18,
+                                          minHeight: 18,
+                                        ),
+                                        child: Text(
+                                          _unreadNotifCount > 99
+                                              ? '99+'
+                                              : '$_unreadNotifCount',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            height: 1.0,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -2148,7 +2172,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withAlpha((0.3 * 255).round()),
+                                color: Colors.white.withAlpha(
+                                  (0.3 * 255).round(),
+                                ),
                                 width: 2,
                               ),
                             ),
@@ -2254,16 +2280,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               '${_greetingForTime()}, $_userName',
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.titleLarge
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: -0.2,
-                                                    color: isDark
-                                                        ? kTextPrimary
-                                                        : const Color(0xFF1A2332),
-                                                  ) ??
+                                              style:
+                                                  theme.textTheme.titleLarge
+                                                      ?.copyWith(
+                                                        fontFamily: 'Poppins',
+                                                        fontSize: 18,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        letterSpacing: -0.2,
+                                                        color: isDark
+                                                            ? kTextPrimary
+                                                            : const Color(
+                                                                0xFF1A2332,
+                                                              ),
+                                                      ) ??
                                                   const TextStyle(
                                                     fontFamily: 'Poppins',
                                                     fontSize: 18,
@@ -2290,8 +2320,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   // Ready to walk + buttons
                                   Text(
                                     'Ready to walk?',
-                                    style: theme.textTheme.headlineSmall
-                                        ?.copyWith(
+                                    style:
+                                        theme.textTheme.headlineSmall?.copyWith(
                                           fontFamily: 'Poppins',
                                           fontSize: 20,
                                           fontWeight: FontWeight.w800,
@@ -2307,7 +2337,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   SizedBox(height: kSpace1),
                                   Text(
                                     'Start a walk now or join others nearby. Your steps, your pace.',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                    style:
+                                        theme.textTheme.bodyMedium?.copyWith(
                                           fontFamily: 'Inter',
                                           fontSize: 15,
                                           fontWeight: FontWeight.w500,
@@ -2329,7 +2360,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     child: FilledButton.icon(
                                       onPressed: _openCreateWalk,
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(0xFF1ABFC4),
+                                        backgroundColor: const Color(
+                                          0xFF1ABFC4,
+                                        ),
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 16,
@@ -2514,9 +2547,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             Text(
                               'Based on walks you\'ve joined',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDark
-                                    ? Colors.white70
-                                    : Colors.black54,
+                                color: isDark ? Colors.white70 : Colors.black54,
                               ),
                             ),
                             SizedBox(height: kSpace2),
@@ -2561,10 +2592,7 @@ class _RecommendationCard extends StatelessWidget {
   final WalkEvent event;
   final VoidCallback onTap;
 
-  const _RecommendationCard({
-    required this.event,
-    required this.onTap,
-  });
+  const _RecommendationCard({required this.event, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2594,7 +2622,8 @@ class _RecommendationCard extends StatelessWidget {
                 event.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyLarge?.copyWith(
+                style:
+                    theme.textTheme.bodyLarge?.copyWith(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w700,
                       color: isDark ? kTextPrimary : Colors.black87,
@@ -2624,10 +2653,7 @@ class _RecommendationCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.teal.shade100,
-                        border: Border.all(
-                          color: Colors.teal,
-                          width: 1,
-                        ),
+                        border: Border.all(color: Colors.teal, width: 1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -2648,7 +2674,9 @@ class _RecommendationCard extends StatelessWidget {
       ),
     );
   }
-}class _WeeklySummaryCard extends StatelessWidget {
+}
+
+class _WeeklySummaryCard extends StatelessWidget {
   final int walks;
   final double kmSoFar;
   final double kmGoal;
@@ -2934,7 +2962,9 @@ class _StepsRing extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (context, animatedProgress, _) {
         // Base ring color at full progress
-        final Color base = isDark ? const Color(0xFF1ABFC4) : const Color(0xFF1ABFC4);
+        final Color base = isDark
+            ? const Color(0xFF1ABFC4)
+            : const Color(0xFF1ABFC4);
 
         // Very light color at 0 progress (so the start is almost white)
         final Color veryLight = isDark
@@ -3069,6 +3099,7 @@ class _GradientRingPainter extends CustomPainter {
         oldDelegate.endColor != endColor;
   }
 }
+
 class _HeaderAvatar extends StatelessWidget {
   final UserProfile? profile;
   final double size;
@@ -3121,8 +3152,9 @@ class _HeaderAvatar extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-            color:
-              isDark ? Colors.white.withAlpha((0.08 * 255).round()) : Colors.white,
+          color: isDark
+              ? Colors.white.withAlpha((0.08 * 255).round())
+              : Colors.white,
         ),
         child: Icon(
           Icons.person,
@@ -3134,8 +3166,9 @@ class _HeaderAvatar extends StatelessWidget {
 
     return CircleAvatar(
       radius: size / 2,
-        backgroundColor:
-          isDark ? Colors.white.withAlpha((0.08 * 255).round()) : Colors.white,
+      backgroundColor: isDark
+          ? Colors.white.withAlpha((0.08 * 255).round())
+          : Colors.white,
       backgroundImage: img,
     );
   }

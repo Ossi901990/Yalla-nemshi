@@ -35,7 +35,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
   final Set<String> _blocking = {};
   final Set<String> _reporting = {};
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
-      _walkSummarySubscriptions = {};
+  _walkSummarySubscriptions = {};
   final Map<String, List<_FriendWalkActivity>> _recentWalksByFriend = {};
   List<String> _currentFriendIds = [];
   List<FirestoreUser> _currentFriendProfiles = [];
@@ -136,26 +136,27 @@ class _FriendListScreenState extends State<FriendListScreen> {
     Map<String, List<_FriendWalkActivity>> recentActivity,
   ) {
     if (friendIds.isEmpty) return const [];
-    final profileMap = {
-      for (final profile in profiles) profile.uid: profile,
-    };
+    final profileMap = {for (final profile in profiles) profile.uid: profile};
 
-    return friendIds.map((friendId) {
-      final profile = profileMap[friendId];
-      final walks = recentActivity[friendId] ?? const <_FriendWalkActivity>[];
-      return _FriendCardData(
-        userId: friendId,
-        displayName: (profile?.displayName.isNotEmpty ?? false)
-            ? profile!.displayName
-            : friendId,
-        email: profile?.email,
-        photoUrl: profile?.photoURL,
-        bio: profile?.bio,
-        statusText: _buildStatusLine(profile, walks),
-        mutualFriends: mutualCounts[friendId] ?? 0,
-        recentWalks: walks,
-      );
-    }).toList(growable: false);
+    return friendIds
+        .map((friendId) {
+          final profile = profileMap[friendId];
+          final walks =
+              recentActivity[friendId] ?? const <_FriendWalkActivity>[];
+          return _FriendCardData(
+            userId: friendId,
+            displayName: (profile?.displayName.isNotEmpty ?? false)
+                ? profile!.displayName
+                : friendId,
+            email: profile?.email,
+            photoUrl: profile?.photoURL,
+            bio: profile?.bio,
+            statusText: _buildStatusLine(profile, walks),
+            mutualFriends: mutualCounts[friendId] ?? 0,
+            recentWalks: walks,
+          );
+        })
+        .toList(growable: false);
   }
 
   String _buildStatusLine(
@@ -164,9 +165,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
   ) {
     if (walks.isNotEmpty) {
       final latest = walks.first;
-        final distance = _formatDistance(latest.distanceKm);
-        final distanceLabel = distance != null ? ' | $distance' : '';
-        return '${_describeActivity(latest)}$distanceLabel | '
+      final distance = _formatDistance(latest.distanceKm);
+      final distanceLabel = distance != null ? ' | $distance' : '';
+      return '${_describeActivity(latest)}$distanceLabel | '
           '${_formatRelativeTime(latest.timestamp)}';
     }
 
@@ -183,9 +184,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
     return 'Tap "Invite to walk" to plan something together';
   }
 
-  List<_FriendActivityItem> _buildActivityFeed(
-    List<_FriendCardData> cards,
-  ) {
+  List<_FriendActivityItem> _buildActivityFeed(List<_FriendCardData> cards) {
     if (cards.isEmpty) return const [];
     final feed = <_FriendActivityItem>[];
     for (final card in cards) {
@@ -200,9 +199,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
         );
       }
     }
-    feed.sort(
-      (a, b) => b.activity.timestamp.compareTo(a.activity.timestamp),
-    );
+    feed.sort((a, b) => b.activity.timestamp.compareTo(a.activity.timestamp));
     return feed.take(15).toList(growable: false);
   }
 
@@ -212,9 +209,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
     if (friendIds.isEmpty) return {};
     // Permissions prevent reading other users' friendsList documents, so for now we
     // default mutual counts to zero until a friend-safe snapshot is available.
-    return {
-      for (final friendId in friendIds) friendId: 0,
-    };
+    return {for (final friendId in friendIds) friendId: 0};
   }
 
   void _subscribeToFriendWalkSummaries(List<String> friendIds) {
@@ -242,33 +237,37 @@ class _FriendListScreenState extends State<FriendListScreen> {
           .limit(_walkSummariesPerFriend)
           .snapshots()
           .listen(
-        (snapshot) {
-          final walks = snapshot.docs.map((doc) {
-            final data = doc.data();
-            return _FriendWalkActivity(
-              walkId: doc.id,
-              joinedAt: _readTimestamp(data['startTime']) ?? DateTime.now(),
-              completedAt: _readTimestamp(data['endTime']),
-              status: data['status']?.toString(),
-              distanceKm: (data['distanceKm'] as num?)?.toDouble() ??
-                  (data['actualDistanceKm'] as num?)?.toDouble(),
-            );
-          }).toList(growable: false);
+            (snapshot) {
+              final walks = snapshot.docs
+                  .map((doc) {
+                    final data = doc.data();
+                    return _FriendWalkActivity(
+                      walkId: doc.id,
+                      joinedAt:
+                          _readTimestamp(data['startTime']) ?? DateTime.now(),
+                      completedAt: _readTimestamp(data['endTime']),
+                      status: data['status']?.toString(),
+                      distanceKm:
+                          (data['distanceKm'] as num?)?.toDouble() ??
+                          (data['actualDistanceKm'] as num?)?.toDouble(),
+                    );
+                  })
+                  .toList(growable: false);
 
-          if (!mounted) return;
-          setState(() {
-            _recentWalksByFriend[friendId] = walks;
-            _refreshFriendCardsAndFeed();
-          });
-        },
-        onError: (_) {
-          if (!mounted) return;
-          setState(() {
-            _recentWalksByFriend[friendId] = const <_FriendWalkActivity>[];
-            _refreshFriendCardsAndFeed();
-          });
-        },
-      );
+              if (!mounted) return;
+              setState(() {
+                _recentWalksByFriend[friendId] = walks;
+                _refreshFriendCardsAndFeed();
+              });
+            },
+            onError: (_) {
+              if (!mounted) return;
+              setState(() {
+                _recentWalksByFriend[friendId] = const <_FriendWalkActivity>[];
+                _refreshFriendCardsAndFeed();
+              });
+            },
+          );
 
       _walkSummarySubscriptions[friendId] = subscription;
     }
@@ -395,18 +394,18 @@ class _FriendListScreenState extends State<FriendListScreen> {
           request.requestId,
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Request declined.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Request declined.')));
         }
       }
 
       await _loadData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Something went wrong: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Something went wrong: $e')));
       }
     } finally {
       if (mounted) {
@@ -507,9 +506,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
       await _loadData();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to unfriend: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to unfriend: $error')));
       }
     } finally {
       if (mounted) {
@@ -540,9 +539,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
       await _loadData();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to block user: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to block user: $error')));
       }
     } finally {
       if (mounted) {
@@ -606,9 +605,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Reason (optional)',
-              ),
+              decoration: const InputDecoration(labelText: 'Reason (optional)'),
               maxLines: 2,
             ),
           ],
@@ -643,7 +640,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Describe what happened so our team can review it.'),
+                    const Text(
+                      'Describe what happened so our team can review it.',
+                    ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: reasonCtrl,
@@ -705,7 +704,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
       widgets.add(
         Text(
           'Pending requests',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
       );
       widgets.add(const SizedBox(height: 8));
@@ -722,15 +723,15 @@ class _FriendListScreenState extends State<FriendListScreen> {
     widgets.add(
       Text(
         'Friends',
-        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
     widgets.add(const SizedBox(height: 8));
 
     if (_friendCards.isEmpty) {
-      widgets.add(
-        const Text('No friends yet. Send a request to get started!'),
-      );
+      widgets.add(const Text('No friends yet. Send a request to get started!'));
     } else {
       for (final friend in _friendCards) {
         widgets.add(_buildFriendCard(context, friend));
@@ -866,13 +867,11 @@ class _FriendListScreenState extends State<FriendListScreen> {
     );
   }
 
-  Widget _buildActivityCard(
-    BuildContext context,
-    _FriendActivityItem item,
-  ) {
+  Widget _buildActivityCard(BuildContext context, _FriendActivityItem item) {
     final theme = Theme.of(context);
-    final subtitle = '${_describeActivity(item.activity)} | '
-      '${_formatRelativeTime(item.activity.timestamp)}';
+    final subtitle =
+        '${_describeActivity(item.activity)} | '
+        '${_formatRelativeTime(item.activity.timestamp)}';
 
     return Card(
       margin: EdgeInsets.zero,
@@ -888,26 +887,25 @@ class _FriendListScreenState extends State<FriendListScreen> {
     List<_FriendWalkActivity> walks,
     ThemeData theme,
   ) {
-    final chips = walks.take(3).map((walk) {
-      final distance = _formatDistance(walk.distanceKm);
-      var label = _describeActivity(walk);
-      if (distance != null) {
-        label = '$label | $distance';
-      }
-      label = '$label | ${_formatRelativeTime(walk.timestamp)}';
-      return Chip(
-        label: Text(label),
-        backgroundColor: theme.colorScheme.primaryContainer.withAlpha(90),
-      );
-    }).toList(growable: false);
+    final chips = walks
+        .take(3)
+        .map((walk) {
+          final distance = _formatDistance(walk.distanceKm);
+          var label = _describeActivity(walk);
+          if (distance != null) {
+            label = '$label | $distance';
+          }
+          label = '$label | ${_formatRelativeTime(walk.timestamp)}';
+          return Chip(
+            label: Text(label),
+            backgroundColor: theme.colorScheme.primaryContainer.withAlpha(90),
+          );
+        })
+        .toList(growable: false);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: chips,
-      ),
+      child: Wrap(spacing: 8, runSpacing: 8, children: chips),
     );
   }
 
@@ -937,10 +935,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
       isScrollControlled: true,
       builder: (ctx) => FractionallySizedBox(
         heightFactor: 0.75,
-        child: _InviteFriendSheet(
-          friend: friend,
-          hostUid: user.uid,
-        ),
+        child: _InviteFriendSheet(friend: friend, hostUid: user.uid),
       ),
     );
 
@@ -970,7 +965,8 @@ class _FriendListScreenState extends State<FriendListScreen> {
         ? 'Sent just now'
         : 'Sent ${_formatRelativeTime(request.sentAt)}';
     final busy =
-        _blocking.contains(request.fromUserId) || _reporting.contains(request.fromUserId);
+        _blocking.contains(request.fromUserId) ||
+        _reporting.contains(request.fromUserId);
     final placeholderFriend = _FriendCardData(
       userId: request.fromUserId,
       displayName: request.displayName ?? request.fromUserId,
@@ -988,7 +984,8 @@ class _FriendListScreenState extends State<FriendListScreen> {
           ListTile(
             leading: CircleAvatar(
               backgroundColor: theme.colorScheme.primary.withAlpha(30),
-              backgroundImage: request.photoUrl != null && request.photoUrl!.isNotEmpty
+              backgroundImage:
+                  request.photoUrl != null && request.photoUrl!.isNotEmpty
                   ? NetworkImage(request.photoUrl!)
                   : null,
               child: (request.photoUrl == null || request.photoUrl!.isEmpty)
@@ -1006,10 +1003,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (request.email != null && request.email!.isNotEmpty)
-                  Text(
-                    request.email!,
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  Text(request.email!, style: theme.textTheme.bodySmall),
                 Text(
                   subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -1063,14 +1057,16 @@ class _FriendListScreenState extends State<FriendListScreen> {
                   )
                 else ...[
                   TextButton(
-                    onPressed:
-                        busy ? null : () => _handleRequestAction(request, accept: true),
+                    onPressed: busy
+                        ? null
+                        : () => _handleRequestAction(request, accept: true),
                     child: const Text('Accept'),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton(
-                    onPressed:
-                        busy ? null : () => _handleRequestAction(request, accept: false),
+                    onPressed: busy
+                        ? null
+                        : () => _handleRequestAction(request, accept: false),
                     child: const Text('Decline'),
                   ),
                 ],
@@ -1103,15 +1099,15 @@ class _FriendListScreenState extends State<FriendListScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    children: _buildContent(context),
-                  ),
-                ),
+          ? Center(child: Text(_error!))
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: _buildContent(context),
+              ),
+            ),
     );
   }
 }
@@ -1189,10 +1185,7 @@ class _FriendActivityItem {
 }
 
 class _ReportPayload {
-  const _ReportPayload({
-    required this.reason,
-    this.notes,
-  });
+  const _ReportPayload({required this.reason, this.notes});
 
   final String reason;
   final String? notes;
@@ -1227,18 +1220,17 @@ class _InviteCandidate {
   final String? shareCode;
 
   bool get isPrivate => visibility.toLowerCase() == 'private';
-  bool get canShare => !isPrivate || (shareCode != null && shareCode!.isNotEmpty);
+  bool get canShare =>
+      !isPrivate || (shareCode != null && shareCode!.isNotEmpty);
   String get visibilityLabel => isPrivate ? 'Private walk' : 'Open walk';
-  String get formattedStart => DateFormat('EEE, MMM d | h:mm a').format(startTime);
+  String get formattedStart =>
+      DateFormat('EEE, MMM d | h:mm a').format(startTime);
 }
 
 enum _FriendAction { unfriend, block, report }
 
 class _InviteFriendSheet extends StatefulWidget {
-  const _InviteFriendSheet({
-    required this.friend,
-    required this.hostUid,
-  });
+  const _InviteFriendSheet({required this.friend, required this.hostUid});
 
   final _FriendCardData friend;
   final String hostUid;
@@ -1261,6 +1253,7 @@ class _InviteFriendSheetState extends State<_InviteFriendSheet> {
     final snapshot = await FirebaseFirestore.instance
         .collection('walks')
         .where('hostUid', isEqualTo: widget.hostUid)
+        .where('cancelled', isEqualTo: false)
         .where('dateTime', isGreaterThan: Timestamp.fromDate(now))
         .orderBy('dateTime')
         .limit(25)
@@ -1328,12 +1321,15 @@ class _InviteFriendSheetState extends State<_InviteFriendSheet> {
 
                   final walks = snapshot.data ?? const [];
                   if (walks.isEmpty) {
-                    return _InviteEmptyState(friendName: widget.friend.displayName);
+                    return _InviteEmptyState(
+                      friendName: widget.friend.displayName,
+                    );
                   }
 
                   return ListView.separated(
                     itemCount: walks.length,
-                    separatorBuilder: (context, _) => const SizedBox(height: 12),
+                    separatorBuilder: (context, _) =>
+                        const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final candidate = walks[index];
                       return _InviteOptionTile(
@@ -1355,10 +1351,7 @@ class _InviteFriendSheetState extends State<_InviteFriendSheet> {
 }
 
 class _InviteOptionTile extends StatelessWidget {
-  const _InviteOptionTile({
-    required this.candidate,
-    this.onSelected,
-  });
+  const _InviteOptionTile({required this.candidate, this.onSelected});
 
   final _InviteCandidate candidate;
   final VoidCallback? onSelected;
@@ -1368,21 +1361,30 @@ class _InviteOptionTile extends StatelessWidget {
     final theme = Theme.of(context);
     final statusText = candidate.isPrivate
         ? (candidate.canShare
-            ? 'Private walk | invite code ready'
-            : 'Private walk | open event details to generate a code')
+              ? 'Private walk | invite code ready'
+              : 'Private walk | open event details to generate a code')
         : 'Open walk | anyone with the link can request to join';
 
     return Card(
       margin: EdgeInsets.zero,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         leading: Icon(
-          candidate.isPrivate ? Icons.lock_outline_rounded : Icons.public_rounded,
+          candidate.isPrivate
+              ? Icons.lock_outline_rounded
+              : Icons.public_rounded,
           color: candidate.isPrivate
               ? theme.colorScheme.tertiary
               : theme.colorScheme.primary,
         ),
-        title: Text(candidate.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+        title: Text(
+          candidate.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1391,10 +1393,7 @@ class _InviteOptionTile extends StatelessWidget {
           ],
         ),
         trailing: candidate.canShare
-            ? FilledButton(
-                onPressed: onSelected,
-                child: const Text('Invite'),
-              )
+            ? FilledButton(onPressed: onSelected, child: const Text('Invite'))
             : Icon(Icons.info_outline, color: theme.colorScheme.error),
         onTap: onSelected,
         enabled: candidate.canShare,
@@ -1415,7 +1414,11 @@ class _InviteEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.calendar_today_rounded, size: 40, color: theme.colorScheme.primary),
+          Icon(
+            Icons.calendar_today_rounded,
+            size: 40,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(height: 12),
           Text(
             'No upcoming walks to share',

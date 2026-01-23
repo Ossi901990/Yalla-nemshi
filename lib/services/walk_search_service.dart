@@ -21,7 +21,7 @@ class WalkSearchPage {
 
 class WalkSearchService {
   WalkSearchService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -36,6 +36,9 @@ class WalkSearchService {
         .collection('walks')
         .where('cancelled', isEqualTo: false)
         .where('visibility', isEqualTo: 'open');
+
+    // Only show upcoming walks (not past walks)
+    query = query.where('dateTime', isGreaterThan: Timestamp.now());
 
     if (filters.recurringOnly) {
       query = query.where('isRecurring', isEqualTo: true);
@@ -82,12 +85,15 @@ class WalkSearchService {
 
     final snapshot = await query.limit(limit).get();
 
-    final walks = snapshot.docs.map((doc) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      data['firestoreId'] = doc.id;
-      return WalkEvent.fromMap(data);
-    }).where(filters.matches).toList();
+    final walks = snapshot.docs
+        .map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          data['firestoreId'] = doc.id;
+          return WalkEvent.fromMap(data);
+        })
+        .where(filters.matches)
+        .toList();
 
     // Sort by date (soonest first)
     walks.sort((a, b) => a.dateTime.compareTo(b.dateTime));
@@ -116,7 +122,8 @@ class WalkSearchService {
     for (final candidate in pool) {
       final value = candidate.trim();
       if (value.isEmpty) continue;
-      if (normalized.isNotEmpty && !value.toLowerCase().startsWith(normalized)) {
+      if (normalized.isNotEmpty &&
+          !value.toLowerCase().startsWith(normalized)) {
         continue;
       }
       final alreadyAdded = suggestions.any(
