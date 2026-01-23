@@ -62,6 +62,14 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@android:color/holo_blue_light" />
 
+        <service
+            android:name="com.google.firebase.components.ComponentDiscoveryService"
+            android:exported="false">
+            <meta-data
+                android:name="com.google.firebase.components:io.flutter.plugins.firebase.functions.FlutterFirebaseAppRegistrar"
+                android:value="com.google.firebase.components.ComponentRegistrar" />
+        </service>
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
