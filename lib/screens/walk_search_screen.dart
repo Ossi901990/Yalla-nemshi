@@ -228,6 +228,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
         return Theme(
           data: theme.copyWith(
             colorScheme: theme.colorScheme.copyWith(primary: kPrimaryTeal),
+            datePickerTheme: DatePickerThemeData(
+              rangeSelectionBackgroundColor: Colors.grey.shade200,
+            ),
           ),
           child: child!,
         );
@@ -332,7 +335,12 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     await _searchService.deleteSavedFilter(filterId);
     final saved = await _searchService.loadSavedFilters();
     if (!mounted) return;
-    setState(() => _savedFilters = saved);
+    setState(() {
+      _savedFilters = saved;
+      _filters = const WalkSearchFilters();
+      _searchController.clear();
+    });
+    _runSearch(reset: true);
   }
 
   void _applySavedFilter(SavedWalkSearchFilter filter) {
@@ -624,17 +632,17 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               .map(
                 (tag) {
                   final selected = _filters.tags.contains(tag);
-                  return FilterChip(
-                    label: Text(tag),
+                  return _buildStyledChip(
+                    label: tag,
                     selected: selected,
-                    onSelected: (newValue) {
+                    onTap: () {
                       setState(() {
-                        if (newValue) {
-                          _filters = _filters.copyWith(tags: {..._filters.tags, tag});
-                        } else {
+                        if (selected) {
                           final updated = {..._filters.tags};
                           updated.remove(tag);
                           _filters = _filters.copyWith(tags: updated);
+                        } else {
+                          _filters = _filters.copyWith(tags: {..._filters.tags, tag});
                         }
                       });
                       _runSearch(reset: true);
@@ -795,6 +803,40 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
           .toList(),
     );
   }
+
+  /// Build a styled chip matching the filter modal design
+  Widget _buildStyledChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? Colors.teal.shade100 : Colors.transparent,
+          border: Border.all(
+            color: selected ? Colors.teal : Colors.grey.shade400,
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.teal : Colors.grey.shade700,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _WalkSearchResultCard extends StatelessWidget {
@@ -868,59 +910,78 @@ class _WalkSearchResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                _infoChip(Icons.place_outlined, event.city ?? 'City TBA', theme),
-                _infoChip(Icons.directions_walk, '${event.distanceKm.toStringAsFixed(1)} km', theme),
-                _infoChip(Icons.speed, event.pace, theme),
-                _infoChip(Icons.groups_2_outlined, event.gender, theme),
+                _buildInfoChip(Icons.place_outlined, event.city ?? 'City TBA'),
+                _buildInfoChip(Icons.directions_walk, '${event.distanceKm.toStringAsFixed(1)} km'),
+                _buildInfoChip(Icons.speed, event.pace),
+                _buildInfoChip(Icons.groups_2_outlined, event.gender),
+                if (event.comfortLevel != null)
+                  _buildInfoChip(Icons.mood, event.comfortLevel!),
+                if (showExperience)
+                  _buildInfoChip(Icons.school, event.experienceLevel),
+                ...event.tags.map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.all(
+                          color: Colors.grey.shade400,
+                          width: 1,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    )),
               ],
             ),
-            if (event.comfortLevel != null || showExperience)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (event.comfortLevel != null)
-                      Chip(
-                        label: Text(event.comfortLevel!),
-                        avatar: const Icon(Icons.mood, size: 16),
-                      ),
-                    if (showExperience)
-                      Chip(
-                        label: Text(event.experienceLevel),
-                        avatar: const Icon(Icons.school, size: 16),
-                      ),
-                  ],
-                ),
-              ),
-            if (event.tags.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: event.tags
-                      .map((tag) => Chip(
-                            label: Text(tag),
-                          ))
-                      .toList(),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _infoChip(IconData icon, String label, ThemeData theme) {
-    return Chip(
-      avatar: Icon(icon, size: 16),
-      label: Text(label),
-      backgroundColor: theme.colorScheme.surfaceContainerHighest.withAlpha(80),
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border.all(
+          color: Colors.grey.shade400,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey.shade700),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1216,9 +1277,11 @@ class _FilterModalState extends State<_FilterModal> {
                           ),
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
+                            Navigator.pop(context); // close the sheet first
+                            // defer to next frame so dialog/date picker opens cleanly
+                            await Future.delayed(Duration.zero);
                             widget.onAddCity();
-                            Navigator.pop(context);
                           },
                           icon: const Icon(Icons.add),
                           label: const Text('Add city'),
@@ -1234,9 +1297,10 @@ class _FilterModalState extends State<_FilterModal> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         OutlinedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
+                            Navigator.pop(context); // close the sheet first
+                            await Future.delayed(Duration.zero);
                             widget.onPickDateRange();
-                            Navigator.pop(context);
                           },
                           icon: const Icon(Icons.calendar_today),
                           label: Text(widget.dateRangeLabel()),

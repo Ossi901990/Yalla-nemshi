@@ -660,6 +660,10 @@ class _WalkCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.teal.shade100,
+                        border: Border.all(
+                          color: Colors.teal,
+                          width: 1,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

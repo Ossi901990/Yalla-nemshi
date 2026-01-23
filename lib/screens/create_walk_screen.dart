@@ -1873,18 +1873,39 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           runSpacing: 8,
                                           children: _walkTagOptions.map((tag) {
                                             final selected = _selectedTags.contains(tag);
-                                            return FilterChip(
-                                              label: Text(tag),
-                                              selected: selected,
-                                              onSelected: (isSelected) {
+                                            return GestureDetector(
+                                              onTap: () {
                                                 setState(() {
-                                                  if (isSelected) {
-                                                    _selectedTags.add(tag);
-                                                  } else {
+                                                  if (selected) {
                                                     _selectedTags.remove(tag);
+                                                  } else {
+                                                    _selectedTags.add(tag);
                                                   }
                                                 });
                                               },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: selected ? Colors.teal.shade100 : Colors.transparent,
+                                                  border: Border.all(
+                                                    color: selected ? Colors.teal : Colors.grey.shade400,
+                                                    width: 1,
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  tag,
+                                                  style: TextStyle(
+                                                    fontFamily: 'Inter',
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: selected ? Colors.teal : Colors.grey.shade700,
+                                                  ),
+                                                ),
+                                              ),
                                             );
                                           }).toList(),
                                         ),
