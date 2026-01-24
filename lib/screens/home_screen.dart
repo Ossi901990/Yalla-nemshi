@@ -117,7 +117,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Exclude cancelled and past walks (show upcoming only)
           query = query
               .where('cancelled', isEqualTo: false)
-              .where('dateTime', isGreaterThan: Timestamp.now());
+              .where(
+                'dateTime',
+                isGreaterThan: DateTime.now().toIso8601String(),
+              );
 
           // Order by soonest upcoming, then newest created to break ties
           query = query
@@ -284,7 +287,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             _walksSub = FirebaseFirestore.instance
                 .collection('walks')
                 .where('cancelled', isEqualTo: false)
-                .where('dateTime', isGreaterThan: Timestamp.now())
+                .where(
+                  'dateTime',
+                  isGreaterThan: DateTime.now().toIso8601String(),
+                )
                 .orderBy('dateTime')
                 .orderBy('createdAt', descending: true)
                 .limit(_walksPerPage)
@@ -365,7 +371,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false)
-          .where('dateTime', isGreaterThan: Timestamp.now())
+          .where('dateTime', isGreaterThan: DateTime.now().toIso8601String())
           .orderBy('dateTime')
           .orderBy('createdAt', descending: true)
           .startAfterDocument(_lastDocument!);
@@ -569,23 +575,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (_myHostedWalks.isEmpty) return null;
 
     final now = DateTime.now();
-    final active =
-        _myHostedWalks
-            .where((walk) => !walk.cancelled && walk.status == 'active')
-            .toList()
-          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-    if (active.isNotEmpty) {
-      return active.first;
-    }
+    // Filter: only non-cancelled walks with upcoming or active status
+    final eligible = _myHostedWalks
+        .where(
+          (walk) =>
+              !walk.cancelled &&
+              (walk.status == 'scheduled' || walk.status == 'active') &&
+              walk.dateTime.isAfter(now.subtract(const Duration(minutes: 15))),
+        )
+        .toList();
 
-    final upcoming = _myHostedWalks.where((walk) {
-      if (walk.cancelled) return false;
-      if (walk.status != 'scheduled') return false;
-      return walk.dateTime.isAfter(now.subtract(const Duration(hours: 6)));
-    }).toList()..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    if (eligible.isEmpty) return null;
 
-    return upcoming.isNotEmpty ? upcoming.first : null;
+    // Sort by dateTime ascending to find the nearest/soonest walk
+    eligible.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return eligible.first;
   }
 
   void _refreshHostedCountdown() {
