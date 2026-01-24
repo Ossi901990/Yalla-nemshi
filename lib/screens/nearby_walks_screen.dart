@@ -1,5 +1,6 @@
 // lib/screens/nearby_walks_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/walk_event.dart';
 
@@ -142,14 +143,34 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final upcoming =
-        widget.events
-            .where((e) => !e.cancelled && e.dateTime.isAfter(DateTime.now()))
-            .where(_matchDateFilter)
-            .where(_matchDistanceFilter)
-            .where((e) => !_interestedOnly || e.interested)
-            .toList()
-          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    final now = DateTime.now();
+    final upcoming = <WalkEvent>[];
+    for (final event in widget.events) {
+      if (event.cancelled) {
+        _debugNearbyDrop(event, 'cancelled flag');
+        continue;
+      }
+      if (!event.dateTime.isAfter(now)) {
+        _debugNearbyDrop(event, 'past event');
+        continue;
+      }
+      if (!_matchDateFilter(event)) {
+        _debugNearbyDrop(event, 'date filter $_dateFilter');
+        continue;
+      }
+      if (!_matchDistanceFilter(event)) {
+        _debugNearbyDrop(event, 'distance filter $_distanceFilter');
+        continue;
+      }
+      if (_interestedOnly && !event.interested) {
+        _debugNearbyDrop(event, 'interested filter');
+        continue;
+      }
+      upcoming.add(event);
+    }
+    upcoming.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    _logNearbySummary(total: widget.events.length, kept: upcoming.length);
 
     return Scaffold(
       // ✅ Match HomeScreen background colors
@@ -906,6 +927,22 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _logNearbySummary({required int total, required int kept}) {
+    if (!kDebugMode) return;
+    final dropped = total - kept;
+    debugPrint(
+      '📋 NEARBY SUMMARY total=$total kept=$kept dropped=$dropped dateFilter=$_dateFilter distanceFilter=$_distanceFilter interestedOnly=$_interestedOnly',
+    );
+  }
+
+  void _debugNearbyDrop(WalkEvent event, String reason) {
+    if (!kDebugMode) return;
+    final identifier = event.id.isNotEmpty ? event.id : event.firestoreId;
+    debugPrint(
+      '🚫 NEARBY DROP id=$identifier reason=$reason city=${event.city} dateTime=${event.dateTime} distanceKm=${event.distanceKm} visibility=${event.visibility} meeting=${event.meetingPlaceName}',
     );
   }
 }

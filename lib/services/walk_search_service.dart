@@ -88,8 +88,11 @@ class WalkSearchService {
     final snapshot = await query.limit(limit).get();
 
     final walks = <WalkEvent>[];
+    int filteredOut = 0;
+    int parseFailures = 0;
 
     for (final doc in snapshot.docs) {
+      final isFromCache = doc.metadata.isFromCache;
       try {
         final data = doc.data();
         data['id'] = doc.id;
@@ -98,8 +101,26 @@ class WalkSearchService {
         if (filters.matches(walk)) {
           walks.add(walk);
         }
+        else {
+          filteredOut++;
+          _debugSearchDrop(
+            'filters.mismatch',
+            docId: doc.id,
+            walk: walk,
+            filters: filters,
+            isFromCache: isFromCache,
+          );
+        }
       } catch (error, st) {
+        parseFailures++;
         debugPrint('❌ Failed to parse search walk ${doc.id}: $error');
+        _debugSearchDrop(
+          'parse failure: $error',
+          docId: doc.id,
+          data: doc.data(),
+          filters: filters,
+          isFromCache: isFromCache,
+        );
         CrashService.recordError(
           error,
           st,
@@ -110,6 +131,15 @@ class WalkSearchService {
 
     // Sort by date (soonest first)
     walks.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+    _logSearchSummary(
+      total: snapshot.docs.length,
+      kept: walks.length,
+      filteredOut: filteredOut,
+      parseFailures: parseFailures,
+      filters: filters,
+      fromCache: snapshot.metadata.isFromCache,
+    );
 
     return WalkSearchPage(
       results: walks,
@@ -193,5 +223,41 @@ class WalkSearchService {
     final remaining = existing.where((item) => item.id != filterId).toList();
     final payload = remaining.map((item) => jsonEncode(item.toJson())).toList();
     await AppPreferences.setSavedSearchFilterJson(payload);
+  }
+
+  void _debugSearchDrop(
+    String reason, {
+    required String docId,
+    WalkEvent? walk,
+    Map<String, dynamic>? data,
+    required WalkSearchFilters filters,
+    bool isFromCache = false,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    final walkCity = walk?.city ?? data?['city'];
+    final walkDateTime = walk?.dateTime ?? data?['dateTime'];
+    final walkVisibility = walk?.visibility ?? data?['visibility'];
+    debugPrint(
+      '🧭 SEARCH DROP id=$docId reason=$reason cache=$isFromCache walkCity=$walkCity walkDateTime=$walkDateTime visibility=$walkVisibility filtersCities=${filters.cities.join(',')} keywords="${filters.keywords}" recurringOnly=${filters.recurringOnly}',
+    );
+  }
+
+  void _logSearchSummary({
+    required int total,
+    required int kept,
+    required int filteredOut,
+    required int parseFailures,
+    required WalkSearchFilters filters,
+    bool fromCache = false,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(
+      '📚 SEARCH SUMMARY cache=$fromCache total=$total kept=$kept filtered=$filteredOut parseFailures=$parseFailures cities=${filters.cities.join(',')} keywords="${filters.keywords}" recurringOnly=${filters.recurringOnly}',
+    );
   }
 }

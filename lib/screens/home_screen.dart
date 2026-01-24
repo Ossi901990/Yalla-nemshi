@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform, File;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -141,7 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 }
 
                 final List<WalkEvent> loaded =
-                    _parseWalkDocs(snap.docs, currentUid);
+                  _parseWalkDocs(snap.docs, currentUid);
                 final List<WalkEvent> merged =
                     _collapseRecurringWalks(loaded);
 
@@ -149,7 +149,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 for (var change in snap.docChanges) {
                   if (change.type == DocumentChangeType.added) {
-                    final newWalk = _parseWalkDoc(change.doc, currentUid);
+                    final newWalk = _parseWalkDoc(
+                      change.doc,
+                      currentUid,
+                      isFromCache: change.doc.metadata.isFromCache,
+                    );
                     if (newWalk != null && newWalk.hostUid != currentUid) {
                       _onNewNearbyWalk(newWalk);
                     }
@@ -165,6 +169,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _refreshHostedCountdown();
 
                 OfflineService.instance.cacheWalks(merged);
+
+                _logHomeFeedSummary(
+                  source: 'stream',
+                  totalDocs: snap.docs.length,
+                  parsedCount: loaded.length,
+                  keptCount: merged.length,
+                  fromCache: snap.metadata.isFromCache,
+                );
               } catch (e, st) {
                 debugPrint('Γ¥î Error processing walks snapshot: $e');
                 CrashService.recordError(e, st);
@@ -212,6 +224,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _refreshHostedCountdown();
 
                         OfflineService.instance.cacheWalks(merged);
+
+                        _logHomeFeedSummary(
+                          source: 'stream_fallback',
+                          totalDocs: snap.docs.length,
+                          parsedCount: loaded.length,
+                          keptCount: merged.length,
+                          fromCache: snap.metadata.isFromCache,
+                        );
                       }
                     } catch (e, st) {
                       CrashService.recordError(e, st);
@@ -282,7 +302,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _hasMoreWalks = snap.docs.length >= _walksPerPage;
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final List<WalkEvent> newWalks = _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> newWalks =
+          _parseWalkDocs(snap.docs, currentUid);
+
+      _logHomeFeedSummary(
+        source: 'load_more',
+        totalDocs: snap.docs.length,
+        parsedCount: newWalks.length,
+        keptCount: newWalks.length,
+        fromCache: snap.metadata.isFromCache,
+      );
 
       setState(() {
         _events.addAll(newWalks);
@@ -331,7 +360,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   ) {
     final results = <WalkEvent>[];
     for (final doc in docs) {
-      final walk = _parseWalkDoc(doc, currentUid);
+      final walk = _parseWalkDoc(
+        doc,
+        currentUid,
+        isFromCache: doc.metadata.isFromCache,
+      );
       if (walk != null) {
         results.add(walk);
       }
@@ -341,15 +374,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   WalkEvent? _parseWalkDoc(
     DocumentSnapshot<Map<String, dynamic>> doc,
-    String? currentUid,
+    String? currentUid, {
+    bool isFromCache = false,
+  }
   ) {
     try {
       final raw = doc.data();
       if (raw == null) {
+        _debugWalkDrop(
+          'snapshot data null',
+          id: doc.id,
+          isFromCache: isFromCache,
+        );
         return null;
       }
 
       final data = Map<String, dynamic>.from(raw);
+      if (data['dateTime'] == null) {
+        _debugWalkDrop(
+          'missing required fields: dateTime',
+          id: doc.id,
+          data: data,
+          isFromCache: isFromCache,
+        );
+        return null;
+      }
       data['firestoreId'] = doc.id;
       data['id'] ??= doc.id;
 
@@ -361,13 +410,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       data['joined'] = currentUid != null && joinedUids.contains(currentUid);
 
       final walk = WalkEvent.fromMap(data);
+      if (walk.cancelled) {
+        _debugWalkDrop(
+          'status=cancelled',
+          id: doc.id,
+          data: data,
+          parsed: walk,
+          isFromCache: isFromCache,
+        );
+        return null;
+      }
       if (walk.visibility == 'private' && !walk.isOwner) {
+        _debugWalkDrop(
+          'visibility=private for non-owner',
+          id: doc.id,
+          data: data,
+          parsed: walk,
+          isFromCache: isFromCache,
+        );
         return null;
       }
 
       return walk;
     } catch (error, stackTrace) {
       debugPrint('Γ¥î Failed to parse walk ${doc.id}: $error');
+      _debugWalkDrop(
+        'parse failure: $error',
+        id: doc.id,
+        data: doc.data(),
+        isFromCache: isFromCache,
+      );
       CrashService.recordError(
         error,
         stackTrace,
@@ -384,6 +456,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     for (final event in loaded) {
       if (event.isRecurringTemplate) {
+        _debugWalkDrop(
+          'recurring template suppressed',
+          id: event.id,
+          parsed: event,
+        );
         continue;
       }
 
@@ -417,6 +494,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
 
       if (candidate != null) {
+        for (final event in group) {
+          if (event.id == candidate.id) continue;
+          final reason = event.dateTime.isAfter(now)
+              ? 'recurring collapse kept ${candidate.id} (group ${event.recurringGroupId})'
+              : 'recurring collapse dropped past instance (kept ${candidate.id})';
+          _debugWalkDrop(
+            reason,
+            id: event.id,
+            parsed: event,
+          );
+        }
         merged.add(candidate);
       }
     }
@@ -996,6 +1084,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // ≡ƒöö Schedule reminder for the walk you just created (host)
     NotificationService.instance.scheduleWalkReminder(newEvent);
+  }
+
+  void _logHomeFeedSummary({
+    required String source,
+    required int totalDocs,
+    required int parsedCount,
+    required int keptCount,
+    bool fromCache = false,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    final int dropped = totalDocs - keptCount;
+    final int safeDropped = dropped < 0 ? 0 : dropped;
+    debugPrint(
+      '📊 HOME FEED [$source] cache=$fromCache total=$totalDocs parsed=$parsedCount kept=$keptCount dropped=$safeDropped',
+    );
+  }
+
+  void _debugWalkDrop(
+    String reason, {
+    required String id,
+    Map<String, dynamic>? data,
+    WalkEvent? parsed,
+    bool? isFromCache,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    DateTime? normalizeDateTime(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      if (value is Timestamp) return value.toDate();
+      if (value is String) {
+        return DateTime.tryParse(value);
+      }
+      if (value is num) {
+        return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+      }
+      return null;
+    }
+
+    final dynamic rawDateTime = parsed?.dateTime ?? data?['dateTime'];
+    final DateTime? dateTime = normalizeDateTime(rawDateTime);
+    final buffer = StringBuffer()
+      ..writeln('🕵️ WALK DROP id=$id reason=$reason cache=${isFromCache ?? false}')
+      ..writeln(
+        '  dateTime=${dateTime ?? data?['dateTime']} status=${parsed?.status ?? data?['status']} visibility=${parsed?.visibility ?? data?['visibility']}',
+      )
+      ..writeln(
+        '  hostUid=${parsed?.hostUid ?? data?['hostUid']} city=${parsed?.city ?? data?['city']} createdAt=${parsed?.createdAt ?? data?['createdAt']} updatedAt=${parsed?.updatedAt ?? data?['updatedAt']}',
+      )
+      ..writeln(
+        '  recurringGroupId=${parsed?.recurringGroupId ?? data?['recurringGroupId']} isRecurring=${parsed?.isRecurring ?? data?['isRecurring']} template=${parsed?.isRecurringTemplate ?? data?['isRecurringTemplate']}',
+      )
+      ..writeln(
+        '  distanceKm=${parsed?.distanceKm ?? data?['distanceKm']} meetingPlace=${parsed?.meetingPlaceName ?? data?['meetingPlaceName']}',
+      );
+
+    debugPrint(buffer.toString());
   }
 
   /// Call this when a *new nearby* walk arrives from your backend / API.
