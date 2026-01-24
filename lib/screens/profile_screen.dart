@@ -1090,6 +1090,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _signOut() async {
+    await ProfileStorage.clearProfile();
+    await ProfileCacheService.instance.clearCache();
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
 

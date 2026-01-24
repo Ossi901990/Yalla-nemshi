@@ -22,4 +22,10 @@ class ProfileStorage {
     final map = jsonDecode(jsonStr);
     return UserProfile.fromMap(map);
   }
+
+  // Clear cached profile (e.g., after sign out)
+  static Future<void> clearProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+  }
 }

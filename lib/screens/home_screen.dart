@@ -199,7 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 .where('cancelled', isEqualTo: false)
                 .where(
                   'dateTime',
-                  isGreaterThan: Timestamp.fromDate(DateTime.now()),
+                  isGreaterThan: DateTime.now().toIso8601String(),
                 )
                 .orderBy('dateTime')
                 .orderBy('createdAt', descending: true)
@@ -270,7 +270,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false)
-          .where('dateTime', isGreaterThan: Timestamp.fromDate(DateTime.now()))
+          .where('dateTime', isGreaterThan: DateTime.now().toIso8601String())
           .orderBy('dateTime')
           .orderBy('createdAt', descending: true)
           .startAfterDocument(_lastDocument!);
