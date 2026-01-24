@@ -1,4 +1,6 @@
 // lib/models/walk_event.dart
+import 'dart:developer' as developer;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'recurrence_rule.dart';
@@ -87,6 +89,12 @@ class WalkEvent {
 
   /// Last time GPS data was written to Firestore
   final DateTime? lastTrackingUpdate;
+
+  /// Metadata timestamps for list ordering/debugging
+  final DateTime? createdAt;
+
+  /// Last mutation timestamp for the walk document
+  final DateTime? updatedAt;
 
   /// Optional: tags for a walk, e.g. ["Scenic", "Dog friendly"] (for future use)
   final List<String> tags;
@@ -182,6 +190,8 @@ class WalkEvent {
     this.trackingPointsCount,
     this.routePointsCount,
     this.lastTrackingUpdate,
+    this.createdAt,
+    this.updatedAt,
     List<String>? tags,
     this.comfortLevel,
     this.experienceLevel = 'All levels',
@@ -247,6 +257,8 @@ class WalkEvent {
     int? trackingPointsCount,
     int? routePointsCount,
     DateTime? lastTrackingUpdate,
+    DateTime? createdAt,
+    DateTime? updatedAt,
     List<String>? tags,
     String? comfortLevel,
     String? experienceLevel,
@@ -305,6 +317,8 @@ class WalkEvent {
       trackingPointsCount: trackingPointsCount ?? this.trackingPointsCount,
       routePointsCount: routePointsCount ?? this.routePointsCount,
       lastTrackingUpdate: lastTrackingUpdate ?? this.lastTrackingUpdate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,
         comfortLevel: comfortLevel ?? this.comfortLevel,
         experienceLevel: experienceLevel ?? this.experienceLevel,
@@ -329,13 +343,17 @@ class WalkEvent {
 
   // --------- for local persistence ----------
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap() => _serialize(forCache: false);
+
+  Map<String, dynamic> toCacheMap() => _serialize(forCache: true);
+
+  Map<String, dynamic> _serialize({required bool forCache}) {
     return {
       'id': id,
       'firestoreId': firestoreId,
       'hostUid': hostUid,
       'title': title,
-      'dateTime': dateTime.toIso8601String(),
+      'dateTime': _serializeTimestamp(dateTime, forCache: forCache),
       'distanceKm': distanceKm,
       'gender': gender,
       'pace': pace,
@@ -351,16 +369,26 @@ class WalkEvent {
       'endLng': endLng,
       'description': description,
       'cancelled': cancelled,
+      'shareCode': shareCode,
+      'shareCodeExpiresAt': _serializeTimestamp(
+        shareCodeExpiresAt,
+        forCache: forCache,
+      ),
       'actualDistanceKm': actualDistanceKm,
       'averageSpeed': averageSpeed,
       'maxSpeed': maxSpeed,
       'trackingCompleted': trackingCompleted,
       'trackingPointsCount': trackingPointsCount,
       'routePointsCount': routePointsCount,
-      'lastTrackingUpdate': lastTrackingUpdate?.toIso8601String(),
+      'lastTrackingUpdate': _serializeTimestamp(
+        lastTrackingUpdate,
+        forCache: forCache,
+      ),
+      'createdAt': _serializeTimestamp(createdAt, forCache: forCache),
+      'updatedAt': _serializeTimestamp(updatedAt, forCache: forCache),
       'tags': tags,
-        'comfortLevel': comfortLevel,
-        'experienceLevel': experienceLevel,
+      'comfortLevel': comfortLevel,
+      'experienceLevel': experienceLevel,
       'recurringRule': recurringRule,
       'userNotes': userNotes,
       'city': city,
@@ -368,15 +396,18 @@ class WalkEvent {
       'recurringGroupId': recurringGroupId,
       'recurrence': recurrence?.toMap(),
       'isRecurringTemplate': isRecurringTemplate,
-      'recurringEndDate': recurringEndDate?.toIso8601String(),
+      'recurringEndDate': _serializeTimestamp(
+        recurringEndDate,
+        forCache: forCache,
+      ),
       'photoUrls': photoUrls,
       'hostName': hostName,
       'hostPhotoUrl': hostPhotoUrl,
       'joinedUserUids': joinedUserUids,
-        'joinedUserPhotoUrls': joinedUserPhotoUrls,
-        'joinedCount': joinedCount,
-        'searchKeywords': searchKeywords,
-        'participantStates': participantStates,
+      'joinedUserPhotoUrls': joinedUserPhotoUrls,
+      'joinedCount': joinedCount,
+      'searchKeywords': searchKeywords,
+      'participantStates': participantStates,
     };
   }
 
@@ -406,7 +437,16 @@ class WalkEvent {
     return v.toString();
   }
 
-  static DateTime? _toDateTime(dynamic value) {
+  static dynamic _serializeTimestamp(
+    DateTime? value, {
+    required bool forCache,
+  }) {
+    if (value == null) return null;
+    if (forCache) return value.toIso8601String();
+    return Timestamp.fromDate(value.toUtc());
+  }
+
+  static DateTime? _readTimestamp(dynamic value) {
     if (value == null) return null;
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
@@ -456,9 +496,16 @@ class WalkEvent {
     final String id = _toStringSafe(map['id']);
     final String firestoreId = _toStringSafe(map['firestoreId'], fallback: id);
 
-    // dateTime can be ISO string. If invalid/missing -> now.
-    final String dtStr = _toStringSafe(map['dateTime']);
-    final DateTime dateTime = DateTime.tryParse(dtStr) ?? DateTime.now();
+    final DateTime? parsedDateTime = _readTimestamp(map['dateTime']);
+    if (parsedDateTime == null) {
+      developer.log(
+        'WalkEvent.fromMap missing/invalid dateTime',
+        name: 'WalkEvent',
+        error: {'id': firestoreId, 'raw': map['dateTime']},
+      );
+    }
+    final DateTime dateTime =
+        parsedDateTime ?? DateTime.fromMillisecondsSinceEpoch(0);
 
     // ✅ distanceKm might be null/int/double/string -> safe
     final double distanceKm = _toDouble(map['distanceKm'], fallback: 0.0);
@@ -497,7 +544,7 @@ class WalkEvent {
       visibility: _toStringSafe(map['visibility'], fallback: 'open'),
       joinPolicy: _toStringSafe(map['joinPolicy'], fallback: 'request'),
       shareCode: map['shareCode']?.toString(),
-      shareCodeExpiresAt: _toDateTime(map['shareCodeExpiresAt']),
+      shareCodeExpiresAt: _readTimestamp(map['shareCodeExpiresAt']),
       isOwner: _toBool(map['isOwner']),
       joined: _toBool(map['joined']),
       interested: _toBool(map['interested']),
@@ -514,9 +561,9 @@ class WalkEvent {
       comfortLevel: map['comfortLevel']?.toString(),
       experienceLevel: map['experienceLevel']?.toString() ?? 'All levels',
         status: _normalizeStatus(map['status']),
-        startedAt: _toDateTime(map['startedAt']),
+        startedAt: _readTimestamp(map['startedAt']),
         startedByUid: map['startedByUid']?.toString(),
-        completedAt: _toDateTime(map['completedAt']),
+        completedAt: _readTimestamp(map['completedAt']),
         actualDurationMinutes:
           (map['actualDurationMinutes'] as num?)?.toInt(),
           actualDistanceKm: (map['actualDistanceKm'] as num?)?.toDouble(),
@@ -525,7 +572,7 @@ class WalkEvent {
           trackingCompleted: _toBool(map['trackingCompleted']),
           trackingPointsCount: (map['trackingPointsCount'] as num?)?.toInt(),
           routePointsCount: (map['routePointsCount'] as num?)?.toInt(),
-          lastTrackingUpdate: _toDateTime(map['lastTrackingUpdate']),
+          lastTrackingUpdate: _readTimestamp(map['lastTrackingUpdate']),
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
       city: map['city']?.toString(),
@@ -535,9 +582,7 @@ class WalkEvent {
           ? RecurrenceRule.fromMap(map['recurrence'] as Map<String, dynamic>)
           : null,
       isRecurringTemplate: _toBool(map['isRecurringTemplate']),
-      recurringEndDate: map['recurringEndDate'] != null
-          ? DateTime.tryParse(map['recurringEndDate'].toString())
-          : null,
+        recurringEndDate: _readTimestamp(map['recurringEndDate']),
       photoUrls: (map['photoUrls'] is List)
           ? (map['photoUrls'] as List).whereType<String>().toList()
           : <String>[],
@@ -558,6 +603,8 @@ class WalkEvent {
           ? (map['searchKeywords'] as List).whereType<String>().toList()
           : const [],
       participantStates: _parseParticipantStates(map['participantStates']),
+      createdAt: _readTimestamp(map['createdAt']),
+      updatedAt: _readTimestamp(map['updatedAt']),
     );
   }
 

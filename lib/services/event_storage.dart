@@ -10,7 +10,7 @@ class EventStorage {
 
   static Future<void> saveEvents(List<WalkEvent> events) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = events.map((e) => e.toMap()).toList();
+    final list = events.map((e) => e.toCacheMap()).toList();
     await prefs.setString(_key, jsonEncode(list));
   }
 

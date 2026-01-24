@@ -76,7 +76,7 @@ class OfflineService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final limited = walks.take(50).toList();
-      final encoded = jsonEncode(limited.map((w) => w.toMap()).toList());
+      final encoded = jsonEncode(limited.map((w) => w.toCacheMap()).toList());
       await prefs.setString(_walkCacheKey, encoded);
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'OfflineService.cacheWalks');

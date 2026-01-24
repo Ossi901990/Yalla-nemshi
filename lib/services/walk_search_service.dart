@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/walk_event.dart';
 import '../models/walk_search_filters.dart';
 import '../utils/search_utils.dart';
 import 'app_preferences.dart';
+import 'crash_service.dart';
 
 class WalkSearchPage {
   const WalkSearchPage({
@@ -66,14 +68,14 @@ class WalkSearchService {
     if (filters.startDate != null) {
       query = query.where(
         'dateTime',
-        isGreaterThanOrEqualTo: filters.startDate!.toIso8601String(),
+        isGreaterThanOrEqualTo: Timestamp.fromDate(filters.startDate!),
       );
     }
 
     if (filters.endDate != null) {
       query = query.where(
         'dateTime',
-        isLessThanOrEqualTo: filters.endDate!.toIso8601String(),
+        isLessThanOrEqualTo: Timestamp.fromDate(filters.endDate!),
       );
     }
 
@@ -85,15 +87,26 @@ class WalkSearchService {
 
     final snapshot = await query.limit(limit).get();
 
-    final walks = snapshot.docs
-        .map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          data['firestoreId'] = doc.id;
-          return WalkEvent.fromMap(data);
-        })
-        .where(filters.matches)
-        .toList();
+    final walks = <WalkEvent>[];
+
+    for (final doc in snapshot.docs) {
+      try {
+        final data = doc.data();
+        data['id'] = doc.id;
+        data['firestoreId'] = doc.id;
+        final walk = WalkEvent.fromMap(data);
+        if (filters.matches(walk)) {
+          walks.add(walk);
+        }
+      } catch (error, st) {
+        debugPrint('❌ Failed to parse search walk ${doc.id}: $error');
+        CrashService.recordError(
+          error,
+          st,
+          reason: 'WalkSearchService.parse.${doc.id}',
+        );
+      }
+    }
 
     // Sort by date (soonest first)
     walks.sort((a, b) => a.dateTime.compareTo(b.dateTime));

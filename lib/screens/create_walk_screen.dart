@@ -847,7 +847,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final payload = <String, dynamic>{
       'walkType': walkType,
       'title': _title,
-      'dateTime': _dateTime.toIso8601String(),
+      'dateTime': Timestamp.fromDate(_dateTime),
       'distanceKm': effectiveDistanceKm,
       'gender': _gender,
       'pace': _pace,
