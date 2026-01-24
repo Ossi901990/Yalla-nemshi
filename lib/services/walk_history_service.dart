@@ -20,28 +20,38 @@ class WalkHistoryService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Record that user joined a walk
+  /// Uses batch write to ensure both user doc and walk doc are updated atomically
   Future<void> recordWalkJoin(String walkId) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('walks')
-          .doc(walkId)
-          .set({
-        'userId': uid,
-        'walkId': walkId,
-        'joinedAt': Timestamp.now(),
-        'completed': false,
-        'leftEarly': false,
-        'hostCancelled': false,
-        'status': 'open',
-        'participationState': 'joined',
-      }, SetOptions(merge: true));
+      // Use batch write for atomic update of both locations
+      final batch = _firestore.batch();
 
-      await _updateParticipantStateOnWalk(walkId, uid, 'joined');
+      // Update user's personal walk record
+      batch.set(
+        _firestore.collection('users').doc(uid).collection('walks').doc(walkId),
+        {
+          'userId': uid,
+          'walkId': walkId,
+          'joinedAt': Timestamp.now(),
+          'completed': false,
+          'leftEarly': false,
+          'hostCancelled': false,
+          'status': 'open',
+          'participationState': 'joined',
+        },
+        SetOptions(merge: true),
+      );
+
+      // Update walk's participant state
+      batch.update(_firestore.collection('walks').doc(walkId), {
+        'participantStates.$uid': 'joined',
+      });
+
+      // Commit atomically - both updates succeed or both fail
+      await batch.commit();
     } catch (e) {
       CrashService.recordError(
         e,
@@ -53,26 +63,35 @@ class WalkHistoryService {
   }
 
   /// Record that user left a walk
+  /// Uses batch write to ensure both user doc and walk doc are updated atomically
   Future<void> recordWalkLeave(String walkId) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('walks')
-          .doc(walkId)
-          .update({
-        'walkId': walkId,
-        'leftAt': Timestamp.now(),
-        'leftEarly': true,
-        'completed': false,
-        'status': 'declined',
-        'participationState': 'left',
+      // Use batch write for atomic update of both locations
+      final batch = _firestore.batch();
+
+      // Update user's personal walk record
+      batch.update(
+        _firestore.collection('users').doc(uid).collection('walks').doc(walkId),
+        {
+          'walkId': walkId,
+          'leftAt': Timestamp.now(),
+          'leftEarly': true,
+          'completed': false,
+          'status': 'declined',
+          'participationState': 'left',
+        },
+      );
+
+      // Update walk's participant state
+      batch.update(_firestore.collection('walks').doc(walkId), {
+        'participantStates.$uid': 'left',
       });
 
-      await _updateParticipantStateOnWalk(walkId, uid, 'left');
+      // Commit atomically - both updates succeed or both fail
+      await batch.commit();
     } catch (e) {
       CrashService.recordError(
         e,
@@ -96,8 +115,7 @@ class WalkHistoryService {
       CrashService.recordError(
         e,
         st,
-        reason:
-            'WalkHistoryService._updateParticipantStateOnWalk error',
+        reason: 'WalkHistoryService._updateParticipantStateOnWalk error',
       );
     }
   }
@@ -119,14 +137,14 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
-        'walkId': walkId,
-        'completed': true,
-        'actualDistanceKm': distanceKm,
-        'actualDuration': duration?.inSeconds,
-        'notes': notes,
-        'completedAt': Timestamp.now(),
-        'participationState': 'confirmed',
-      });
+            'walkId': walkId,
+            'completed': true,
+            'actualDistanceKm': distanceKm,
+            'actualDuration': duration?.inSeconds,
+            'notes': notes,
+            'completedAt': Timestamp.now(),
+            'participationState': 'confirmed',
+          });
     } catch (e) {
       CrashService.recordError(
         e,
@@ -154,8 +172,10 @@ class WalkHistoryService {
           .orderBy('joinedAt', descending: true);
 
       if (beforeDate != null) {
-        query = query.where('joinedAt',
-            isLessThan: Timestamp.fromDate(beforeDate));
+        query = query.where(
+          'joinedAt',
+          isLessThan: Timestamp.fromDate(beforeDate),
+        );
       }
 
       final docs = await query.limit(limit).get();
@@ -181,8 +201,7 @@ class WalkHistoryService {
       final uid = _auth.currentUser?.uid;
       if (uid == null) throw Exception('User not authenticated');
 
-      Query query =
-          _firestore.collection('users').doc(uid).collection('walks');
+      Query query = _firestore.collection('users').doc(uid).collection('walks');
 
       if (onlyCompleted) {
         query = query.where('completed', isEqualTo: true);
@@ -211,14 +230,16 @@ class WalkHistoryService {
       return Stream.error('User not authenticated');
     }
 
-    Query query =
-        _firestore.collection('users').doc(uid).collection('walks');
+    Query query = _firestore.collection('users').doc(uid).collection('walks');
 
     if (onlyCompleted) {
       query = query.where('completed', isEqualTo: true);
     }
 
-    return query.orderBy('joinedAt', descending: true).snapshots().map(
+    return query
+        .orderBy('joinedAt', descending: true)
+        .snapshots()
+        .map(
           (snapshot) => snapshot.docs
               .map((doc) => WalkParticipation.fromFirestore(doc))
               .toList(),
@@ -269,8 +290,7 @@ class WalkHistoryService {
 
       return {
         'total': walks.length,
-        'completed':
-            walks.where((w) => w['completed'] == true).length,
+        'completed': walks.where((w) => w['completed'] == true).length,
         'leftEarly': walks
             .where((w) => w['leftEarly'] == true && !(w['completed'] ?? false))
             .length,
@@ -311,24 +331,30 @@ class WalkHistoryService {
 
   /// Confirm user's participation when walk starts
   /// Updates status to "actively_walking" and records confirmation time
+  /// Uses batch write to ensure both user doc and walk doc are updated atomically
   Future<void> confirmParticipation(String walkId) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('walks')
-          .doc(walkId)
-          .update({
-        'walkId': walkId,
-        'status': 'actively_walking',
-        'confirmedAt': Timestamp.now(),
-        'participationState': 'confirmed',
+      // Use batch write for atomic update
+      final batch = _firestore.batch();
+
+      batch.update(
+        _firestore.collection('users').doc(uid).collection('walks').doc(walkId),
+        {
+          'walkId': walkId,
+          'status': 'actively_walking',
+          'confirmedAt': Timestamp.now(),
+          'participationState': 'confirmed',
+        },
+      );
+
+      batch.update(_firestore.collection('walks').doc(walkId), {
+        'participantStates.$uid': 'confirmed',
       });
 
-      await _updateParticipantStateOnWalk(walkId, uid, 'confirmed');
+      await batch.commit();
     } catch (e) {
       CrashService.recordError(
         e,
@@ -355,12 +381,12 @@ class WalkHistoryService {
           .collection('walks')
           .doc(walkId)
           .update({
-        'walkId': walkId,
-        'status': 'completed',
-        'completedAt': Timestamp.now(),
-        'actualDurationMinutes': actualDurationMinutes,
-        'participationState': 'confirmed',
-      });
+            'walkId': walkId,
+            'status': 'completed',
+            'completedAt': Timestamp.now(),
+            'actualDurationMinutes': actualDurationMinutes,
+            'participationState': 'confirmed',
+          });
     } catch (e) {
       CrashService.recordError(
         e,
@@ -373,24 +399,30 @@ class WalkHistoryService {
 
   /// Mark user's participation as declined when walk starts
   /// User didn't confirm when prompted
+  /// Uses batch write to ensure both user doc and walk doc are updated atomically
   Future<void> declineParticipation(String walkId) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('walks')
-          .doc(walkId)
-          .update({
-        'walkId': walkId,
-        'status': 'declined',
-        'declinedAt': Timestamp.now(),
-        'participationState': 'left',
+      // Use batch write for atomic update
+      final batch = _firestore.batch();
+
+      batch.update(
+        _firestore.collection('users').doc(uid).collection('walks').doc(walkId),
+        {
+          'walkId': walkId,
+          'status': 'declined',
+          'declinedAt': Timestamp.now(),
+          'participationState': 'left',
+        },
+      );
+
+      batch.update(_firestore.collection('walks').doc(walkId), {
+        'participantStates.$uid': 'left',
       });
 
-      await _updateParticipantStateOnWalk(walkId, uid, 'left');
+      await batch.commit();
     } catch (e) {
       CrashService.recordError(
         e,
@@ -403,24 +435,30 @@ class WalkHistoryService {
 
   /// User leaves walk early
   /// Sets status to "completed_early" and records actual duration
+  /// Uses batch write to ensure both user doc and walk doc are updated atomically
   Future<void> leaveWalkEarly(String walkId) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('walks')
-          .doc(walkId)
-          .update({
-        'walkId': walkId,
-        'status': 'completed_early',
-        'completedAt': Timestamp.now(),
-        'participationState': 'left',
+      // Use batch write for atomic update
+      final batch = _firestore.batch();
+
+      batch.update(
+        _firestore.collection('users').doc(uid).collection('walks').doc(walkId),
+        {
+          'walkId': walkId,
+          'status': 'completed_early',
+          'completedAt': Timestamp.now(),
+          'participationState': 'left',
+        },
+      );
+
+      batch.update(_firestore.collection('walks').doc(walkId), {
+        'participantStates.$uid': 'left',
       });
 
-      await _updateParticipantStateOnWalk(walkId, uid, 'left');
+      await batch.commit();
     } catch (e) {
       CrashService.recordError(
         e,
@@ -496,8 +534,10 @@ class WalkHistoryService {
 
       for (final doc in completed.docs) {
         final walkId = doc.id;
-        final walkSnapshot =
-            await _firestore.collection('walks').doc(walkId).get();
+        final walkSnapshot = await _firestore
+            .collection('walks')
+            .doc(walkId)
+            .get();
         final routePoints =
             (walkSnapshot.data()?['routePointsCount'] as num?)?.toInt() ?? 0;
 

@@ -17,11 +17,7 @@ class ActiveWalkScreen extends StatefulWidget {
   final String walkId;
   final WalkEvent? initialWalk;
 
-  const ActiveWalkScreen({
-    super.key,
-    required this.walkId,
-    this.initialWalk,
-  });
+  const ActiveWalkScreen({super.key, required this.walkId, this.initialWalk});
 
   @override
   State<ActiveWalkScreen> createState() => _ActiveWalkScreenState();
@@ -42,6 +38,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
   bool _isLeaving = false;
   bool _summaryOpened = false;
   bool _summaryErrorShown = false;
+  bool _trackingStartInProgress =
+      false; // Lock to prevent duplicate GPS subscriptions
 
   void _debug(String message) {
     if (kDebugMode) {
@@ -85,7 +83,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (!shouldRun) {
       _ticker?.cancel();
       _ticker = null;
-      if (walk != null && (walk.status == 'ended' || walk.status == 'cancelled')) {
+      if (walk != null &&
+          (walk.status == 'ended' || walk.status == 'cancelled')) {
         _stopTrackingIfNeeded(force: true);
       }
       return;
@@ -110,7 +109,13 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     }
   }
 
-  void _startTrackingIfNeeded([WalkEvent? walk]) {
+  void _startTrackingIfNeeded([WalkEvent? walk]) async {
+    // Lock check: prevent concurrent calls
+    if (_trackingStartInProgress) {
+      _debug('startTrackingIfNeeded skipped - already starting tracking');
+      return;
+    }
+
     final resolved = walk ?? _latestWalk;
     if (resolved == null) {
       _debug('startTrackingIfNeeded skipped - walk snapshot unavailable');
@@ -125,14 +130,26 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       _debug('startTrackingIfNeeded skipped - already tracking this walk');
       return;
     }
+
+    // Acquire lock
+    _trackingStartInProgress = true;
     _debug('Host is starting GPS tracking for status ${resolved.status}');
-    unawaited(GPSTrackingService.instance.startTracking(widget.walkId));
+
+    try {
+      await GPSTrackingService.instance.startTracking(widget.walkId);
+      _debug('GPS tracking started successfully');
+    } catch (e) {
+      _debug('Error starting GPS tracking: $e');
+    } finally {
+      // Release lock
+      _trackingStartInProgress = false;
+    }
   }
 
   void _stopTrackingIfNeeded({bool force = false}) {
     final walk = _latestWalk;
-    final shouldStopForStatus = walk != null &&
-        (walk.status == 'ended' || walk.status == 'cancelled');
+    final shouldStopForStatus =
+        walk != null && (walk.status == 'ended' || walk.status == 'cancelled');
     if (!force && !shouldStopForStatus) {
       return;
     }
@@ -176,10 +193,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => WalkSummaryScreen(
-            walkId: summaryId,
-            initialWalk: seedWalk,
-          ),
+          builder: (_) =>
+              WalkSummaryScreen(walkId: summaryId, initialWalk: seedWalk),
         ),
       );
     });
@@ -200,7 +215,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (_isEnding) return;
     setState(() => _isEnding = true);
     try {
-      _debug('Host requested to end walk; stopping tracking after control update');
+      _debug(
+        'Host requested to end walk; stopping tracking after control update',
+      );
       await WalkControlService.instance.endWalk(widget.walkId);
       await GPSTrackingService.instance.stopTracking(widget.walkId);
       if (!mounted) return;
@@ -214,10 +231,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     } catch (e, st) {
       CrashService.recordError(e, st);
       if (mounted) {
-        ErrorHandler.showErrorSnackBar(
-          context,
-          'Failed to end walk: $e',
-        );
+        ErrorHandler.showErrorSnackBar(context, 'Failed to end walk: $e');
       }
     } finally {
       if (mounted) setState(() => _isEnding = false);
@@ -286,16 +300,13 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
         _debug('Participant leaving early but tracking already stopped');
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You left the walk.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('You left the walk.')));
     } catch (e, st) {
       CrashService.recordError(e, st);
       if (mounted) {
-        ErrorHandler.showErrorSnackBar(
-          context,
-          'Could not leave walk: $e',
-        );
+        ErrorHandler.showErrorSnackBar(context, 'Could not leave walk: $e');
       }
     } finally {
       if (mounted) setState(() => _isLeaving = false);
@@ -363,14 +374,14 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
                         child: showCancelledFallback
                             ? _buildFallback(context, status)
                             : isEnded
-                                ? _buildSummaryTransition()
-                                : _buildScrollContent(
-                                    context,
-                                    walk,
-                                    elapsed,
-                                    participantState,
-                                    isHost,
-                                  ),
+                            ? _buildSummaryTransition()
+                            : _buildScrollContent(
+                                context,
+                                walk,
+                                elapsed,
+                                participantState,
+                                isHost,
+                              ),
                       ),
                     ],
                   ),
@@ -419,7 +430,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
         children: [
           Text(
             walk.title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            style:
+                Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ) ??
@@ -436,7 +448,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
           const SizedBox(height: 24),
           _buildParticipantsSection(context, walk),
           const SizedBox(height: 24),
-          if (isHost) _buildHostControls(context, walk) else
+          if (isHost)
+            _buildHostControls(context, walk)
+          else
             _buildParticipantControls(context, walk, participantState),
         ],
       ),
@@ -479,7 +493,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     if (storedDistance != null && storedDistance > 0) {
       return storedDistance;
     }
-    final liveRoute = GPSTrackingService.instance.getCurrentRoute(widget.walkId);
+    final liveRoute = GPSTrackingService.instance.getCurrentRoute(
+      widget.walkId,
+    );
     if (liveRoute.length < 2) {
       return null;
     }
@@ -495,7 +511,10 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       final prevLng = (prev['longitude'] as num?)?.toDouble();
       final currLat = (curr['latitude'] as num?)?.toDouble();
       final currLng = (curr['longitude'] as num?)?.toDouble();
-      if (prevLat == null || prevLng == null || currLat == null || currLng == null) {
+      if (prevLat == null ||
+          prevLng == null ||
+          currLat == null ||
+          currLng == null) {
         continue;
       }
       meters += _haversineMeters(prevLat, prevLng, currLat, currLng);
@@ -510,7 +529,8 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     const earthRadius = 6371000.0;
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_toRadians(lat1)) *
             math.cos(_toRadians(lat2)) *
             math.sin(dLng / 2) *
@@ -574,22 +594,15 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        color: isDark
-            ? Colors.white.withAlpha(20)
-            : Colors.white.withAlpha(30),
-        border: Border.all(
-          color: Colors.white.withAlpha(60),
-        ),
+        color: isDark ? Colors.white.withAlpha(20) : Colors.white.withAlpha(30),
+        border: Border.all(color: Colors.white.withAlpha(60)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Distance',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 4),
           Row(
@@ -628,18 +641,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
             spacing: 12,
             runSpacing: 8,
             children: [
-              _MetricChip(
-                label: 'Elapsed',
-                value: durationText,
-              ),
-              _MetricChip(
-                label: 'Pace',
-                value: paceDisplay,
-              ),
-              const _MetricChip(
-                label: 'Steps',
-                value: '\u2014',
-              ),
+              _MetricChip(label: 'Elapsed', value: durationText),
+              _MetricChip(label: 'Pace', value: paceDisplay),
+              const _MetricChip(label: 'Steps', value: '\u2014'),
             ],
           ),
         ],
@@ -685,8 +689,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
           )
         else
           Column(
-            children:
-                data.map((tile) => _ParticipantTile(tile: tile)).toList(),
+            children: data.map((tile) => _ParticipantTile(tile: tile)).toList(),
           ),
       ],
     );
@@ -758,8 +761,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
             child: FilledButton.icon(
               onPressed: _isConfirming ? null : _confirmParticipation,
               icon: const Icon(Icons.check_circle),
-                label:
-                  Text(_isConfirming ? 'Confirming...' : 'Confirm - I\'m here'),
+              label: Text(
+                _isConfirming ? 'Confirming...' : 'Confirm - I\'m here',
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -768,7 +772,9 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
             child: OutlinedButton.icon(
               onPressed: _isDeclining ? null : _declineParticipation,
               icon: const Icon(Icons.close),
-              label: Text(_isDeclining ? 'Declining...' : 'Decline - Not coming'),
+              label: Text(
+                _isDeclining ? 'Declining...' : 'Decline - Not coming',
+              ),
             ),
           ),
         ],
@@ -950,10 +956,7 @@ class _StatusChip extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 description,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
           ),
@@ -980,10 +983,7 @@ class _MetricChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70),
-          ),
+          Text(label, style: const TextStyle(color: Colors.white70)),
           const SizedBox(width: 8),
           Text(
             value,
@@ -1098,8 +1098,10 @@ class _ParticipantTile extends StatelessWidget {
                     if (tile.isHost) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.tealAccent.withAlpha(60),
                           borderRadius: BorderRadius.circular(999),
@@ -1118,17 +1120,17 @@ class _ParticipantTile extends StatelessWidget {
                       const SizedBox(width: 6),
                       const Text(
                         'You',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                     ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _badgeColor(tile.state).withAlpha(60),
                     borderRadius: BorderRadius.circular(999),
