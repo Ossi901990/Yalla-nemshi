@@ -140,10 +140,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   _hasMoreWalks = false;
                 }
 
-                final List<WalkEvent> loaded =
-                  _parseWalkDocs(snap.docs, currentUid);
-                final List<WalkEvent> merged =
-                    _collapseRecurringWalks(loaded);
+                final List<WalkEvent> loaded = _parseWalkDocs(
+                  snap.docs,
+                  currentUid,
+                );
+                final List<WalkEvent> merged = _collapseRecurringWalks(loaded);
 
                 if (!mounted) return;
 
@@ -209,10 +210,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   (snap) {
                     try {
                       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-                      final List<WalkEvent> loaded =
-                          _parseWalkDocs(snap.docs, currentUid);
-                      final List<WalkEvent> merged =
-                          _collapseRecurringWalks(loaded);
+                      final List<WalkEvent> loaded = _parseWalkDocs(
+                        snap.docs,
+                        currentUid,
+                      );
+                      final List<WalkEvent> merged = _collapseRecurringWalks(
+                        loaded,
+                      );
 
                       if (mounted) {
                         setState(() {
@@ -267,7 +271,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final userCity = await AppPreferences.getUserCity();
 
-        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false)
           .where('dateTime', isGreaterThan: DateTime.now().toIso8601String())
@@ -302,8 +306,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _hasMoreWalks = snap.docs.length >= _walksPerPage;
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final List<WalkEvent> newWalks =
-          _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> newWalks = _parseWalkDocs(snap.docs, currentUid);
 
       _logHomeFeedSummary(
         source: 'load_more',
@@ -376,8 +379,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     DocumentSnapshot<Map<String, dynamic>> doc,
     String? currentUid, {
     bool isFromCache = false,
-  }
-  ) {
+  }) {
     try {
       final raw = doc.data();
       if (raw == null) {
@@ -499,11 +501,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final reason = event.dateTime.isAfter(now)
               ? 'recurring collapse kept ${candidate.id} (group ${event.recurringGroupId})'
               : 'recurring collapse dropped past instance (kept ${candidate.id})';
-          _debugWalkDrop(
-            reason,
-            id: event.id,
-            parsed: event,
-          );
+          _debugWalkDrop(reason, id: event.id, parsed: event);
         }
         merged.add(candidate);
       }
@@ -1130,7 +1128,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dynamic rawDateTime = parsed?.dateTime ?? data?['dateTime'];
     final DateTime? dateTime = normalizeDateTime(rawDateTime);
     final buffer = StringBuffer()
-      ..writeln('🕵️ WALK DROP id=$id reason=$reason cache=${isFromCache ?? false}')
+      ..writeln(
+        '🕵️ WALK DROP id=$id reason=$reason cache=${isFromCache ?? false}',
+      )
       ..writeln(
         '  dateTime=${dateTime ?? data?['dateTime']} status=${parsed?.status ?? data?['status']} visibility=${parsed?.visibility ?? data?['visibility']}',
       )
@@ -2744,7 +2744,7 @@ class _RecommendationCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${event.distanceKm} km ΓÇó ${event.dateTime.month}/${event.dateTime.day}',
+                '${event.distanceKm} km • ${event.dateTime.month}/${event.dateTime.day}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: isDark ? kTextSecondary : Colors.black54,
                 ),
@@ -2818,12 +2818,12 @@ class _WeeklySummaryCard extends StatelessWidget {
       if (kmGoal <= 0) {
         return 'Set a weekly goal in Settings to start tracking.';
       }
-      if (p <= 0.01) return 'LetΓÇÖs get the first steps in ≡ƒÆ¬';
-      if (p < 0.25) return 'Nice start ΓÇö keep the momentum going!';
-      if (p < 0.50) return 'YouΓÇÖre building a habit ΓÇö great progress!';
-      if (p < 0.75) return 'More than halfway ΓÇö youΓÇÖve got this!';
-      if (p < 1.00) return 'Almost there ΓÇö one more push!';
-      return 'Goal reached ≡ƒÄë Amazing work this week!';
+      if (p <= 0.01) return 'Let\'s get the first steps in!';
+      if (p < 0.25) return 'Nice start - keep the momentum going!';
+      if (p < 0.50) return 'You\'re building a habit - great progress!';
+      if (p < 0.75) return 'More than halfway - you\'ve got this!';
+      if (p < 1.00) return 'Almost there - one more push!';
+      return 'Goal reached! Amazing work this week!';
     }
 
     final percent = (progress * 100).round();
@@ -2849,7 +2849,7 @@ class _WeeklySummaryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '$walks walk${walks == 1 ? '' : 's'} ΓÇó '
+                    '$walks walk${walks == 1 ? '' : 's'} • '
                     '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -2971,7 +2971,7 @@ class _WalkCard extends StatelessWidget {
     final yyyy = dt.year.toString();
     final hh = dt.hour.toString().padLeft(2, '0');
     final min = dt.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yyyy ΓÇó $hh:$min';
+    return '$dd/$mm/$yyyy • $hh:$min';
   }
 
   @override
