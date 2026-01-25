@@ -978,7 +978,19 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
           if (isPrivatePointToPoint) {
             final forcedWalkId = _draftWalkId ?? walksCollection.doc().id;
             docRef = walksCollection.doc(forcedWalkId);
-            await docRef.set(payload).timeout(const Duration(seconds: 30));
+
+            // Use transaction to ensure ID is available (prevents data overwrite)
+            await FirebaseFirestore.instance
+                .runTransaction((transaction) async {
+                  final snapshot = await transaction.get(docRef);
+                  if (snapshot.exists) {
+                    throw Exception(
+                      'Walk ID already exists. Please regenerate your invite code and try again.',
+                    );
+                  }
+                  transaction.set(docRef, payload);
+                })
+                .timeout(const Duration(seconds: 30));
           } else {
             docRef = await walksCollection
                 .add(payload)

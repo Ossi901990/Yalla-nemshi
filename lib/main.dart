@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/notification_service.dart';
 import 'services/geocoding_service.dart';
@@ -26,6 +27,16 @@ import 'screens/dm_chat_screen.dart';
 import 'screens/badge_leaderboard_screen.dart';
 import 'screens/per_badge_leaderboard_screen.dart';
 import 'screens/analytics_screen.dart';
+
+/// Background notification handler (must be top-level function)
+/// This handles notifications when the app is terminated or in background
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // Initialize Firebase if not already initialized (required for background handler)
+  await Firebase.initializeApp();
+  debugPrint('📬 Background notification: ${message.notification?.title}');
+  // Process notification data here if needed
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,6 +74,9 @@ Future<void> main() async {
       return true;
     };
   }
+
+  // 🔹 Register background message handler (must be before init)
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   await NotificationService.init();
 
@@ -167,12 +181,16 @@ class MyApp extends StatelessWidget {
         FriendProfileScreen.routeName: (context) => const FriendProfileScreen(),
         WalkSearchScreen.routeName: (context) => const WalkSearchScreen(),
         DmChatScreen.routeName: (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as DmChatScreenArgs;
+          final args =
+              ModalRoute.of(context)!.settings.arguments as DmChatScreenArgs;
           return DmChatScreen(args: args);
         },
-        BadgeLeaderboardScreen.routeName: (context) => const BadgeLeaderboardScreen(),
+        BadgeLeaderboardScreen.routeName: (context) =>
+            const BadgeLeaderboardScreen(),
         PerBadgeLeaderboardScreen.routeName: (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
           return PerBadgeLeaderboardScreen(badgeData: args);
         },
       },

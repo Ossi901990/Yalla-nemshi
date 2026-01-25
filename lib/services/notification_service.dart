@@ -23,10 +23,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   FirebaseMessaging? _messagingOverride;
-  FirebaseMessaging get _messaging => _messagingOverride ?? FirebaseMessaging.instance;
+  FirebaseMessaging get _messaging =>
+      _messagingOverride ?? FirebaseMessaging.instance;
   String? _currentToken;
   StreamSubscription<User?>? _authSubscription;
   Map<String, String?>? _pendingDmNavigation;
@@ -35,32 +37,35 @@ class NotificationService {
   static Future<void> init() async {
     try {
       final instance = NotificationService.instance;
-      
-      // Set background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
+
+      // Background message handler is registered in main.dart (must be top-level)
+
       // Request permissions (iOS requires explicit request)
       await instance._requestPermissions();
-      
+
       // Get and store FCM token
       await instance._initializeToken();
-      
+
       // Listen for token refresh
       instance._listenForTokenRefresh();
-      
+
       // Listen for foreground messages
       instance._listenForForegroundMessages();
-      
+
       // Handle notification taps when app is opened from terminated state
       instance._handleInitialMessage();
 
       // Persist tokens when auth state changes
       instance._listenForAuthChanges();
-      
+
       debugPrint('✅ NotificationService initialized');
     } catch (e, st) {
       debugPrint('❌ NotificationService init error: $e');
-      CrashService.recordError(e, st, reason: 'NotificationService initialization failed');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'NotificationService initialization failed',
+      );
     }
   }
 
@@ -79,7 +84,8 @@ class NotificationService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         debugPrint('✅ Notification permissions granted');
-      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.provisional) {
         debugPrint('⚠️ Provisional notification permissions granted');
       } else {
         debugPrint('❌ Notification permissions denied');
@@ -103,7 +109,11 @@ class NotificationService {
       }
     } catch (e, st) {
       debugPrint('❌ Token initialization error: $e');
-      CrashService.recordError(e, st, reason: 'FCM token initialization failed');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'FCM token initialization failed',
+      );
     }
   }
 
@@ -119,49 +129,67 @@ class NotificationService {
           .collection('fcmTokens')
           .doc(token)
           .set({
-        'token': token,
-        'platform': defaultTargetPlatform.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'token': token,
+            'platform': defaultTargetPlatform.name,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       debugPrint('✅ FCM token saved to Firestore for ${user.uid}');
     } catch (e, st) {
       debugPrint('❌ Token save error: $e');
-      CrashService.recordError(e, st, reason: 'Failed to save FCM token to Firestore');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'Failed to save FCM token to Firestore',
+      );
     }
   }
 
   /// Listen for token refresh
   void _listenForTokenRefresh() {
-    _messaging.onTokenRefresh.listen((newToken) {
-      debugPrint('🔄 FCM token refreshed');
-      _currentToken = newToken;
-      _persistTokenForCurrentUser(tokenOverride: newToken);
-    }).onError((error, stackTrace) {
-      debugPrint('❌ Token refresh error: $error');
-      CrashService.recordError(error, stackTrace, reason: 'FCM token refresh failed');
-    });
+    _messaging.onTokenRefresh
+        .listen((newToken) {
+          debugPrint('🔄 FCM token refreshed');
+          _currentToken = newToken;
+          _persistTokenForCurrentUser(tokenOverride: newToken);
+        })
+        .onError((error, stackTrace) {
+          debugPrint('❌ Token refresh error: $error');
+          CrashService.recordError(
+            error,
+            stackTrace,
+            reason: 'FCM token refresh failed',
+          );
+        });
   }
 
   /// Listen for foreground messages
   void _listenForForegroundMessages() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('📬 Foreground message received: ${message.notification?.title}');
-      
-      // Show local notification
-      if (message.notification != null) {
-        _showLocalNotification(message);
-      }
-      
-      // Handle data payload
-      if (message.data.isNotEmpty) {
-        _handleNotificationData(message.data);
-      }
-    }).onError((error, stackTrace) {
-      debugPrint('❌ Foreground message error: $error');
-      CrashService.recordError(error, stackTrace, reason: 'FCM foreground message handling failed');
-    });
+    FirebaseMessaging.onMessage
+        .listen((RemoteMessage message) {
+          debugPrint(
+            '📬 Foreground message received: ${message.notification?.title}',
+          );
+
+          // Show local notification
+          if (message.notification != null) {
+            _showLocalNotification(message);
+          }
+
+          // Handle data payload
+          if (message.data.isNotEmpty) {
+            _handleNotificationData(message.data);
+          }
+        })
+        .onError((error, stackTrace) {
+          debugPrint('❌ Foreground message error: $error');
+          CrashService.recordError(
+            error,
+            stackTrace,
+            reason: 'FCM foreground message handling failed',
+          );
+        });
   }
 
   /// Show local notification when app is in foreground
@@ -208,7 +236,9 @@ class NotificationService {
 
     // Handle notification tap when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('📲 App opened from background notification: ${message.messageId}');
+      debugPrint(
+        '📲 App opened from background notification: ${message.messageId}',
+      );
       if (message.data.isNotEmpty) {
         _handleNotificationData(message.data);
       }
@@ -230,10 +260,10 @@ class NotificationService {
             .collection('fcmTokens')
             .doc(_currentToken)
             .delete();
-        
+
         debugPrint('✅ FCM token deleted from Firestore');
       }
-      
+
       // Delete token from FCM
       await _messaging.deleteToken();
       _currentToken = null;
@@ -332,8 +362,9 @@ class NotificationService {
   }
 
   void _listenForAuthChanges() {
-    _authSubscription ??=
-        FirebaseAuth.instance.authStateChanges().listen((user) async {
+    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
       if (user == null) {
         return;
       }
@@ -350,12 +381,10 @@ class NotificationService {
     await _persistTokenForUser(user, tokenOverride: tokenOverride);
   }
 
-  Future<void> _persistTokenForUser(
-    User user, {
-    String? tokenOverride,
-  }) async {
+  Future<void> _persistTokenForUser(User user, {String? tokenOverride}) async {
     try {
-      final token = tokenOverride ?? _currentToken ?? await _messaging.getToken();
+      final token =
+          tokenOverride ?? _currentToken ?? await _messaging.getToken();
       if (token == null) {
         debugPrint('⚠️ Cannot persist token: token is null');
         return;
