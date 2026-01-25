@@ -110,29 +110,21 @@ class WalkControlService {
         actualDurationMinutes = now.difference(startedAt).inMinutes;
       }
 
-      // Update walk status to "ended"
-      // This triggers onWalkEnded Cloud Function
+      // Update walk status to "completed"
+      // This triggers onWalkEnded Cloud Function which will:
+      // - Mark all participants as completed
+      // - Update user statistics
+      // - Award badges
+      // Client should NOT update participation directly to avoid race conditions
       await walkRef.update({
-        'status': 'ended',
+        'status': 'completed',
         'completedAt': Timestamp.now(),
         'actualDurationMinutes': actualDurationMinutes,
-        'participantStates.$uid': 'confirmed',
       });
 
-      // Award badges to all participants (async, no need to await)
-      final participantsSnapshot = await walkRef
-          .collection('walkParticipations')
-          .get();
-      
-      for (final doc in participantsSnapshot.docs) {
-        final participantId = doc['userId'] as String?;
-        if (participantId != null) {
-          // Award badges asynchronously
-          BadgeService.instance.checkAndAward(userId: participantId).ignore();
-        }
-      }
-
-      CrashService.log('Walk $walkId ended by $uid (${actualDurationMinutes}m)');
+      CrashService.log(
+        'Walk $walkId ended by $uid (${actualDurationMinutes}m)',
+      );
     } catch (e) {
       CrashService.recordError(
         e,
@@ -205,11 +197,12 @@ class WalkControlService {
       }
 
       if (normalizedStatus == 'active') {
-        final participantStates =
-            _readParticipantStates(walk['participantStates']);
-        final hasConfirmed = participantStates.values
-            .whereType<String>()
-            .any((state) => state == 'confirmed');
+        final participantStates = _readParticipantStates(
+          walk['participantStates'],
+        );
+        final hasConfirmed = participantStates.values.whereType<String>().any(
+          (state) => state == 'confirmed',
+        );
         if (hasConfirmed) {
           throw Exception(
             'Cannot cancel while participants are actively walking.',
@@ -269,11 +262,7 @@ class WalkControlService {
 
   /// Watch walk details in real-time
   Stream<WalkEvent?> watchWalk(String walkId) {
-    return _firestore
-        .collection('walks')
-        .doc(walkId)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('walks').doc(walkId).snapshots().map((doc) {
       if (!doc.exists) return null;
       return WalkEvent.fromMap(doc.data() ?? {});
     });
@@ -300,8 +289,9 @@ class WalkControlService {
         return 0;
       }
 
-      final participantStates =
-          _readParticipantStates(doc.data()?['participantStates']);
+      final participantStates = _readParticipantStates(
+        doc.data()?['participantStates'],
+      );
       return participantStates.values
           .where((state) => state == 'confirmed')
           .length;
