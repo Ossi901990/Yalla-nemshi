@@ -285,6 +285,23 @@
         { "fieldPath": "dateTime", "order": "ASCENDING" },
         { "fieldPath": "__name__", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "rankings",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "hideFromLeaderboards", "order": "ASCENDING" },
+        { "fieldPath": "totalBadgesEarned", "order": "DESCENDING" },
+        { "fieldPath": "lastBadgeEarnedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rankings",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "hideFromLeaderboards", "order": "ASCENDING" },
+        { "fieldPath": "earnedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

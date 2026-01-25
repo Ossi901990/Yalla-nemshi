@@ -242,7 +242,15 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 1000  // Max message length
           && request.resource.data.sentAt != null;
 
-        allow update, delete: if false;
+        // Allow soft-delete: user can mark their own message as deleted
+        allow update: if isParticipant(walkId)
+          && resource.data.senderId == request.auth.uid
+          && request.resource.data.deleted == true
+          && request.resource.data.senderId == resource.data.senderId
+          && request.resource.data.text == resource.data.text
+          && request.resource.data.sentAt == resource.data.sentAt;
+
+        allow delete: if false;
       }
     }
 
@@ -277,15 +285,21 @@ service cloud.firestore {
 
       match /friendsList/{friendId} {
         allow read: if isAuth(userId) || isAuth(friendId);
+        
+        // Enforce 500-friend limit on writes
         allow write: if (
-            isAuth(userId)
-            && request.auth.uid == userId
-          ) || (
-            request.auth != null
-            && request.auth.uid == friendId
-            && request.resource.data.friendId == friendId
-            && request.resource.data.keys().hasOnly(['friendId','since'])
-          );
+            (isAuth(userId) && request.auth.uid == userId)
+            || (
+              request.auth != null
+              && request.auth.uid == friendId
+              && request.resource.data.friendId == friendId
+              && request.resource.data.keys().hasOnly(['friendId','since'])
+            )
+          )
+          // Check friend count limit (500 max friends)
+          && (!request.resource.data.keys().hasAny(['friendId']) 
+              || getAfter(/databases/$(database)/documents/friends/$(userId)/friendsList).size() < 500);
+        
         allow delete: if isAuth(userId)
           || (request.auth != null && request.auth.uid == friendId);
       }

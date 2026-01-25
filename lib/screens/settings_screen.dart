@@ -33,6 +33,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double _weeklyGoalKmLocal = AppPreferences.weeklyGoalKmFallback;
   bool _monthlyDigestEnabled = false;
   bool _monthlyDigestSaving = false;
+  bool _hideFromLeaderboards = false;
+  bool _hideFromLeaderboardsSaving = false;
   String? _currentUserId;
 
   @override
@@ -113,6 +115,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _onHideFromLeaderboardsToggle(
+    String uid,
+    bool nextValue,
+    bool fallback,
+  ) async {
+    setState(() {
+      _hideFromLeaderboardsSaving = true;
+      _hideFromLeaderboards = nextValue;
+    });
+
+    try {
+      await FirestoreUserService.setHideFromLeaderboards(
+        uid: uid,
+        hide: nextValue,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _hideFromLeaderboards = fallback;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update leaderboard privacy: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _hideFromLeaderboardsSaving = false;
+        });
+      }
+    }
+  }
+
   Widget _buildMonthlyDigestTile(bool isDark) {
     final uid = _currentUserId;
     if (uid == null) {
@@ -146,7 +182,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       },
     );
   }
+  Widget _buildHideFromLeaderboardsTile(bool isDark) {
+    final uid = _currentUserId;
+    if (uid == null) {
+      return const SizedBox.shrink();
+    }
 
+    return StreamBuilder<FirestoreUser?>(
+      stream: FirestoreUserService.watchUser(uid),
+      builder: (context, snapshot) {
+        final serverValue = snapshot.data?.hideFromLeaderboards ?? false;
+        final effectiveValue =
+            _hideFromLeaderboardsSaving ? _hideFromLeaderboards : serverValue;
+
+        final waitingForData =
+          snapshot.connectionState == ConnectionState.waiting &&
+            !_hideFromLeaderboardsSaving &&
+            !snapshot.hasData;
+        final disableToggle = waitingForData || _hideFromLeaderboardsSaving;
+
+        return SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Hide from leaderboards'),
+          subtitle: const Text(
+            'Don\'t show my achievements on public leaderboards',
+          ),
+          value: effectiveValue,
+          onChanged: disableToggle
+              ? null
+              : (value) => _onHideFromLeaderboardsToggle(uid, value, serverValue),
+        );
+      },
+    );
+  }
   Future<void> _openRedeemInviteSheet() async {
     final redeemed = await showModalBottomSheet<bool>(
       context: context,
@@ -454,8 +522,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   await _bootstrap();
                                 },
                               ),
-                              _buildMonthlyDigestTile(isDark),
-                              const SizedBox(height: 16),
+                              _buildMonthlyDigestTile(isDark),                              _buildHideFromLeaderboardsTile(isDark),                              const SizedBox(height: 16),
 
                               // ===== Preferences =====
                               Text(

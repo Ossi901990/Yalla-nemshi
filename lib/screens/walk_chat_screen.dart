@@ -15,6 +15,42 @@ class WalkChatScreen extends StatelessWidget {
     required this.walkTitle,
   });
 
+  void _showDeleteDialog(BuildContext context, String walkId, String messageId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Message'),
+        content: const Text('Are you sure you want to delete this message? It will show as "[Message deleted]" but moderators can still see it.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await FirebaseFirestore.instance
+                    .collection('walk_chats')
+                    .doc(walkId)
+                    .collection('messages')
+                    .doc(messageId)
+                    .update({'deleted': true});
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -57,56 +93,73 @@ class WalkChatScreen extends StatelessWidget {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
+                    final messageId = docs[index].id;
 
                     final senderId = (data['senderId'] ?? '') as String;
                     final text = (data['text'] ?? '') as String;
                     final imageUrl = (data['imageUrl'] ?? '') as String?;
                     final isMe = uid != null && senderId == uid;
+                    final isDeleted = data['deleted'] == true;
 
                     return Align(
                       alignment: isMe
                           ? Alignment.centerRight
                           : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? Theme.of(context).colorScheme.primary.withAlpha((0.12 * 255).round())
-                              : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha((0.6 * 255).round()),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: imageUrl != null && imageUrl.isNotEmpty
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Image.network(
-                                    imageUrl,
-                                    width: 180,
-                                    height: 180,
-                                    fit: BoxFit.cover,
+                      child: GestureDetector(
+                        onLongPress: isMe && !isDeleted
+                            ? () => _showDeleteDialog(context, walkId, messageId)
+                            : null,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.75,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDeleted
+                                ? Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha((0.3 * 255).round())
+                                : isMe
+                                    ? Theme.of(context).colorScheme.primary.withAlpha((0.12 * 255).round())
+                                    : Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha((0.6 * 255).round()),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: isDeleted
+                              ? Text(
+                                  '[Message deleted]',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontStyle: FontStyle.italic,
+                                    color: Theme.of(context).colorScheme.onSurface.withAlpha((0.5 * 255).round()),
                                   ),
-                                  if (text.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 8.0),
-                                      child: Text(
-                                        text,
-                                        style: Theme.of(context).textTheme.bodyMedium,
-                                      ),
+                                )
+                              : imageUrl != null && imageUrl.isNotEmpty
+                                  ? Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Image.network(
+                                          imageUrl,
+                                          width: 180,
+                                          height: 180,
+                                          fit: BoxFit.cover,
+                                        ),
+                                        if (text.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8.0),
+                                            child: Text(
+                                              text,
+                                              style: Theme.of(context).textTheme.bodyMedium,
+                                            ),
+                                          ),
+                                      ],
+                                    )
+                                  : Text(
+                                      text,
+                                      softWrap: true,
+                                      style: Theme.of(context).textTheme.bodyMedium,
                                     ),
-                                ],
-                              )
-                            : Text(
-                                text,
-                                softWrap: true,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
+                        ),
                       ),
                     );
                   },
@@ -156,6 +209,7 @@ class _MessageComposerState extends State<_MessageComposer> {
           'senderId': uid,
           'text': text,
           'sentAt': FieldValue.serverTimestamp(),
+          'deleted': false,
         });
         tx.set(chatRef, {
           'walkId': widget.walkId,
@@ -195,6 +249,7 @@ class _MessageComposerState extends State<_MessageComposer> {
           'senderId': uid,
           'imageUrl': imageUrl,
           'sentAt': FieldValue.serverTimestamp(),
+          'deleted': false,
         });
         tx.set(chatRef, {
           'walkId': widget.walkId,

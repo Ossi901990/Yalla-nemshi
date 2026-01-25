@@ -2,9 +2,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FriendsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const int maxFriends = 500;
 
   // Send a friend request
   Future<void> sendFriendRequest(String senderUid, String recipientUid) async {
+    // Check if sender has reached friend limit
+    final senderFriendsSnapshot = await _firestore
+        .collection('friends')
+        .doc(senderUid)
+        .collection('friendsList')
+        .get();
+    
+    if (senderFriendsSnapshot.docs.length >= maxFriends) {
+      throw Exception('You have reached the maximum of $maxFriends friends.');
+    }
+
+    // Check if recipient has reached friend limit
+    final recipientFriendsSnapshot = await _firestore
+        .collection('friends')
+        .doc(recipientUid)
+        .collection('friendsList')
+        .get();
+    
+    if (recipientFriendsSnapshot.docs.length >= maxFriends) {
+      throw Exception('This user has reached the maximum of $maxFriends friends.');
+    }
+
     final requestId = _firestore.collection('friend_requests').doc().id;
     final requestData = {
       'requestId': requestId,
@@ -29,6 +52,28 @@ class FriendsService {
 
   // Accept a friend request
   Future<void> acceptFriendRequest(String userId, String friendId, String requestId) async {
+    // Check if user has reached friend limit
+    final userFriendsSnapshot = await _firestore
+        .collection('friends')
+        .doc(userId)
+        .collection('friendsList')
+        .get();
+    
+    if (userFriendsSnapshot.docs.length >= maxFriends) {
+      throw Exception('You have reached the maximum of $maxFriends friends.');
+    }
+
+    // Check if friend has reached friend limit
+    final friendFriendsSnapshot = await _firestore
+        .collection('friends')
+        .doc(friendId)
+        .collection('friendsList')
+        .get();
+    
+    if (friendFriendsSnapshot.docs.length >= maxFriends) {
+      throw Exception('This user has reached the maximum of $maxFriends friends.');
+    }
+
     final friendData = {
       'friendId': friendId,
       'since': FieldValue.serverTimestamp(),
