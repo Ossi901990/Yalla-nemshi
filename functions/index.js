@@ -5,8 +5,9 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
-const { defineSecret } = require("firebase-functions/params");
-const sgMail = require("@sendgrid/mail");
+// TODO: Uncomment when ready to add SendGrid for email digests (free tier: 100 emails/day)
+// const { defineSecret } = require("firebase-functions/params");
+// const sgMail = require("@sendgrid/mail");
 
 const db = admin.firestore();
 const friendProfiles = require("./friend_profiles")(admin);
@@ -20,9 +21,10 @@ const {
   enforceWalkSummaryLimit,
 } = friendProfiles;
 
-const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
-const DIGEST_FROM_EMAIL = process.env.DIGEST_FROM_EMAIL || "no-reply@yallanemshi.app";
-const DIGEST_FROM_NAME = "Yalla Nemshi";
+// TODO: Uncomment when ready to add SendGrid
+// const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+// const DIGEST_FROM_EMAIL = process.env.DIGEST_FROM_EMAIL || "no-reply@yallanemshi.app";
+// const DIGEST_FROM_NAME = "Yalla Nemshi";
 
 // ===== SET GLOBAL REGION FOR HTTPS AND HTTPS-CALLABLE FUNCTIONS =====
 // HTTPS functions can be in europe-west1 (closer to Middle East)
@@ -410,6 +412,8 @@ const COMPLETED_STATES = new Set([
 ]);
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
+// TODO: Uncomment when SendGrid is configured - monthly email digests
+/* 
 exports.sendMonthlyDigests = onSchedule(
   {
     schedule: "0 6 1 * *", // 06:00 UTC on the first of every month
@@ -443,7 +447,9 @@ exports.sendMonthlyDigests = onSchedule(
     console.log(`📬 [Digest] Completed run for ${window.yearMonth}`);
   }
 );
+*/
 
+/* Temporarily commented out - digest helper functions
 async function processMonthlyDigestForUser(userDoc, window) {
   const uid = userDoc.id;
   const userData = userDoc.data() || {};
@@ -854,6 +860,8 @@ function getPreviousMonthWindow() {
     monthLabel: label,
   };
 }
+*/
+// End of commented SendGrid digest functions
 
 /**
  * Trigger: When walk details are updated (title, dateTime, meetingPlace, etc.)

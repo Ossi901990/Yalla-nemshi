@@ -36,7 +36,6 @@ const double kCardElevationLight = 0.6;
 const double kCardElevationDark = 0.0;
 const double kCardBorderAlpha = 0.06;
 
-
 class CreateWalkScreen extends StatefulWidget {
   final void Function(WalkEvent) onEventCreated;
   final VoidCallback onCreatedNavigateHome;
@@ -497,8 +496,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   void _preparePrivateInviteState() {
     _privateShareCode ??= _generateShareCode();
     _shareCodeGeneratedAt ??= DateTime.now();
-    _draftWalkId ??=
-        FirebaseFirestore.instance.collection('walks').doc().id;
+    _draftWalkId ??= FirebaseFirestore.instance.collection('walks').doc().id;
   }
 
   void _resetPrivateInviteState() {
@@ -534,17 +532,16 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     await Clipboard.setData(ClipboardData(text: link));
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Invite link copied')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Invite link copied')));
   }
 
   void _regenerateInviteCode() {
     setState(() {
       _privateShareCode = _generateShareCode();
       _shareCodeGeneratedAt = DateTime.now();
-      _draftWalkId ??=
-          FirebaseFirestore.instance.collection('walks').doc().id;
+      _draftWalkId ??= FirebaseFirestore.instance.collection('walks').doc().id;
     });
 
     ScaffoldMessenger.of(
@@ -796,8 +793,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
 
     final Timestamp? shareCodeExpiresAt = isPrivatePointToPoint
-      ? Timestamp.fromDate(InviteUtils.nextExpiry())
-      : null;
+        ? Timestamp.fromDate(InviteUtils.nextExpiry())
+        : null;
     final DateTime? shareCodeExpiresAtDate = shareCodeExpiresAt?.toDate();
 
     // Compute effective points:
@@ -829,8 +826,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
 
     final sanitizedDescription = _description.trim();
-    final descriptionForPayload =
-        sanitizedDescription.isEmpty ? null : sanitizedDescription;
+    final descriptionForPayload = sanitizedDescription.isEmpty
+        ? null
+        : sanitizedDescription;
 
     final selectedTagsList = _selectedTags.toList(growable: false);
 
@@ -972,21 +970,20 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             '✅ Payload hostUid matches user UID: ${payload['hostUid'] == uid}',
           );
 
-            final walksCollection =
-              FirebaseFirestore.instance.collection('walks');
-            late final DocumentReference<Map<String, dynamic>> docRef;
+          final walksCollection = FirebaseFirestore.instance.collection(
+            'walks',
+          );
+          late final DocumentReference<Map<String, dynamic>> docRef;
 
-            if (isPrivatePointToPoint) {
+          if (isPrivatePointToPoint) {
             final forcedWalkId = _draftWalkId ?? walksCollection.doc().id;
             docRef = walksCollection.doc(forcedWalkId);
-            await docRef
-              .set(payload)
-              .timeout(const Duration(seconds: 30));
-            } else {
+            await docRef.set(payload).timeout(const Duration(seconds: 30));
+          } else {
             docRef = await walksCollection
-              .add(payload)
-              .timeout(const Duration(seconds: 30));
-            }
+                .add(payload)
+                .timeout(const Duration(seconds: 30));
+          }
 
           // Upload photos if any selected
           List<String> photoUrls = [];
@@ -1008,6 +1005,25 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                 st,
                 reason: 'Photo upload after walk creation',
               );
+
+              // Show user-friendly error message
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Walk created, but photos failed to upload. '
+                      'Try adding them later from walk details.',
+                    ),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 5),
+                    action: SnackBarAction(
+                      label: 'OK',
+                      textColor: Colors.white,
+                      onPressed: () {},
+                    ),
+                  ),
+                );
+              }
               // Don't throw - walk is already created
             }
           }
@@ -1852,13 +1868,17 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                                         Text(
                                           'Tags & vibe',
-                                          style: theme.textTheme.titleMedium?.copyWith(
-                                                fontFamily: 'Poppins',
-                                                fontWeight: FontWeight.w700,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : const Color(0xFF1A2332),
-                                              ) ??
+                                          style:
+                                              theme.textTheme.titleMedium
+                                                  ?.copyWith(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF1A2332,
+                                                          ),
+                                                  ) ??
                                               TextStyle(
                                                 fontFamily: 'Poppins',
                                                 fontWeight: FontWeight.w700,
@@ -1872,7 +1892,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           spacing: 8,
                                           runSpacing: 8,
                                           children: _walkTagOptions.map((tag) {
-                                            final selected = _selectedTags.contains(tag);
+                                            final selected = _selectedTags
+                                                .contains(tag);
                                             return GestureDetector(
                                               onTap: () {
                                                 setState(() {
@@ -1884,17 +1905,23 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                 });
                                               },
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 6,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: selected ? Colors.teal.shade100 : Colors.transparent,
+                                                  color: selected
+                                                      ? Colors.teal.shade100
+                                                      : Colors.transparent,
                                                   border: Border.all(
-                                                    color: selected ? Colors.teal : Colors.grey.shade400,
+                                                    color: selected
+                                                        ? Colors.teal
+                                                        : Colors.grey.shade400,
                                                     width: 1,
                                                   ),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: Text(
                                                   tag,
@@ -1902,7 +1929,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                     fontFamily: 'Inter',
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w600,
-                                                    color: selected ? Colors.teal : Colors.grey.shade700,
+                                                    color: selected
+                                                        ? Colors.teal
+                                                        : Colors.grey.shade700,
                                                   ),
                                                 ),
                                               ),
@@ -1926,7 +1955,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               .toList(),
                                           onChanged: (val) {
                                             if (val != null) {
-                                              setState(() => _comfortLevel = val);
+                                              setState(
+                                                () => _comfortLevel = val,
+                                              );
                                             }
                                           },
                                         ),
@@ -1947,7 +1978,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               .toList(),
                                           onChanged: (val) {
                                             if (val != null) {
-                                              setState(() => _experienceLevel = val);
+                                              setState(
+                                                () => _experienceLevel = val,
+                                              );
                                             }
                                           },
                                         ),
@@ -2082,8 +2115,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                                   12,
                                                                 ),
                                                             image: DecorationImage(
-                                                              image:
-                                                                  photo.imageProvider,
+                                                              image: photo
+                                                                  .imageProvider,
                                                               fit: BoxFit.cover,
                                                             ),
                                                           ),
