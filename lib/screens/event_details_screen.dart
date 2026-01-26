@@ -1066,7 +1066,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                     Icon(Icons.group, color: const Color(0xFF00D97E), size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      '$count participants confirmed',
+                      '$count participants registered',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isDark ? Colors.white70 : Colors.black87,
                       ),
@@ -1104,7 +1104,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.check_circle),
-            label: const Text('Confirm - I\'m Joining Now'),
+            label: const Text('Register - I\'m Joining Now'),
           ),
         ),
         const SizedBox(height: 8),
@@ -1209,7 +1209,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       await GPSTrackingService.instance.startTracking(event.firestoreId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Confirmed! You\'re walking with us!')),
+        const SnackBar(content: Text('✅ Registered! You\'re walking with us!')),
       );
       setState(() {
         _didConfirmParticipation = true;

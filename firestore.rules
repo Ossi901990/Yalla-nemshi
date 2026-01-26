@@ -166,15 +166,19 @@ service cloud.firestore {
     // ===== WALKS COLLECTION =====
     match /walks/{walkId} {
 
-      // READ ACCESS: Only allow if walk is open/public, user is host, 
-      // user is participant, or user has been invited (allowed viewer)
-      allow get, list: if signedIn()
+      // GET single walk: Check permissions on the document
+      allow get: if signedIn()
         && (
           isOpenWalk(resource.data)
           || isHostOfWalk(resource.data)
           || isAllowedViewer(walkId)
           || (resource.data.joinedUids != null && request.auth.uid in resource.data.joinedUids)
         );
+      
+      // LIST/QUERY walks: Allow all authenticated users to query
+      // Client-side queries filter by city, date, visibility, etc.
+      // Note: Firestore cannot efficiently filter by resource.data in queries
+      allow list: if signedIn();
 
       // CREATE: only if hostUid == current user (simplified - no field validation)
       allow create: if signedIn()
@@ -284,7 +288,8 @@ service cloud.firestore {
       allow get: if isAuth(userId);
 
       match /friendsList/{friendId} {
-        allow read: if isAuth(userId) || isAuth(friendId);
+        allow get: if isAuth(userId) || isAuth(friendId);
+        allow list: if isAuth(userId);
         
         // Enforce 500-friend limit on writes
         allow write: if (

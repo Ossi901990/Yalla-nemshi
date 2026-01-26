@@ -1099,6 +1099,112 @@ exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}",
   }
 });
 
+// ===== SCHEDULED MAINTENANCE =====
+
+/**
+ * Cleanup old GPS tracking data (runs daily at midnight UTC)
+ * Deletes tracking subcollections for walks that ended more than 30 days ago
+ * Keeps walk summary stats (distance, speed, etc.) but removes detailed GPS points
+ * 
+ * Privacy & Cost Optimization: GPS traces contain sensitive location data and 
+ * consume significant storage. This function enforces a 30-day retention policy.
+ */
+exports.cleanupOldGpsData = onSchedule(
+  {
+    schedule: "0 0 * * *", // Daily at midnight UTC
+    region: "europe-west1",
+    timeZone: "UTC",
+  },
+  async () => {
+    console.log("🧹 [GPS Cleanup] Starting daily GPS data cleanup");
+    
+    try {
+      // Calculate cutoff date (30 days ago)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const cutoffTimestamp = admin.firestore.Timestamp.fromDate(thirtyDaysAgo);
+      
+      console.log(`🧹 [GPS Cleanup] Cutoff date: ${thirtyDaysAgo.toISOString()}`);
+      
+      // Find walks that ended more than 30 days ago
+      // Use endedAt for walks that have ended, or scheduledDate as fallback
+      const walksSnapshot = await db
+        .collection("walks")
+        .where("status", "in", ["completed", "completed_late", "ended", "cancelled"])
+        .where("endedAt", "<=", cutoffTimestamp)
+        .get();
+      
+      if (walksSnapshot.empty) {
+        console.log("🧹 [GPS Cleanup] No walks found that need cleanup");
+        return;
+      }
+      
+      console.log(`🧹 [GPS Cleanup] Found ${walksSnapshot.size} walks to clean up`);
+      
+      let totalPointsDeleted = 0;
+      let walksProcessed = 0;
+      
+      // Process walks in batches to avoid timeout
+      for (const walkDoc of walksSnapshot.docs) {
+        const walkId = walkDoc.id;
+        const walkData = walkDoc.data();
+        const walkTitle = walkData.title || "Unknown Walk";
+        
+        try {
+          // Get all tracking points for this walk
+          const trackingSnapshot = await db
+            .collection("walks")
+            .doc(walkId)
+            .collection("tracking")
+            .get();
+          
+          if (trackingSnapshot.empty) {
+            console.log(`  ↳ Walk ${walkId} (${walkTitle}): No tracking data to delete`);
+            continue;
+          }
+          
+          const pointCount = trackingSnapshot.size;
+          
+          // Delete tracking points in batches (Firestore batch limit: 500 operations)
+          const batchSize = 500;
+          let batch = db.batch();
+          let operationsInBatch = 0;
+          
+          for (const pointDoc of trackingSnapshot.docs) {
+            batch.delete(pointDoc.ref);
+            operationsInBatch++;
+            
+            // Commit batch when it reaches the limit
+            if (operationsInBatch >= batchSize) {
+              await batch.commit();
+              batch = db.batch();
+              operationsInBatch = 0;
+            }
+          }
+          
+          // Commit any remaining operations
+          if (operationsInBatch > 0) {
+            await batch.commit();
+          }
+          
+          totalPointsDeleted += pointCount;
+          walksProcessed++;
+          
+          console.log(`  ✅ Walk ${walkId} (${walkTitle}): Deleted ${pointCount} GPS points`);
+        } catch (error) {
+          console.error(`  ❌ Walk ${walkId} (${walkTitle}): Error deleting tracking data:`, error);
+          // Continue processing other walks even if one fails
+        }
+      }
+      
+      console.log(`🧹 [GPS Cleanup] Complete: Processed ${walksProcessed} walks, deleted ${totalPointsDeleted} GPS points`);
+    } catch (error) {
+      console.error("❌ [GPS Cleanup] Fatal error during cleanup:", error);
+      throw error; // Re-throw to mark function execution as failed
+    }
+  }
+);
+
 // ===== CP-4: WALK COMPLETION FUNCTIONS =====
 // Import CP-4 walk tracking functions
 const cp4Functions = require("./cp4_walk_completion");

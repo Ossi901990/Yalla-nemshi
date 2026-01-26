@@ -88,167 +88,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late int _currentTab;
   static const Duration _hostStartEarlyWindow = Duration(minutes: 10);
   static const Duration _hostStartGraceWindow = Duration(minutes: 15);
+
+  /// Poll walks periodically (every 30s) instead of real-time listening
+  /// This reduces Firestore read costs and battery drain while keeping the feed fresh
+  /// Real-time updates are only needed for active walks, not discovery
   void _listenToWalks() {
     _walksSub?.cancel();
+    _walksPollingTimer?.cancel();
 
-    // Get user's city first
-    AppPreferences.getUserCity()
-        .then((userCity) {
-          if (!mounted) return;
+    // Initial load
+    _fetchWalks();
 
-          final nowTimestamp = Timestamp.fromDate(DateTime.now());
+    // Set up periodic polling (every 30 seconds)
+    _walksPollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _fetchWalks();
+      }
+    });
+  }
 
-          // Build query: filter by city if user has one set
-          Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-              .collection('walks');
+  /// Fetch walks using a one-time query (not a real-time listener)
+  Future<void> _fetchWalks() async {
+    try {
+      final userCity = await AppPreferences.getUserCity();
+      if (!mounted) return;
 
-          if (userCity != null && userCity.isNotEmpty) {
-            debugPrint(
-              '≡ƒÅÖ∩╕Å Filtering walks by city (including cityless): $userCity',
-            );
-            query = query.where(
-              Filter.or(
-                Filter('city', isEqualTo: userCity),
-                Filter('city', isNull: true),
-              ),
-            );
-          } else {
-            debugPrint('ΓÜá∩╕Å No user city set; showing all walks');
-          }
+      final nowTimestamp = Timestamp.fromDate(DateTime.now());
 
-          // Exclude cancelled and past walks (show upcoming only)
-          query = query
-              .where('cancelled', isEqualTo: false)
-              .where('dateTime', isGreaterThan: nowTimestamp)
-              .orderBy('dateTime')
-              .orderBy('createdAt', descending: true)
-              .limit(_walksPerPage);
+      // Build query: filter by city if user has one set
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection(
+        'walks',
+      );
 
-          _walksSub = query.snapshots().listen(
-            (snap) {
-              try {
-                final currentUid = FirebaseAuth.instance.currentUser?.uid;
-                debugPrint(
-                  'WALKS SNAP: docs=${snap.docs.length} uid=$currentUid city=$userCity',
-                );
+      if (userCity != null && userCity.isNotEmpty) {
+        debugPrint(
+          '≡ƒÅÖ∩╕Å Polling walks by city (including cityless): $userCity',
+        );
+        query = query.where(
+          Filter.or(
+            Filter('city', isEqualTo: userCity),
+            Filter('city', isNull: true),
+          ),
+        );
+      } else {
+        debugPrint('ΓÜá∩╕Å No user city set; polling all walks');
+      }
 
-                if (snap.docs.isNotEmpty) {
-                  _lastDocument = snap.docs.last;
-                  _hasMoreWalks = snap.docs.length >= _walksPerPage;
-                } else {
-                  _lastDocument = null;
-                  _hasMoreWalks = false;
-                }
+      // Exclude cancelled and past walks (show upcoming only)
+      query = query
+          .where('cancelled', isEqualTo: false)
+          .where('dateTime', isGreaterThan: nowTimestamp)
+          .orderBy('dateTime')
+          .orderBy('createdAt', descending: true)
+          .limit(_walksPerPage);
 
-                final List<WalkEvent> loaded = _parseWalkDocs(
-                  snap.docs,
-                  currentUid,
-                );
-                final List<WalkEvent> merged = _collapseRecurringWalks(loaded);
+      final snap = await query.get();
 
-                if (!mounted) return;
+      if (!mounted) return;
 
-                for (var change in snap.docChanges) {
-                  if (change.type == DocumentChangeType.added) {
-                    final newWalk = _parseWalkDoc(
-                      change.doc,
-                      currentUid,
-                      isFromCache: change.doc.metadata.isFromCache,
-                    );
-                    if (newWalk != null && newWalk.hostUid != currentUid) {
-                      _onNewNearbyWalk(newWalk);
-                    }
-                  }
-                }
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
-                setState(() {
-                  _events
-                    ..clear()
-                    ..addAll(merged);
-                });
+      if (snap.docs.isNotEmpty) {
+        _lastDocument = snap.docs.last;
+        _hasMoreWalks = snap.docs.length >= _walksPerPage;
+      } else {
+        _lastDocument = null;
+        _hasMoreWalks = false;
+      }
 
-                _refreshHostedCountdown();
+      final List<WalkEvent> loaded = _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> merged = _collapseRecurringWalks(loaded);
 
-                OfflineService.instance.cacheWalks(merged);
+      setState(() {
+        _events
+          ..clear()
+          ..addAll(merged);
+      });
 
-                _logHomeFeedSummary(
-                  source: 'stream',
-                  totalDocs: snap.docs.length,
-                  parsedCount: loaded.length,
-                  keptCount: merged.length,
-                  fromCache: snap.metadata.isFromCache,
-                );
-              } catch (e, st) {
-                debugPrint('Γ¥î Error processing walks snapshot: $e');
-                CrashService.recordError(e, st);
-              }
-            },
-            onError: (e, st) {
-              debugPrint('Γ¥î WALKS STREAM ERROR: $e');
-              CrashService.recordError(e, st);
-            },
-          );
-        })
-        .catchError((e, st) {
-          debugPrint('Γ¥î Error getting user city: $e');
-          CrashService.recordError(e, st ?? StackTrace.current);
-          if (!mounted) return;
+      _refreshHostedCountdown();
 
-          try {
-            _walksSub = FirebaseFirestore.instance
-                .collection('walks')
-                .where('cancelled', isEqualTo: false)
-                .where(
-                  'dateTime',
-                  isGreaterThan: DateTime.now().toIso8601String(),
-                )
-                .orderBy('dateTime')
-                .orderBy('createdAt', descending: true)
-                .limit(_walksPerPage)
-                .snapshots()
-                .listen(
-                  (snap) {
-                    try {
-                      final currentUid = FirebaseAuth.instance.currentUser?.uid;
-                      final List<WalkEvent> loaded = _parseWalkDocs(
-                        snap.docs,
-                        currentUid,
-                      );
-                      final List<WalkEvent> merged = _collapseRecurringWalks(
-                        loaded,
-                      );
+      OfflineService.instance.cacheWalks(merged);
 
-                      if (mounted) {
-                        setState(() {
-                          _events
-                            ..clear()
-                            ..addAll(merged);
-                        });
-
-                        _refreshHostedCountdown();
-
-                        OfflineService.instance.cacheWalks(merged);
-
-                        _logHomeFeedSummary(
-                          source: 'stream_fallback',
-                          totalDocs: snap.docs.length,
-                          parsedCount: loaded.length,
-                          keptCount: merged.length,
-                          fromCache: snap.metadata.isFromCache,
-                        );
-                      }
-                    } catch (e, st) {
-                      CrashService.recordError(e, st);
-                    }
-                  },
-                  onError: (e, st) {
-                    CrashService.recordError(e, st);
-                  },
-                );
-          } catch (e, st) {
-            CrashService.recordError(e, st);
-          }
-        });
+      _logHomeFeedSummary(
+        source: 'polling',
+        totalDocs: snap.docs.length,
+        parsedCount: loaded.length,
+        keptCount: merged.length,
+        fromCache: snap.metadata.isFromCache,
+      );
+    } catch (e, st) {
+      debugPrint('Γ¥î Error fetching walks: $e');
+      CrashService.recordError(e, st);
+    }
   }
 
   void _openWalkSearch() {
@@ -546,6 +477,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // --- Step counter (Android, session-based for now) ---
   StreamSubscription<QuerySnapshot>? _walksSub;
+  Timer? _walksPollingTimer; // For periodic polling instead of real-time
 
   int _unreadNotifCount = 0;
 
@@ -927,6 +859,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _walksSub?.cancel();
+    _walksPollingTimer?.cancel(); // Stop periodic polling
     _stepSubscription?.cancel();
     _hostedCountdownTimer?.cancel();
 

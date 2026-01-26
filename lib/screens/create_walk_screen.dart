@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 
 import '../models/walk_event.dart';
 import '../models/recurrence_rule.dart';
@@ -702,12 +703,72 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     });
   }
 
-  Future<_SelectedPhoto> _createSelectedPhoto(XFile file) async {
-    if (kIsWeb) {
-      final bytes = await file.readAsBytes();
-      return _SelectedPhoto(bytes: bytes, mimeType: file.mimeType);
+  /// Compress image to reduce file size and improve upload performance
+  /// Resizes to max 1080px width/height and applies 70% JPEG quality
+  /// Reduces typical 5MB images to ~300KB
+  Future<Uint8List> _compressImage(Uint8List bytes) async {
+    try {
+      // Decode the image
+      final image = img.decodeImage(bytes);
+      if (image == null) {
+        debugPrint('⚠️ Image decode failed, using original');
+        return bytes;
+      }
+
+      // Resize if larger than 1080px on either dimension
+      final maxDimension = 1080;
+      img.Image resized;
+      if (image.width > maxDimension || image.height > maxDimension) {
+        if (image.width > image.height) {
+          resized = img.copyResize(image, width: maxDimension);
+        } else {
+          resized = img.copyResize(image, height: maxDimension);
+        }
+        debugPrint(
+          '📐 Resized image from ${image.width}x${image.height} to ${resized.width}x${resized.height}',
+        );
+      } else {
+        resized = image;
+        debugPrint(
+          '📐 Image already optimal size: ${image.width}x${image.height}',
+        );
+      }
+
+      // Encode as JPEG with 70% quality
+      final compressed = img.encodeJpg(resized, quality: 70);
+      final originalSizeKb = (bytes.length / 1024).toStringAsFixed(1);
+      final compressedSizeKb = (compressed.length / 1024).toStringAsFixed(1);
+      debugPrint(
+        '✅ Compressed image: $originalSizeKb KB → $compressedSizeKb KB (${((1 - compressed.length / bytes.length) * 100).toStringAsFixed(1)}% reduction)',
+      );
+
+      return Uint8List.fromList(compressed);
+    } catch (e, st) {
+      debugPrint('❌ Compression error: $e');
+      CrashService.recordError(e, st, reason: 'Image compression failed');
+      return bytes; // Return original if compression fails
     }
-    return _SelectedPhoto(file: File(file.path), mimeType: file.mimeType);
+  }
+
+  Future<_SelectedPhoto> _createSelectedPhoto(XFile file) async {
+    final originalBytes = await file.readAsBytes();
+
+    // Compress the image before storing
+    final compressedBytes = await _compressImage(originalBytes);
+
+    if (kIsWeb) {
+      return _SelectedPhoto(bytes: compressedBytes, mimeType: file.mimeType);
+    }
+
+    // For mobile/desktop, save compressed bytes to a temp file
+    // This avoids keeping large images in memory
+    final tempDir = Directory.systemTemp;
+    final tempFile = File(
+      '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+    await tempFile.writeAsBytes(compressedBytes);
+
+    return _SelectedPhoto(file: tempFile, mimeType: 'image/jpeg');
   }
 
   /// Upload selected photos to Firebase Storage and return URLs

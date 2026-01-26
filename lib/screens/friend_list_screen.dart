@@ -698,6 +698,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
   List<Widget> _buildContent(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final widgets = <Widget>[];
 
     if (_incomingRequests.isNotEmpty) {
@@ -731,7 +732,55 @@ class _FriendListScreenState extends State<FriendListScreen> {
     widgets.add(const SizedBox(height: 8));
 
     if (_friendCards.isEmpty) {
-      widgets.add(const Text('No friends yet. Send a request to get started!'));
+      widgets.add(
+        Center(
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              Icon(
+                Icons.people_outline,
+                size: 64,
+                color: isDark ? Colors.white38 : Colors.black38,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No friends yet',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Search for friends to connect with',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/friend-search');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1ABFC4),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 20,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.search),
+                label: const Text('Find Friends'),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
     } else {
       for (final friend in _friendCards) {
         widgets.add(_buildFriendCard(context, friend));
