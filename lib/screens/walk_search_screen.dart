@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,7 +10,12 @@ import '../models/walk_event.dart';
 import '../models/walk_search_filters.dart';
 import '../screens/event_details_screen.dart';
 import '../services/app_preferences.dart';
+import '../services/gps_tracking_service.dart';
+import '../services/offline_service.dart';
+import '../services/user_stats_service.dart';
+import '../services/walk_history_service.dart';
 import '../services/walk_search_service.dart';
+import '../utils/error_handler.dart';
 
 class WalkSearchScreen extends StatefulWidget {
   const WalkSearchScreen({super.key});
@@ -57,7 +63,11 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
   ];
 
   static const List<String> _paceOptions = ['Relaxed', 'Normal', 'Brisk'];
-  static const List<String> _genderOptions = ['Mixed', 'Women only', 'Men only'];
+  static const List<String> _genderOptions = [
+    'Mixed',
+    'Women only',
+    'Men only',
+  ];
   static const List<String> _comfortOptions = [
     'Social & chatty',
     'Quiet & mindful',
@@ -115,7 +125,10 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     await _runSearch(reset: true);
   }
 
-  Future<void> _runSearch({bool reset = false, bool rememberQuery = false}) async {
+  Future<void> _runSearch({
+    bool reset = false,
+    bool rememberQuery = false,
+  }) async {
     if (_isLoadingMore && !reset) return;
 
     setState(() {
@@ -295,7 +308,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
   }
 
   Future<void> _saveCurrentFilters() async {
-    final controller = TextEditingController(text: 'My filter ${_savedFilters.length + 1}');
+    final controller = TextEditingController(
+      text: 'My filter ${_savedFilters.length + 1}',
+    );
     final label = await showDialog<String>(
       context: context,
       builder: (context) {
@@ -312,7 +327,8 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
               child: const Text('Save'),
             ),
           ],
@@ -321,14 +337,17 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     );
 
     if (label == null || label.isEmpty) return;
-    final filter = SavedWalkSearchFilter.create(label: label, filters: _filters);
+    final filter = SavedWalkSearchFilter.create(
+      label: label,
+      filters: _filters,
+    );
     await _searchService.upsertSavedFilter(filter);
     final saved = await _searchService.loadSavedFilters();
     if (!mounted) return;
     setState(() => _savedFilters = saved);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Saved "$label"')), 
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Saved "$label"')));
   }
 
   Future<void> _deleteSavedFilter(String filterId) async {
@@ -349,6 +368,237 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
       _searchController.text = filter.filters.keywords;
     });
     _runSearch(reset: true);
+  }
+
+  Future<void> _showInviteCodeDialog(
+    BuildContext context,
+    ThemeData theme,
+  ) async {
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Enter invite code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter the 6-character code from your friend\'s private walk invitation.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  hintText: 'R28XPE',
+                  counterText: '',
+                  prefixIcon: Icon(Icons.lock_outline_rounded),
+                ),
+                onSubmitted: (value) =>
+                    Navigator.of(context).pop(value.trim().toUpperCase()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(
+                context,
+              ).pop(controller.text.trim().toUpperCase()),
+              child: const Text('Find walk'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (code == null || code.isEmpty) return;
+    await _lookupByInviteCode(code);
+  }
+
+  Future<void> _lookupByInviteCode(String code) async {
+    // Show loading
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Looking up walk with code $code...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      // Query for walk with matching shareCode
+      // SECURITY: This only finds the walk if the code matches exactly
+      final snapshot = await FirebaseFirestore.instance
+          .collection('walks')
+          .where('shareCode', isEqualTo: code)
+          .where('cancelled', isEqualTo: false)
+          .limit(1)
+          .get();
+
+      if (!mounted) return;
+
+      if (snapshot.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No walk found with that code. Check the code and try again.',
+            ),
+            backgroundColor: Color(0xFFD97706),
+          ),
+        );
+        return;
+      }
+
+      final doc = snapshot.docs.first;
+      final data = doc.data();
+      
+      // Add document ID to the data map
+      data['firestoreId'] = doc.id;
+      data['id'] ??= doc.id;
+      
+      final walk = WalkEvent.fromMap(data);
+
+      // Check if walk has expired
+      if (walk.dateTime.isBefore(DateTime.now())) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This walk has already ended.'),
+            backgroundColor: Color(0xFFD97706),
+          ),
+        );
+        return;
+      }
+
+      // Navigate to walk details
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EventDetailsScreen(
+            event: walk,
+            onToggleJoin: _toggleJoin,
+            onToggleInterested: (updatedWalk) {
+              // Refresh after marking interested
+              _runSearch(reset: true);
+            },
+            onCancelHosted: (updatedWalk) {
+              // Refresh after canceling
+              _runSearch(reset: true);
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error looking up walk by code: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: const Color(0xFFD97706),
+        ),
+      );
+    }
+  }
+
+  /// Toggle user's join status for a walk
+  /// This is the actual join/leave logic used by EventDetailsScreen
+  Future<void> _toggleJoin(WalkEvent event) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      if (!mounted) return;
+      ErrorHandler.showErrorSnackBar(context, 'Please log in to join walks.');
+      return;
+    }
+
+    if (!event.joined && event.status == 'active') {
+      if (!mounted) return;
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'This walk is already active. Ask the host to invite you directly.',
+      );
+      return;
+    }
+
+    final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
+    final docRef = FirebaseFirestore.instance.collection('walks').doc(walkId);
+
+    final bool wasJoined = event.joined;
+    final bool willJoin = !wasJoined;
+    final bool leavingActive = !willJoin && event.status == 'active';
+
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final userPhotoUrl = currentUser?.photoURL;
+
+      // Update Firestore
+      final updateData = <String, dynamic>{
+        'joinedUids': willJoin
+            ? FieldValue.arrayUnion([uid])
+            : FieldValue.arrayRemove([uid]),
+        'joinedUserUids': willJoin
+            ? FieldValue.arrayUnion([uid])
+            : FieldValue.arrayRemove([uid]),
+        'joinedCount': willJoin
+            ? FieldValue.increment(1)
+            : FieldValue.increment(-1),
+      };
+
+      if (userPhotoUrl != null) {
+        updateData['joinedUserPhotoUrls'] = willJoin
+            ? FieldValue.arrayUnion([userPhotoUrl])
+            : FieldValue.arrayRemove([userPhotoUrl]);
+      }
+
+      updateData['participantStates.$uid'] = willJoin ? 'joined' : 'left';
+
+      await docRef.update(updateData).timeout(const Duration(seconds: 15));
+
+      // Offline support
+      final isOffline = OfflineService.instance.isOffline.value;
+      if (isOffline) {
+        await OfflineService.instance.queueJoinAction(
+          walkId: walkId,
+          join: willJoin,
+        );
+      }
+
+      // Record walk history for tracking
+      if (willJoin) {
+        await WalkHistoryService.instance.recordWalkJoin(walkId);
+        await UserStatsService.instance.recordWalkJoined(uid);
+      } else {
+        if (leavingActive) {
+          await WalkHistoryService.instance.leaveWalkEarly(walkId);
+          await GPSTrackingService.instance.stopTracking(walkId);
+        } else {
+          await WalkHistoryService.instance.recordWalkLeave(walkId);
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(willJoin ? 'Successfully joined!' : 'Left walk'),
+          backgroundColor: willJoin ? const Color(0xFF00D97E) : null,
+        ),
+      );
+
+      // Refresh search results to reflect the change
+      _runSearch(reset: true);
+    } catch (e) {
+      debugPrint('Error toggling join: $e');
+      if (!mounted) return;
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'Failed to ${willJoin ? 'join' : 'leave'} walk. Please try again.',
+      );
+    }
   }
 
   String _dateRangeLabel() {
@@ -411,9 +661,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
 
     return Scaffold(
       backgroundColor: getBackgroundColor(isDark),
-      appBar: AppBar(
-        title: const Text('Walk search'),
-      ),
+      appBar: AppBar(title: const Text('Walk search')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => _runSearch(reset: true),
@@ -437,7 +685,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
               const SizedBox(height: 32),
               if (_hasMore)
                 OutlinedButton.icon(
-                  onPressed: _isLoadingMore ? null : () => _runSearch(reset: false),
+                  onPressed: _isLoadingMore
+                      ? null
+                      : () => _runSearch(reset: false),
                   icon: _isLoadingMore
                       ? const SizedBox(
                           width: 16,
@@ -496,7 +746,10 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
                           right: -6,
                           top: -6,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.error,
                               borderRadius: BorderRadius.circular(999),
@@ -504,7 +757,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
                             constraints: const BoxConstraints(minWidth: 18),
                             alignment: Alignment.center,
                             child: Text(
-                              activeFilterCount > 9 ? '9+' : '$activeFilterCount',
+                              activeFilterCount > 9
+                                  ? '9+'
+                                  : '$activeFilterCount',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -530,6 +785,15 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          onPressed: () => _showInviteCodeDialog(context, theme),
+          icon: const Icon(Icons.lock_open_rounded, size: 20),
+          label: const Text('Enter invite code'),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+          ),
+        ),
       ],
     );
   }
@@ -546,10 +810,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(18),
-            blurRadius: 20,
-          ),
+          BoxShadow(color: Colors.black.withAlpha(18), blurRadius: 20),
         ],
       ),
       child: ListView.separated(
@@ -580,7 +841,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
           children: [
             Text(
               'Recent searches',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             TextButton(
               onPressed: () async {
@@ -617,7 +880,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
       children: [
         Text(
           'Popular tags',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -628,29 +893,25 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _tagOptions
-              .map(
-                (tag) {
-                  final selected = _filters.tags.contains(tag);
-                  return _buildStyledChip(
-                    label: tag,
-                    selected: selected,
-                    onTap: () {
-                      setState(() {
-                        if (selected) {
-                          final updated = {..._filters.tags};
-                          updated.remove(tag);
-                          _filters = _filters.copyWith(tags: updated);
-                        } else {
-                          _filters = _filters.copyWith(tags: {..._filters.tags, tag});
-                        }
-                      });
-                      _runSearch(reset: true);
-                    },
-                  );
-                },
-              )
-              .toList(),
+          children: _tagOptions.map((tag) {
+            final selected = _filters.tags.contains(tag);
+            return _buildStyledChip(
+              label: tag,
+              selected: selected,
+              onTap: () {
+                setState(() {
+                  if (selected) {
+                    final updated = {..._filters.tags};
+                    updated.remove(tag);
+                    _filters = _filters.copyWith(tags: updated);
+                  } else {
+                    _filters = _filters.copyWith(tags: {..._filters.tags, tag});
+                  }
+                });
+                _runSearch(reset: true);
+              },
+            );
+          }).toList(),
         ),
         const SizedBox(height: 16),
       ],
@@ -664,7 +925,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
         children: [
           Text(
             'Saved filters',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -680,7 +943,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
       children: [
         Text(
           'Saved filters',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -711,7 +976,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
       children: [
         Text(
           'Results',
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         if (_isLoading)
           const SizedBox(
@@ -720,10 +987,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         else
-          Text(
-            '$total walks',
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text('$total walks', style: theme.textTheme.bodyMedium),
       ],
     );
   }
@@ -752,7 +1016,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
         children: [
           Text(
             _errorMessage!,
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.error,
+            ),
           ),
           const SizedBox(height: 12),
           FilledButton.tonal(
@@ -776,7 +1042,9 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
             const SizedBox(height: 12),
             Text(
               'No walks match those filters yet.',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -813,10 +1081,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? Colors.teal.shade100 : Colors.transparent,
           border: Border.all(
@@ -840,10 +1105,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
 }
 
 class _WalkSearchResultCard extends StatelessWidget {
-  const _WalkSearchResultCard({
-    required this.event,
-    required this.dateFormat,
-  });
+  const _WalkSearchResultCard({required this.event, required this.dateFormat});
 
   final WalkEvent event;
   final DateFormat dateFormat;
@@ -914,36 +1176,38 @@ class _WalkSearchResultCard extends StatelessWidget {
               runSpacing: 6,
               children: [
                 _buildInfoChip(Icons.place_outlined, event.city ?? 'City TBA'),
-                _buildInfoChip(Icons.directions_walk, '${event.distanceKm.toStringAsFixed(1)} km'),
+                _buildInfoChip(
+                  Icons.directions_walk,
+                  '${event.distanceKm.toStringAsFixed(1)} km',
+                ),
                 _buildInfoChip(Icons.speed, event.pace),
                 _buildInfoChip(Icons.groups_2_outlined, event.gender),
                 if (event.comfortLevel != null)
                   _buildInfoChip(Icons.mood, event.comfortLevel!),
                 if (showExperience)
                   _buildInfoChip(Icons.school, event.experienceLevel),
-                ...event.tags.map((tag) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                ...event.tags.map(
+                  (tag) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border.all(color: Colors.grey.shade400, width: 1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        border: Border.all(
-                          color: Colors.grey.shade400,
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        tag,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    )),
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -954,16 +1218,10 @@ class _WalkSearchResultCard extends StatelessWidget {
 
   Widget _buildInfoChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.transparent,
-        border: Border.all(
-          color: Colors.grey.shade400,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.shade400, width: 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1087,7 +1345,9 @@ class _FilterModalState extends State<_FilterModal> {
                     children: [
                       Text(
                         'Filters',
-                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       IconButton(
@@ -1117,26 +1377,26 @@ class _FilterModalState extends State<_FilterModal> {
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: widget.tagOptions
-                          .map(
-                            (tag) {
-                              final selected = _localFilters.tags.contains(tag);
-                              return _buildStyledChip(
-                                label: tag,
-                                selected: selected,
-                                onTap: () {
-                                  final updated = Set<String>.from(_localFilters.tags);
-                                  if (selected) {
-                                    updated.remove(tag);
-                                  } else {
-                                    updated.add(tag);
-                                  }
-                                  _updateFilter(_localFilters.copyWith(tags: updated));
-                                },
-                              );
-                            },
-                          )
-                          .toList(),
+                      children: widget.tagOptions.map((tag) {
+                        final selected = _localFilters.tags.contains(tag);
+                        return _buildStyledChip(
+                          label: tag,
+                          selected: selected,
+                          onTap: () {
+                            final updated = Set<String>.from(
+                              _localFilters.tags,
+                            );
+                            if (selected) {
+                              updated.remove(tag);
+                            } else {
+                              updated.add(tag);
+                            }
+                            _updateFilter(
+                              _localFilters.copyWith(tags: updated),
+                            );
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1146,26 +1406,26 @@ class _FilterModalState extends State<_FilterModal> {
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: widget.paceOptions
-                          .map(
-                            (pace) {
-                              final selected = _localFilters.paces.contains(pace);
-                              return _buildStyledChip(
-                                label: pace,
-                                selected: selected,
-                                onTap: () {
-                                  final updated = Set<String>.from(_localFilters.paces);
-                                  if (selected) {
-                                    updated.remove(pace);
-                                  } else {
-                                    updated.add(pace);
-                                  }
-                                  _updateFilter(_localFilters.copyWith(paces: updated));
-                                },
-                              );
-                            },
-                          )
-                          .toList(),
+                      children: widget.paceOptions.map((pace) {
+                        final selected = _localFilters.paces.contains(pace);
+                        return _buildStyledChip(
+                          label: pace,
+                          selected: selected,
+                          onTap: () {
+                            final updated = Set<String>.from(
+                              _localFilters.paces,
+                            );
+                            if (selected) {
+                              updated.remove(pace);
+                            } else {
+                              updated.add(pace);
+                            }
+                            _updateFilter(
+                              _localFilters.copyWith(paces: updated),
+                            );
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1175,26 +1435,26 @@ class _FilterModalState extends State<_FilterModal> {
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: widget.genderOptions
-                          .map(
-                            (gender) {
-                              final selected = _localFilters.genders.contains(gender);
-                              return _buildStyledChip(
-                                label: gender,
-                                selected: selected,
-                                onTap: () {
-                                  final updated = Set<String>.from(_localFilters.genders);
-                                  if (selected) {
-                                    updated.remove(gender);
-                                  } else {
-                                    updated.add(gender);
-                                  }
-                                  _updateFilter(_localFilters.copyWith(genders: updated));
-                                },
-                              );
-                            },
-                          )
-                          .toList(),
+                      children: widget.genderOptions.map((gender) {
+                        final selected = _localFilters.genders.contains(gender);
+                        return _buildStyledChip(
+                          label: gender,
+                          selected: selected,
+                          onTap: () {
+                            final updated = Set<String>.from(
+                              _localFilters.genders,
+                            );
+                            if (selected) {
+                              updated.remove(gender);
+                            } else {
+                              updated.add(gender);
+                            }
+                            _updateFilter(
+                              _localFilters.copyWith(genders: updated),
+                            );
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1204,24 +1464,24 @@ class _FilterModalState extends State<_FilterModal> {
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: widget.comfortOptions
-                          .map(
-                            (comfort) {
-                              final selected = _localFilters.comfortLevel == comfort;
-                              return _buildStyledChip(
-                                label: comfort,
-                                selected: selected,
-                                onTap: () {
-                                  if (selected) {
-                                    _updateFilter(_localFilters.copyWith(comfortLevel: null));
-                                  } else {
-                                    _updateFilter(_localFilters.copyWith(comfortLevel: comfort));
-                                  }
-                                },
+                      children: widget.comfortOptions.map((comfort) {
+                        final selected = _localFilters.comfortLevel == comfort;
+                        return _buildStyledChip(
+                          label: comfort,
+                          selected: selected,
+                          onTap: () {
+                            if (selected) {
+                              _updateFilter(
+                                _localFilters.copyWith(comfortLevel: null),
                               );
-                            },
-                          )
-                          .toList(),
+                            } else {
+                              _updateFilter(
+                                _localFilters.copyWith(comfortLevel: comfort),
+                              );
+                            }
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1231,24 +1491,24 @@ class _FilterModalState extends State<_FilterModal> {
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: widget.experienceOptions
-                          .map(
-                            (exp) {
-                              final selected = _localFilters.experienceLevel == exp;
-                              return _buildStyledChip(
-                                label: exp,
-                                selected: selected,
-                                onTap: () {
-                                  if (selected) {
-                                    _updateFilter(_localFilters.copyWith(experienceLevel: null));
-                                  } else {
-                                    _updateFilter(_localFilters.copyWith(experienceLevel: exp));
-                                  }
-                                },
+                      children: widget.experienceOptions.map((exp) {
+                        final selected = _localFilters.experienceLevel == exp;
+                        return _buildStyledChip(
+                          label: exp,
+                          selected: selected,
+                          onTap: () {
+                            if (selected) {
+                              _updateFilter(
+                                _localFilters.copyWith(experienceLevel: null),
                               );
-                            },
-                          )
-                          .toList(),
+                            } else {
+                              _updateFilter(
+                                _localFilters.copyWith(experienceLevel: exp),
+                              );
+                            }
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1267,9 +1527,13 @@ class _FilterModalState extends State<_FilterModal> {
                                   (city) => InputChip(
                                     label: Text(city),
                                     onDeleted: () {
-                                      final updated = Set<String>.from(_localFilters.cities);
+                                      final updated = Set<String>.from(
+                                        _localFilters.cities,
+                                      );
                                       updated.remove(city);
-                                      _updateFilter(_localFilters.copyWith(cities: updated));
+                                      _updateFilter(
+                                        _localFilters.copyWith(cities: updated),
+                                      );
                                     },
                                   ),
                                 )
@@ -1305,13 +1569,19 @@ class _FilterModalState extends State<_FilterModal> {
                           icon: const Icon(Icons.calendar_today),
                           label: Text(widget.dateRangeLabel()),
                         ),
-                        if (_localFilters.startDate != null || _localFilters.endDate != null)
+                        if (_localFilters.startDate != null ||
+                            _localFilters.endDate != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
                             child: TextButton.icon(
                               onPressed: () {
                                 widget.onClearDateRange();
-                                _updateFilter(_localFilters.copyWith(startDate: null, endDate: null));
+                                _updateFilter(
+                                  _localFilters.copyWith(
+                                    startDate: null,
+                                    endDate: null,
+                                  ),
+                                );
                               },
                               icon: const Icon(Icons.clear),
                               label: const Text('Clear dates'),
@@ -1330,14 +1600,22 @@ class _FilterModalState extends State<_FilterModal> {
                           title: const Text('Recurring walks only'),
                           value: _localFilters.recurringOnly,
                           onChanged: (value) {
-                            _updateFilter(_localFilters.copyWith(recurringOnly: value ?? false));
+                            _updateFilter(
+                              _localFilters.copyWith(
+                                recurringOnly: value ?? false,
+                              ),
+                            );
                           },
                         ),
                         CheckboxListTile(
                           title: const Text('With photos only'),
                           value: _localFilters.withPhotosOnly,
                           onChanged: (value) {
-                            _updateFilter(_localFilters.copyWith(withPhotosOnly: value ?? false));
+                            _updateFilter(
+                              _localFilters.copyWith(
+                                withPhotosOnly: value ?? false,
+                              ),
+                            );
                           },
                         ),
                       ],
@@ -1359,7 +1637,9 @@ class _FilterModalState extends State<_FilterModal> {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         child,
@@ -1376,10 +1656,7 @@ class _FilterModalState extends State<_FilterModal> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? Colors.teal.shade100 : Colors.transparent,
           border: Border.all(
@@ -1401,4 +1678,3 @@ class _FilterModalState extends State<_FilterModal> {
     );
   }
 }
-

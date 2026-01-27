@@ -634,19 +634,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               color: isDark ? Colors.white70 : Colors.black54,
             ),
           ),
-          const SizedBox(height: 12),
-          FilledButton.tonalIcon(
-            onPressed: hasInviteLink ? _copyInviteLink : null,
-            icon: const Icon(Icons.link),
-            label: const Text('Copy invite link'),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'The invite link becomes active once you publish this private walk.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark ? Colors.white54 : Colors.black54,
-            ),
-          ),
         ],
       ),
     );

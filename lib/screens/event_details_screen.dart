@@ -211,16 +211,6 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                     Row(
                       children: [
                         Expanded(
-                          child: FilledButton.tonalIcon(
-                            onPressed: (shareCode == null || shareCode.isEmpty)
-                                ? null
-                                : () => _copyLink(shareCode),
-                            icon: const Icon(Icons.link),
-                            label: const Text('Copy invite link'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _extendingExpiry || shareCode == null
                                 ? null

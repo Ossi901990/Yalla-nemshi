@@ -1298,19 +1298,39 @@ class _InviteFriendSheetState extends State<_InviteFriendSheet> {
   }
 
   Future<List<_InviteCandidate>> _loadWalks() async {
-    final now = DateTime.now().subtract(const Duration(hours: 1));
-    final snapshot = await FirebaseFirestore.instance
-        .collection('walks')
-        .where('hostUid', isEqualTo: widget.hostUid)
-        .where('cancelled', isEqualTo: false)
-        .where('dateTime', isGreaterThan: Timestamp.fromDate(now))
-        .orderBy('dateTime')
-        .limit(25)
-        .get();
+    try {
+      final now = DateTime.now().subtract(const Duration(hours: 1));
+      debugPrint(
+        '🔍 Loading walks for hostUid: ${widget.hostUid}, after: $now',
+      );
 
-    return snapshot.docs
-        .map((doc) => _InviteCandidate.fromDoc(doc))
-        .toList(growable: false);
+      final snapshot = await FirebaseFirestore.instance
+          .collection('walks')
+          .where('hostUid', isEqualTo: widget.hostUid)
+          .where('cancelled', isEqualTo: false)
+          .where('dateTime', isGreaterThan: Timestamp.fromDate(now))
+          .orderBy('dateTime')
+          .limit(25)
+          .get();
+
+      debugPrint('✅ Found ${snapshot.docs.length} upcoming walks');
+
+      final candidates = snapshot.docs
+          .map((doc) => _InviteCandidate.fromDoc(doc))
+          .toList(growable: false);
+
+      for (final c in candidates) {
+        debugPrint(
+          '  - ${c.title}: private=${c.isPrivate}, code=${c.shareCode}, canShare=${c.canShare}',
+        );
+      }
+
+      return candidates;
+    } catch (e, st) {
+      debugPrint('❌ Error loading walks: $e');
+      debugPrint('Stack: $st');
+      rethrow;
+    }
   }
 
   @override

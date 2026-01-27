@@ -167,9 +167,11 @@ service cloud.firestore {
     match /walks/{walkId} {
 
       // GET single walk: Check permissions on the document
+      // Also allow reading non-existent documents (for transaction-based creation)
       allow get: if signedIn()
         && (
-          isOpenWalk(resource.data)
+          resource == null  // Allow reading non-existent docs (for create transactions)
+          || isOpenWalk(resource.data)
           || isHostOfWalk(resource.data)
           || isAllowedViewer(walkId)
           || (resource.data.joinedUids != null && request.auth.uid in resource.data.joinedUids)

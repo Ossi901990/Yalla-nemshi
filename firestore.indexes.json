@@ -302,6 +302,14 @@
         { "fieldPath": "hideFromLeaderboards", "order": "ASCENDING" },
         { "fieldPath": "earnedAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "walks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shareCode", "order": "ASCENDING" },
+        { "fieldPath": "cancelled", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

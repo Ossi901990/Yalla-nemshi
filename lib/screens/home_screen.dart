@@ -353,9 +353,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
         return null;
       }
-      if (walk.visibility == 'private' && !walk.isOwner) {
+      if (walk.visibility == 'private' && !walk.isOwner && !walk.joined) {
         _debugWalkDrop(
-          'visibility=private for non-owner',
+          'visibility=private for non-owner who hasn\'t joined',
           id: doc.id,
           data: data,
           parsed: walk,
