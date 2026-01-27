@@ -16,7 +16,7 @@ import 'crash_service.dart';
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('📬 Background message received: ${message.messageId}');
+  debugPrint('Background message received: ${message.messageId}');
   // Handle background notification here if needed
 }
 
@@ -169,7 +169,7 @@ class NotificationService {
     FirebaseMessaging.onMessage
         .listen((RemoteMessage message) {
           debugPrint(
-            '📬 Foreground message received: ${message.notification?.title}',
+            'Foreground message received: ${message.notification?.title}',
           );
 
           // Show local notification

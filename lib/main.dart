@@ -34,7 +34,7 @@ import 'screens/analytics_screen.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialize Firebase if not already initialized (required for background handler)
   await Firebase.initializeApp();
-  debugPrint('📬 Background notification: ${message.notification?.title}');
+  debugPrint('Background notification: ${message.notification?.title}');
   // Process notification data here if needed
 }
 

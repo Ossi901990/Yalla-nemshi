@@ -122,7 +122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if (userCity != null && userCity.isNotEmpty) {
         debugPrint(
-          '≡ƒÅÖ∩╕Å Polling walks by city (including cityless): $userCity',
+          'Polling walks by city (including cityless): $userCity',
         );
         query = query.where(
           Filter.or(

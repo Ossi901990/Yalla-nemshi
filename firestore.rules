@@ -291,19 +291,15 @@ service cloud.firestore {
         allow get: if isAuth(userId) || isAuth(friendId);
         allow list: if isAuth(userId);
         
-        // Enforce 500-friend limit on writes
-        allow write: if (
-            (isAuth(userId) && request.auth.uid == userId)
-            || (
-              request.auth != null
-              && request.auth.uid == friendId
-              && request.resource.data.friendId == friendId
-              && request.resource.data.keys().hasOnly(['friendId','since'])
-            )
-          )
-          // Check friend count limit (500 max friends)
-          && (!request.resource.data.keys().hasAny(['friendId']) 
-              || getAfter(/databases/$(database)/documents/friends/$(userId)/friendsList).size() < 500);
+        // Allow writes if authenticated as the user whose list this is
+        // OR if authenticated as the friend being added (for reciprocal adds)
+        allow write: if (isAuth(userId) && request.auth.uid == userId)
+          || (
+            request.auth != null
+            && request.auth.uid == friendId
+            && request.resource.data.friendId == friendId
+            && request.resource.data.keys().hasOnly(['friendId','since'])
+          );
         
         allow delete: if isAuth(userId)
           || (request.auth != null && request.auth.uid == friendId);
@@ -331,7 +327,7 @@ service cloud.firestore {
 
     // ===== DIRECT MESSAGE THREADS =====
     match /dm_threads/{threadId} {
-      allow get: if dmResourceHasParticipant();
+      allow get: if signedIn();
       allow list: if false;
 
       allow create: if signedIn()

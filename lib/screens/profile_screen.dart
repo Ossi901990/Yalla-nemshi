@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../models/user_profile.dart';
 import '../services/profile_storage.dart';
@@ -66,6 +67,7 @@ class _BadgeView {
     this.earnedAt,
   });
 }
+
 const double kCardBorderAlpha = 0.06;
 
 class ProfileScreen extends StatefulWidget {
@@ -216,12 +218,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _profile = updated);
   }
 
-
   Future<void> _removeProfileImage() async {
     if (_profile == null) return;
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    
+
     // Delete from Firebase Storage if user is logged in
     if (uid != null) {
       try {
@@ -242,13 +243,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _profile = cleared);
   }
 
-
   void _onAvatarTap() {
-    final hasPhoto = (_profile?.profileImageBase64 != null &&
+    final hasPhoto =
+        (_profile?.profileImageBase64 != null &&
             _profile!.profileImageBase64!.isNotEmpty) ||
         (_profile?.profileImagePath != null &&
             _profile!.profileImagePath!.isNotEmpty);
-
 
     if (!hasPhoto) {
       _pickAndSaveImage();
@@ -277,10 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
                   'Remove photo',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    color: Colors.red,
-                  ),
+                  style: TextStyle(fontFamily: 'Inter', color: Colors.red),
                 ),
                 onTap: () async {
                   Navigator.of(ctx).pop();
@@ -333,9 +330,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color:
-                    (isDark ? Colors.white : Colors.black)
-                        .withAlpha((0.08 * 255).round()),
+                color: (isDark ? Colors.white : Colors.black).withAlpha(
+                  (0.08 * 255).round(),
+                ),
               ),
             ),
             child: const Padding(
@@ -368,8 +365,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withAlpha((0.08 * 255).round()),
+              color: (isDark ? Colors.white : Colors.black).withAlpha(
+                (0.08 * 255).round(),
+              ),
             ),
           ),
           child: Padding(
@@ -389,10 +387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Stars
                     Text(
                       HostRatingService.getRatingEmoji(rating),
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 20,
-                      ),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 20),
                     ),
                     const SizedBox(width: 12),
                     // Rating value and tier
@@ -406,10 +401,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: Colors.amber[700],
                           ),
                         ),
-                        Text(
-                          tier,
-                          style: theme.textTheme.bodySmall,
-                        ),
+                        Text(tier, style: theme.textTheme.bodySmall),
                       ],
                     ),
                     const Spacer(),
@@ -454,8 +446,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black)
-                    .withAlpha((0.08 * 255).round()),
+                color: (isDark ? Colors.white : Colors.black).withAlpha(
+                  (0.08 * 255).round(),
+                ),
               ),
             ),
             child: const Padding(
@@ -488,8 +481,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black)
-                    .withAlpha((0.08 * 255).round()),
+                color: (isDark ? Colors.white : Colors.black).withAlpha(
+                  (0.08 * 255).round(),
+                ),
               ),
             ),
             child: Padding(
@@ -509,7 +503,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               'Lifetime stats',
-              style: theme.textTheme.titleMedium?.copyWith(
+              style:
+                  theme.textTheme.titleMedium?.copyWith(
                     fontFamily: 'Poppins',
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -530,8 +525,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: (isDark ? Colors.white : Colors.black)
-                      .withAlpha((0.08 * 255).round()),
+                  color: (isDark ? Colors.white : Colors.black).withAlpha(
+                    (0.08 * 255).round(),
+                  ),
                 ),
               ),
               child: Padding(
@@ -598,18 +594,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: UserStatsService.instance.getQuickStats(uid).then((_) =>
-          // Get recent completed walks from the user's walk history
-          WalkHistoryService.instance
-              .getPastWalks(limit: 5)
-              .then((walks) => walks
-                  .map((w) => {
-                        'walkId': w.walkId,
-                        'joinedAt': w.joinedAt,
-                        'completed': w.completed,
-                        'distance': w.actualDistanceKm ?? 0.0,
-                      })
-                  .toList())),
+      future: UserStatsService.instance
+          .getQuickStats(uid)
+          .then(
+            (_) =>
+                // Get recent completed walks from the user's walk history
+                WalkHistoryService.instance
+                    .getPastWalks(limit: 5)
+                    .then(
+                      (walks) => walks
+                          .map(
+                            (w) => {
+                              'walkId': w.walkId,
+                              'joinedAt': w.joinedAt,
+                              'completed': w.completed,
+                              'distance': w.actualDistanceKm ?? 0.0,
+                            },
+                          )
+                          .toList(),
+                    ),
+          ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Card(
@@ -618,9 +622,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color:
-                    (isDark ? Colors.white : Colors.black)
-                        .withAlpha((0.08 * 255).round()),
+                color: (isDark ? Colors.white : Colors.black).withAlpha(
+                  (0.08 * 255).round(),
+                ),
               ),
             ),
             child: const Padding(
@@ -642,9 +646,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color:
-                    (isDark ? Colors.white : Colors.black)
-                        .withAlpha((0.08 * 255).round()),
+                color: (isDark ? Colors.white : Colors.black).withAlpha(
+                  (0.08 * 255).round(),
+                ),
               ),
             ),
             child: Padding(
@@ -665,67 +669,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withAlpha((0.08 * 255).round()),
+              color: (isDark ? Colors.white : Colors.black).withAlpha(
+                (0.08 * 255).round(),
+              ),
             ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: List.generate(
-                walks.length,
-                (index) {
-                  final walk = walks[index];
-                  final joinedAt = walk['joinedAt'] as DateTime? ?? DateTime.now();
-                  final distance = walk['distance'] as double? ?? 0.0;
-                  final isLast = index == walks.length - 1;
+              children: List.generate(walks.length, (index) {
+                final walk = walks[index];
+                final joinedAt =
+                    walk['joinedAt'] as DateTime? ?? DateTime.now();
+                final distance = walk['distance'] as double? ?? 0.0;
+                final isLast = index == walks.length - 1;
 
-                  return Column(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 20,
-                            color: const Color(0xFF00D97E),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Walk on ${joinedAt.day}/${joinedAt.month}/${joinedAt.year}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  '${distance.toStringAsFixed(1)} km',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.textTheme.bodySmall?.color
-                                        ?.withAlpha(150),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (!isLast) ...[
-                        const SizedBox(height: 12),
-                        Divider(
-                          height: 1,
-                          color: (isDark ? Colors.white : Colors.black)
-                              .withAlpha((0.06 * 255).round()),
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: const Color(0xFF00D97E),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Walk on ${joinedAt.day}/${joinedAt.month}/${joinedAt.year}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '${distance.toStringAsFixed(1)} km',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.textTheme.bodySmall?.color
+                                      ?.withAlpha(150),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
+                    ),
+                    if (!isLast) ...[
+                      const SizedBox(height: 12),
+                      Divider(
+                        height: 1,
+                        color: (isDark ? Colors.white : Colors.black).withAlpha(
+                          (0.06 * 255).round(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
-                  );
-                },
-              ),
+                  ],
+                );
+              }),
             ),
           ),
         );
@@ -745,7 +749,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(
           'Badges',
-          style: theme.textTheme.titleMedium?.copyWith(
+          style:
+              theme.textTheme.titleMedium?.copyWith(
                 fontFamily: 'Poppins',
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -767,15 +772,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .collection('badges')
               .snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
               return Card(
                 color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
                 elevation: isDark ? 0.0 : 0.5,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: (isDark ? Colors.white : Colors.black)
-                        .withAlpha((0.08 * 255).round()),
+                    color: (isDark ? Colors.white : Colors.black).withAlpha(
+                      (0.08 * 255).round(),
+                    ),
                   ),
                 ),
                 child: const Padding(
@@ -790,12 +797,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             final docs = snapshot.data?.docs ?? [];
             final existing = {
-              for (final d in docs) d.id: d.data() as Map<String, dynamic>
+              for (final d in docs) d.id: d.data() as Map<String, dynamic>,
             };
 
             final merged = kBadgeCatalog.map((def) {
               final data = existing[def.id];
-              final progress = ((data?['progress'] as num?)?.toDouble() ?? 0).clamp(0.0, 1.0);
+              final progress = ((data?['progress'] as num?)?.toDouble() ?? 0)
+                  .clamp(0.0, 1.0);
               final achieved = data?['achieved'] as bool? ?? false;
               final earnedAt = (data?['earnedAt'] as Timestamp?)?.toDate();
 
@@ -812,9 +820,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }).toList();
 
             final achievedBadges = merged.where((b) => b.achieved).toList();
-            final inProgressBadges = merged
-                .where((b) => !b.achieved)
-                .toList()
+            final inProgressBadges = merged.where((b) => !b.achieved).toList()
               ..sort((a, b) => b.progress.compareTo(a.progress));
 
             final profileBadges = merged
@@ -835,8 +841,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
-                  color: (isDark ? Colors.white : Colors.black)
-                      .withAlpha((0.08 * 255).round()),
+                  color: (isDark ? Colors.white : Colors.black).withAlpha(
+                    (0.08 * 255).round(),
+                  ),
                 ),
               ),
               child: Padding(
@@ -848,7 +855,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (achievedBadges.isEmpty && inProgressBadges.isEmpty)
                       Text(
                         'Badges will appear here as you walk more.',
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style:
+                            theme.textTheme.bodySmall?.copyWith(
                               fontFamily: 'Inter',
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -902,17 +910,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(b.icon, size: 18, color: theme.colorScheme.primary),
+                                          Icon(
+                                            b.icon,
+                                            size: 18,
+                                            color: theme.colorScheme.primary,
+                                          ),
                                           const SizedBox(width: 8),
                                           Text(
                                             b.title,
-                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
                                                   fontWeight: FontWeight.w700,
-                                                  color: isDark ? Colors.white : Colors.black,
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : Colors.black,
                                                 ),
                                           ),
                                         ],
@@ -929,16 +945,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     child: LinearProgressIndicator(
                                       value: b.progress,
                                       minHeight: 8,
-                                      backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                                      backgroundColor: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest
+                                          .withValues(alpha: 0.4),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        theme.colorScheme.primary,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     b.description,
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                          color: isDark ? Colors.white70 : Colors.grey.shade700,
-                                        ),
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.grey.shade700,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -967,7 +990,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 padding: EdgeInsets.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text('🏆 Leaderboard'),
+                              child: const Text('Leaderboard'),
                             ),
                           ],
                         ),
@@ -1069,9 +1092,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (navigator.canPop()) {
         navigator.pop();
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export ready to share.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Export ready to share.')));
     } catch (e) {
       if (mounted) {
         final navigator = Navigator.of(context, rootNavigator: true);
@@ -1093,11 +1116,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await ProfileStorage.clearProfile();
     await ProfileCacheService.instance.clearCache();
     await FirebaseAuth.instance.signOut();
+
+    // Clear Google Sign-In cache so next login shows account picker
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (e) {
+        debugPrint('Google Sign-In signOut error: $e');
+      }
+    }
+
     if (!mounted) return;
 
     Navigator.of(
       context,
     ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
+  }
+
+  Future<void> _switchAccount() async {
+    // Same as sign out, but clarifies intent to user
+    await _signOut();
   }
 
   void _showNotificationsSheet() {
@@ -1198,7 +1236,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           offset: const Offset(0, -2),
                           child: Text(
                             'Yalla Nemshi',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style:
+                                Theme.of(
+                                  context,
+                                ).textTheme.titleLarge?.copyWith(
                                   fontFamily: 'Poppins',
                                   color: Colors.white,
                                   fontSize: 20,
@@ -1338,7 +1379,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             offset: const Offset(0, -2),
                             child: Text(
                               'Yalla Nemshi',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              style:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.titleLarge?.copyWith(
                                     fontFamily: 'Poppins',
                                     color: Colors.white,
                                     fontSize: 20,
@@ -1489,42 +1533,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'My profile',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ) ??
-                                const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Track your progress and edit your walking details.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                  fontFamily: 'Inter',
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.5,
-                                  color: isDark ? Colors.white70 : Colors.black54,
-                                ) ??
-                                TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.5,
-                                  color: isDark ? Colors.white70 : Colors.black54,
-                                ),
-                          ),
-                          const SizedBox(height: 24),
-
                           // Avatar, name, level, bio
                           Center(
                             child: Column(
@@ -1557,16 +1565,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           textAlign: TextAlign.center,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.titleLarge
-                                              ?.copyWith(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: -0.2,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ) ??
+                                          style:
+                                              theme.textTheme.titleLarge
+                                                  ?.copyWith(
+                                                    fontFamily: 'Poppins',
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: -0.2,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                  ) ??
                                               const TextStyle(
                                                 fontFamily: 'Poppins',
                                                 fontSize: 22,
@@ -1595,7 +1604,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   _walkerLevel,
-                                  style: theme.textTheme.bodySmall?.copyWith(
+                                  style:
+                                      theme.textTheme.bodySmall?.copyWith(
                                         fontFamily: 'Inter',
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
@@ -1614,7 +1624,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ? profile!.bio
                                       : 'Add a short bio about you',
                                   textAlign: TextAlign.center,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                  style:
+                                      theme.textTheme.bodyMedium?.copyWith(
                                         fontFamily: 'Inter',
                                         fontSize: 15,
                                         fontWeight: FontWeight.w500,
@@ -1689,7 +1700,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // This week
                           Text(
                             'This week',
-                            style: theme.textTheme.titleMedium?.copyWith(
+                            style:
+                                theme.textTheme.titleMedium?.copyWith(
                                   fontFamily: 'Poppins',
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
@@ -1732,7 +1744,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         child: Text(
                                           '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
                                           '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
-                                          style: theme.textTheme.bodyMedium
+                                          style:
+                                              theme.textTheme.bodyMedium
                                                   ?.copyWith(
                                                     fontFamily: 'Inter',
                                                     fontSize: 15,
@@ -1742,15 +1755,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                         ? Colors.white
                                                         : null,
                                                   ) ??
-                                                  TextStyle(
-                                                    fontFamily: 'Inter',
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.w700,
-                                                    height: 1.45,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : null,
-                                                  ),
+                                              TextStyle(
+                                                fontFamily: 'Inter',
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                                height: 1.45,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : null,
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(width: 10),
@@ -1771,7 +1784,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                         child: Text(
                                           '${(weeklyProgress * 100).round()}%',
-                                          style: theme.textTheme.bodySmall
+                                          style:
+                                              theme.textTheme.bodySmall
                                                   ?.copyWith(
                                                     fontFamily: 'Poppins',
                                                     fontSize: 13,
@@ -1781,15 +1795,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                         ? Colors.white
                                                         : null,
                                                   ) ??
-                                                  TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w800,
-                                                    letterSpacing: -0.1,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : null,
-                                                  ),
+                                              TextStyle(
+                                                fontFamily: 'Poppins',
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: -0.1,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : null,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -1843,24 +1857,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       weeklyGoalKm: _weeklyGoalKmLocal,
                                       streakDays: widget.streakDays,
                                     ),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontFamily: 'Inter',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      height: 1.4,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                    ) ??
-                                    TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      height: 1.4,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                    ),
+                                    style:
+                                        theme.textTheme.bodySmall?.copyWith(
+                                          fontFamily: 'Inter',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.4,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ) ??
+                                        TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.4,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -1872,7 +1887,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Stats
                           Text(
                             'Your stats',
-                            style: theme.textTheme.titleMedium?.copyWith(
+                            style:
+                                theme.textTheme.titleMedium?.copyWith(
                                   fontFamily: 'Poppins',
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
@@ -1911,12 +1927,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Center(
                             child: Text(
                               'Marked as interested: ${widget.interestedCount}',
-                              style: theme.textTheme.bodySmall?.copyWith(
+                              style:
+                                  theme.textTheme.bodySmall?.copyWith(
                                     fontFamily: 'Inter',
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
-                                    color:
-                                        isDark ? Colors.white70 : Colors.black54,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
                                   ) ??
                                   const TextStyle(
                                     fontFamily: 'Inter',
@@ -1971,9 +1989,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: () {
-                                Navigator.of(context).pushNamed(
-                                  AnalyticsScreen.routeName,
-                                );
+                                Navigator.of(
+                                  context,
+                                ).pushNamed(AnalyticsScreen.routeName);
                               },
                               style: FilledButton.styleFrom(
                                 minimumSize: const Size.fromHeight(52),
@@ -2024,15 +2042,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     side: BorderSide(
-                                      color: (isDark ? Colors.white : Colors.black)
-                                          .withAlpha((0.18 * 255).round()),
+                                      color:
+                                          (isDark ? Colors.white : Colors.black)
+                                              .withAlpha((0.18 * 255).round()),
                                     ),
                                     foregroundColor: isDark
                                         ? Colors.white
                                         : Colors.black,
                                   ),
                                   icon: const Icon(Icons.table_view),
-                                  label: const Text('Export walk history (CSV)'),
+                                  label: const Text(
+                                    'Export walk history (CSV)',
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -2046,20 +2067,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     side: BorderSide(
-                                      color: (isDark ? Colors.white : Colors.black)
-                                          .withAlpha((0.18 * 255).round()),
+                                      color:
+                                          (isDark ? Colors.white : Colors.black)
+                                              .withAlpha((0.18 * 255).round()),
                                     ),
                                     foregroundColor: isDark
                                         ? Colors.white
                                         : Colors.black,
                                   ),
                                   icon: const Icon(Icons.picture_as_pdf),
-                                  label: const Text('Export walk summary (PDF)'),
+                                  label: const Text(
+                                    'Export walk summary (PDF)',
+                                  ),
                                 ),
                               ),
                             ],
                           ),
 
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _switchAccount,
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? Colors.white.withAlpha(
+                                          (0.3 * 255).round(),
+                                        )
+                                      : Colors.black.withAlpha(
+                                          (0.2 * 255).round(),
+                                        ),
+                                ),
+                              ),
+                              icon: const Icon(Icons.swap_horiz),
+                              label: const Text('Switch Account'),
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
@@ -2127,10 +2175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (b64 != null && b64.isNotEmpty) {
       try {
         final bytes = base64Decode(b64);
-        return CircleAvatar(
-          radius: 48,
-          backgroundImage: MemoryImage(bytes),
-        );
+        return CircleAvatar(radius: 48, backgroundImage: MemoryImage(bytes));
       } catch (_) {
         // ignore decode errors and fall back
       }
@@ -2143,10 +2188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       try {
         final file = File(imgPath);
         if (file.existsSync()) {
-          return CircleAvatar(
-            radius: 48,
-            backgroundImage: FileImage(file),
-          );
+          return CircleAvatar(radius: 48, backgroundImage: FileImage(file));
         }
       } catch (_) {
         // ignore and fall back
@@ -2156,10 +2198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Firebase Auth photo (e.g., Google sign-in)
     final authPhoto = FirebaseAuth.instance.currentUser?.photoURL;
     if (authPhoto != null && authPhoto.isNotEmpty) {
-      return CircleAvatar(
-        radius: 48,
-        backgroundImage: NetworkImage(authPhoto),
-      );
+      return CircleAvatar(radius: 48, backgroundImage: NetworkImage(authPhoto));
     }
 
     return const CircleAvatar(
@@ -2168,7 +2207,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Icon(Icons.person, size: 48, color: Color(0xFF166534)),
     );
   }
-
 
   Widget _statCard({
     required String label,

@@ -29,10 +29,17 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       _results = [];
     });
     try {
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
       final users = await FirestoreUserService.searchUsers(query);
+
+      // Filter out current user from results
+      final filteredUsers = users
+          .where((user) => user.uid != currentUserId)
+          .toList();
+
       if (!mounted) return;
       setState(() {
-        _results = users;
+        _results = filteredUsers;
         _loading = false;
       });
     } catch (e) {

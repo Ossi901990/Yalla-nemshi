@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 // Routing/automatic route generation removed — this screen now only
@@ -19,8 +20,7 @@ class MapPickScreen extends StatefulWidget {
 class _MapPickScreenState extends State<MapPickScreen> {
   // ✅ Put your Google API key here (must have Geocoding API enabled)
   // Tip: later we can move it to a safer config approach.
-  static const String _googleApiKey =
-      'AIzaSyCf4xhAGD2FlnFwsFjGpZZoXa5pnB4oRqM';
+  static const String _googleApiKey = 'AIzaSyCf4xhAGD2FlnFwsFjGpZZoXa5pnB4oRqM';
 
   final TextEditingController _searchCtrl = TextEditingController();
   bool _searchLoading = false;
@@ -32,7 +32,52 @@ class _MapPickScreenState extends State<MapPickScreen> {
   LatLng? _startLatLng;
   LatLng? _endLatLng;
 
-  static const LatLng _initialPosition = LatLng(31.9539, 35.9106);
+  static const LatLng _fallbackPosition = LatLng(31.9539, 35.9106);
+  LatLng? _initialPosition;
+  bool _loadingLocation = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialLocation();
+  }
+
+  Future<void> _loadInitialLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // Use fallback if permission denied
+        if (mounted) {
+          setState(() {
+            _initialPosition = _fallbackPosition;
+            _loadingLocation = false;
+          });
+        }
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (mounted) {
+        setState(() {
+          _initialPosition = LatLng(position.latitude, position.longitude);
+          _loadingLocation = false;
+        });
+      }
+    } catch (e) {
+      // If location fails, use fallback
+      debugPrint('Could not get current location: $e');
+      if (mounted) {
+        setState(() {
+          _initialPosition = _fallbackPosition;
+          _loadingLocation = false;
+        });
+      }
+    }
+  }
 
   Future<void> _searchAndGo(String query) async {
     final q = query.trim();
@@ -104,14 +149,22 @@ class _MapPickScreenState extends State<MapPickScreen> {
               ? 'Tap on the map to set the END point'
               : 'Tap again to reset (start over)');
 
+    // Show loading indicator while getting location
+    if (_loadingLocation || _initialPosition == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Pick start & end')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Pick start & end')),
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target: _initialPosition,
-              zoom: 13,
+            initialCameraPosition: CameraPosition(
+              target: _initialPosition!,
+              zoom: 15,
             ),
             onMapCreated: (controller) {
               _mapController = controller;

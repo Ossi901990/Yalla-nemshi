@@ -36,7 +36,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as FriendProfileScreenArgs?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as FriendProfileScreenArgs?;
     final uid = args?.userId;
 
     if (uid == null) {
@@ -48,9 +49,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     final fallbackName = args?.displayName ?? 'Friend profile';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(fallbackName),
-      ),
+      appBar: AppBar(title: Text(fallbackName)),
       body: StreamBuilder<FriendProfile?>(
         stream: FriendProfileService.watchProfile(uid),
         builder: (context, snapshot) {
@@ -74,7 +73,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 userId: profile.uid,
                 title: 'Upcoming walks',
                 category: 'upcoming',
-                emptyLabel: '${profile.displayName} has no upcoming walks to share.',
+                emptyLabel:
+                    '${profile.displayName} has no upcoming walks to share.',
               ),
               const SizedBox(height: 24),
               _WalkSummarySection(
@@ -110,15 +110,19 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, FriendProfile profile, FriendProfileScreenArgs? args) {
+  Widget _buildHeader(
+    BuildContext context,
+    FriendProfile profile,
+    FriendProfileScreenArgs? args,
+  ) {
     final theme = Theme.of(context);
     final photoUrl = profile.photoUrl ?? args?.photoUrl;
     final lastActiveText = profile.lastActiveAt != null
         ? 'Active ${DateFormat('MMM d, h:mm a').format(profile.lastActiveAt!)}'
         : 'Activity not available';
     final initials = profile.displayName.trim().isNotEmpty
-      ? profile.displayName.trim()[0].toUpperCase()
-      : '?';
+        ? profile.displayName.trim()[0].toUpperCase()
+        : '?';
 
     return Card(
       child: Padding(
@@ -141,7 +145,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             const SizedBox(height: 16),
             Text(
               profile.displayName,
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -152,7 +158,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             const SizedBox(height: 4),
             Text(
               lastActiveText,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             Wrap(
@@ -161,8 +169,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               alignment: WrapAlignment.center,
               children: [
                 FilledButton.icon(
-                  onPressed:
-                      _startingChat ? null : () => _startDirectMessage(profile, args),
+                  onPressed: _startingChat
+                      ? null
+                      : () => _startDirectMessage(profile, args),
                   icon: _startingChat
                       ? const SizedBox(
                           width: 16,
@@ -176,10 +185,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   onPressed: _removingFriend
                       ? null
                       : () => _confirmRemoveFriend(
-                            context,
-                            profile.uid,
-                            profile.displayName,
-                          ),
+                          context,
+                          profile.uid,
+                          profile.displayName,
+                        ),
                   icon: _removingFriend
                       ? const SizedBox(
                           width: 16,
@@ -232,10 +241,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
       );
     } catch (error, stackTrace) {
       final friendlyError = _formatDmError(error);
-      debugPrint('Failed to open DM with ${profile.uid}: $friendlyError\n$stackTrace');
+      debugPrint('Failed to open DM with ${profile.uid}: $error\n$stackTrace');
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Unable to open chat: $friendlyError')),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(friendlyError),
+          backgroundColor: const Color(0xFFD97706),
+        ),
       );
     } finally {
       if (mounted) {
@@ -246,13 +258,19 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
   String _formatDmError(Object error) {
     if (error is FirebaseException) {
-      final message = error.message?.trim();
-      if (message != null && message.isNotEmpty) {
-        return '${error.code}: $message';
+      if (error.code == 'permission-denied') {
+        return 'Unable to start chat. Please try again.';
       }
-      return error.code;
+      if (error.code == 'unavailable') {
+        return 'Connection issue. Check your internet.';
+      }
+      if (error.code == 'not-found') {
+        return 'Chat could not be created. Try again.';
+      }
+      // Generic Firebase error
+      return 'Something went wrong. Please try again.';
     }
-    return error.toString();
+    return 'Unable to open chat. Please try again.';
   }
 
   Widget _buildStatsGrid(BuildContext context, FriendProfile profile) {
@@ -263,7 +281,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         icon: Icons.flag_rounded,
       ),
       _FriendStat(
-        label: 'Walks joined',
+        label: 'Walks completed',
         value: profile.totalWalksJoined.toString(),
         icon: Icons.directions_walk_rounded,
       ),
@@ -291,8 +309,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         final columns = maxWidth > 720
             ? 3
             : maxWidth > 420
-                ? 2
-                : 1;
+            ? 2
+            : 1;
         final cardWidth = columns == 1
             ? maxWidth
             : (maxWidth - (columns - 1) * 12) / columns;
@@ -301,12 +319,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
           spacing: 12,
           runSpacing: 12,
           children: stats
-              .map(
-                (stat) => SizedBox(
-                  width: cardWidth,
-                  child: stat,
-                ),
-              )
+              .map((stat) => SizedBox(width: cardWidth, child: stat))
               .toList(),
         );
       },
@@ -340,7 +353,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
     if (confirmed != true) return;
 
-  if (!context.mounted) return;
+    if (!context.mounted) return;
 
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final messenger = ScaffoldMessenger.of(context);
@@ -397,7 +410,9 @@ class _FriendStat extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(label, style: theme.textTheme.bodySmall),
@@ -429,11 +444,17 @@ class _WalkSummarySection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         StreamBuilder<List<FriendWalkSummary>>(
-          stream: FriendProfileService.watchSummaries(userId, category: category, limit: limit),
+          stream: FriendProfileService.watchSummaries(
+            userId,
+            category: category,
+            limit: limit,
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -473,8 +494,12 @@ class _WalkSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final formatter = DateFormat('EEE, MMM d • h:mm a');
-    final start = walk.startTime != null ? formatter.format(walk.startTime!) : 'TBD';
-    final distance = walk.distanceKm != null ? '${walk.distanceKm!.toStringAsFixed(1)} km' : null;
+    final start = walk.startTime != null
+        ? formatter.format(walk.startTime!)
+        : 'TBD';
+    final distance = walk.distanceKm != null
+        ? '${walk.distanceKm!.toStringAsFixed(1)} km'
+        : null;
     final duration = walk.estimatedDurationMinutes != null
         ? '${walk.estimatedDurationMinutes!.round()} min'
         : null;
@@ -498,9 +523,7 @@ class _WalkSummaryCard extends StatelessWidget {
         ),
         title: Text(walk.title),
         subtitle: Text(subtitleParts.join(' • ')),
-        trailing: Chip(
-          label: Text(walk.role == 'host' ? 'Host' : 'Friend'),
-        ),
+        trailing: Chip(label: Text(walk.role == 'host' ? 'Host' : 'Friend')),
       ),
     );
   }
