@@ -141,6 +141,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
   // ===== Point-to-point visibility =====
   bool _isPrivatePointToPoint = false;
+  bool _isPrivateLoop = false;
   String? _privateShareCode;
   DateTime? _shareCodeGeneratedAt;
   String? _draftWalkId;
@@ -835,12 +836,15 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final walkType = _walkTypeIndex == 0 ? 'point_to_point' : 'loop';
     final bool isPrivatePointToPoint =
         walkType == 'point_to_point' && _isPrivatePointToPoint;
+    final bool isPrivateLoop =
+        walkType == 'loop' && _isPrivateLoop;
+    final bool isPrivate = isPrivatePointToPoint || isPrivateLoop;
 
-    if (isPrivatePointToPoint) {
+    if (isPrivate) {
       _preparePrivateInviteState();
     }
 
-    final Timestamp? shareCodeExpiresAt = isPrivatePointToPoint
+    final Timestamp? shareCodeExpiresAt = isPrivate
         ? Timestamp.fromDate(InviteUtils.nextExpiry())
         : null;
     final DateTime? shareCodeExpiresAtDate = shareCodeExpiresAt?.toDate();
@@ -907,10 +911,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'joinedUserPhotoUrls': [],
       'joinedCount': 0,
 
-      // ===== Visibility & join rules (Point-to-point only for now) =====
-      'visibility': isPrivatePointToPoint ? 'private' : 'open',
+      // ===== Visibility & join rules =====
+      'visibility': isPrivate ? 'private' : 'open',
       'joinPolicy': 'request',
-      'shareCode': isPrivatePointToPoint ? _privateShareCode : null,
+      'shareCode': isPrivate ? _privateShareCode : null,
       'shareCodeExpiresAt': shareCodeExpiresAt,
 
       // Loop fields
@@ -1726,6 +1730,82 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 16),
+
+                                          // Private walk option for loop
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              'Visibility',
+                                              style: theme.textTheme.titleMedium
+                                                  ?.copyWith(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF1A2332,
+                                                          ),
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ChoiceChip(
+                                                  label: const Text('Open'),
+                                                  selected:
+                                                      !_isPrivateLoop,
+                                                  onSelected: (_) {
+                                                    setState(() {
+                                                      _isPrivateLoop =
+                                                          false;
+                                                      _resetPrivateInviteState();
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: ChoiceChip(
+                                                  label: const Text('Private'),
+                                                  selected:
+                                                      _isPrivateLoop,
+                                                  onSelected: (_) {
+                                                    setState(() {
+                                                      _isPrivateLoop =
+                                                          true;
+                                                      _preparePrivateInviteState();
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              _isPrivateLoop
+                                                  ? 'Hidden from Nearby walks. Share a link or QR to invite.'
+                                                  : 'Visible in Nearby walks. Others can request to join.',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+
+                                          if (_isPrivateLoop) ...[
+                                            _buildInviteCodeCard(theme, isDark),
+                                            const SizedBox(height: 16),
+                                          ],
                                         ] else ...[
                                           // Free
                                           Align(
