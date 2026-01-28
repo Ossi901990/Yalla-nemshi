@@ -1,5 +1,6 @@
 // lib/screens/events_screen.dart
 import 'package:flutter/material.dart';
+import 'notifications_screen.dart';
 
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key});
@@ -68,7 +69,9 @@ class EventsScreen extends StatelessWidget {
                       label: 'Notifications',
                       button: true,
                       child: GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pushNamed(context, NotificationsScreen.routeName);
+                        },
                         child: Transform.translate(
                           offset: const Offset(0, -1),
                           child: Padding(
@@ -157,7 +160,9 @@ class EventsScreen extends StatelessWidget {
                         label: 'Notifications',
                         button: true,
                         child: GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.pushNamed(context, NotificationsScreen.routeName);
+                          },
                           child: Transform.translate(
                             offset: const Offset(0, -1),
                             child: Padding(

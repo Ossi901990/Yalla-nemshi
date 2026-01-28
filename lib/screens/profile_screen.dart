@@ -1,4 +1,4 @@
-// lib/screens/profile_screen.dart
+﻿// lib/screens/profile_screen.dart
 import 'dart:convert';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -31,6 +31,7 @@ import 'analytics_screen.dart';
 import '../services/app_preferences.dart';
 import '../services/profile_cache_service.dart';
 import '../services/offline_service.dart';
+import '../screens/notifications_screen.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -105,8 +106,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   final int _currentTab = 3; // Profile tab is index 3
 
-  static const Color _deepGreen = Color(0xFF1ABFC4);
-
   late double _weeklyGoalKmLocal;
   bool _isOffline = false;
   bool _isProfileStale = false;
@@ -116,6 +115,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    
+    final currentUser = FirebaseAuth.instance.currentUser;
+    debugPrint('ðŸ‘¤ðŸ‘¤ðŸ‘¤ PROFILE_SCREEN.initState - Current User: ${currentUser?.uid}');
+    debugPrint('ðŸ‘¤ðŸ‘¤ðŸ‘¤ PROFILE_SCREEN.initState - Email: ${currentUser?.email}');
+    debugPrint('ðŸ‘¤ðŸ‘¤ðŸ‘¤ PROFILE_SCREEN.initState - Display Name: ${currentUser?.displayName}');
+    
     _weeklyGoalKmLocal = widget.weeklyGoalKm;
 
     _offlineListener = () {
@@ -298,12 +303,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required double weeklyGoalKm,
     required int streakDays,
   }) {
-    if (weeklyKm <= 0.0) return 'Let’s start small—join a short walk today.';
-    if (progress >= 1.0) return 'Goal achieved! Bonus walk? 💪';
-    if (progress >= 0.75) return 'Great pace—almost there!';
-    if (progress >= 0.50) return 'You’re building momentum—keep going!';
-    if (progress >= 0.25) return 'Nice start—stay consistent!';
-    return 'Good start—one more walk will help a lot.';
+    if (weeklyKm <= 0.0) return 'Letâ€™s start smallâ€”join a short walk today.';
+    if (progress >= 1.0) return 'Goal achieved! Bonus walk? ðŸ’ª';
+    if (progress >= 0.75) return 'Great paceâ€”almost there!';
+    if (progress >= 0.50) return 'Youâ€™re building momentumâ€”keep going!';
+    if (progress >= 0.25) return 'Nice startâ€”stay consistent!';
+    return 'Good startâ€”one more walk will help a lot.';
   }
 
   String get _walkerLevel {
@@ -501,24 +506,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Lifetime stats',
-              style:
-                  theme.textTheme.titleMedium?.copyWith(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                    color: isDark ? Colors.white : _deepGreen,
-                  ) ??
-                  const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                  ),
-            ),
-            const SizedBox(height: 8),
             Card(
               color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
               elevation: isDark ? 0.0 : 0.5,
@@ -1134,52 +1121,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _switchAccount() async {
-    // Same as sign out, but clarifies intent to user
-    await _signOut();
+    try {
+      // Sign out from Firebase and Google
+      await FirebaseAuth.instance.signOut();
+      await GoogleSignIn().signOut();
+
+      if (!mounted) return;
+
+      // Immediately trigger Google Sign-In which shows account picker
+      if (kIsWeb) {
+        // Web: use Firebase popup
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        // Mobile: Use google_sign_in plugin which shows account picker
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+        );
+        
+        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+        
+        if (googleUser == null) {
+          // User cancelled - go to login screen
+          if (!mounted) return;
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            LoginScreen.routeName,
+            (route) => false,
+          );
+          return;
+        }
+
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        await FirebaseAuth.instance.signInWithCredential(credential);
+
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    } catch (e) {
+      debugPrint('Error switching account: $e');
+      if (!mounted) return;
+      // On error, go to login screen
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        LoginScreen.routeName,
+        (route) => false,
+      );
+    }
   }
 
   void _showNotificationsSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final theme = Theme.of(context);
-
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFFBFEF8),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.notifications_none,
-                size: 40,
-                color: Colors.grey.shade500,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No notifications yet',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'You’ll see reminders and new nearby walks here.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-    );
+    Navigator.pushNamed(context, NotificationsScreen.routeName);
   }
 
   @override
@@ -1206,7 +1208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (_buildStaleDataBanner() != null) _buildStaleDataBanner()!,
           // ===== HEADER (match Home/Nearby) =====
           if (isDark)
-            // ✅ Dark: NO BAR, floating header (same as Home)
+            // âœ… Dark: NO BAR, floating header (same as Home)
             SafeArea(
               bottom: false,
               child: Padding(
@@ -1297,7 +1299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // ✅ Settings icon (40x40)
+                        // âœ… Settings icon (40x40)
                         Semantics(
                           label: 'Settings',
                           button: true,
@@ -1340,7 +1342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           else
-            // ✅ Light: gradient bar (same as Home)
+            // âœ… Light: gradient bar (same as Home)
             Container(
               height: 80,
               width: double.infinity,
@@ -1556,7 +1558,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: Stack(
                                     alignment: Alignment.center,
                                     children: [
-                                      // ✅ Name stays perfectly centered
+                                      // âœ… Name stays perfectly centered
                                       Center(
                                         child: Text(
                                           profile?.name.isNotEmpty == true
@@ -1585,7 +1587,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                       ),
 
-                                      // ✅ Pen icon on the right, does NOT shift the text
+                                      // âœ… Pen icon on the right, does NOT shift the text
                                       Positioned(
                                         right: 0,
                                         child: IconButton(
@@ -1652,7 +1654,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 backgroundColor: isDark
                                     ? const Color(
                                         0xFF123647,
-                                      ) // 👈 bluish chip surface
+                                      ) // ðŸ‘ˆ bluish chip surface
                                     : theme.colorScheme.surface,
                                 side: BorderSide(
                                   color: (isDark ? Colors.white : Colors.black)
@@ -1742,7 +1744,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
+                                          '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} â€¢ '
                                           '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
                                           style:
                                               theme.textTheme.bodyMedium
@@ -1946,6 +1948,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                           const SizedBox(height: 24),
 
+                          // Total Stats Section
+                          Text(
+                            'Total stats',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           // CP-4: Lifetime Walk Stats
                           _buildWalkStatsSection(
                             context,

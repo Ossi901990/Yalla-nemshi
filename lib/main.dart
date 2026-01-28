@@ -27,6 +27,7 @@ import 'screens/dm_chat_screen.dart';
 import 'screens/badge_leaderboard_screen.dart';
 import 'screens/per_badge_leaderboard_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/notifications_screen.dart';
 
 /// Background notification handler (must be top-level function)
 /// This handles notifications when the app is terminated or in background
@@ -40,6 +41,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  debugPrint('🚀 APP STARTING');
 
   if (kIsWeb) {
     // 🔹 Web: Use hardcoded Firebase config
@@ -193,6 +196,7 @@ class MyApp extends StatelessWidget {
                   as Map<String, dynamic>;
           return PerBadgeLeaderboardScreen(badgeData: args);
         },
+        NotificationsScreen.routeName: (context) => const NotificationsScreen(),
       },
     );
   }

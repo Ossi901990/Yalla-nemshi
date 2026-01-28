@@ -125,6 +125,12 @@ service cloud.firestore {
         allow read: if isAuth(userId);
         allow write: if isAuth(userId);
       }
+
+      // Notifications subcollection
+      match /notifications/{notificationId} {
+        allow read: if isAuth(userId);
+        allow write, delete: if isAuth(userId);
+      }
     }
 
     // ===== REVIEWS COLLECTION =====

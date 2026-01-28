@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/walk_event.dart';
 import 'crash_service.dart';
-import 'badge_service.dart';
 
 /// Service for controlling walk state (start/end walks)
 /// For CP-4 walk completion and participant confirmation flow

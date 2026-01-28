@@ -5,6 +5,7 @@ import '../models/walk_event.dart';
 import 'nearby_walks_screen.dart';
 import 'create_walk_screen.dart';
 import 'walk_search_screen.dart';
+import 'notifications_screen.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -91,43 +92,7 @@ class _WalksScreenState extends State<WalksScreen>
   }
 
   void _showNotificationsSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final theme = Theme.of(context);
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFFBFEF8),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notifications',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1F2933),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'No notifications yet. We\'ll show walk updates here.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    Navigator.pushNamed(context, NotificationsScreen.routeName);
   }
 
   @override

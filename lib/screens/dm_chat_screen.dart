@@ -28,7 +28,13 @@ class DmChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final currentUid = currentUser?.uid;
+    
+    debugPrint('💬💬💬 DM_CHAT_SCREEN - Current User: ${currentUser?.uid}');
+    debugPrint('💬💬💬 DM_CHAT_SCREEN - Email: ${currentUser?.email}');
+    debugPrint('💬💬💬 DM_CHAT_SCREEN - Thread ID: ${args.threadId}');
+    debugPrint('💬💬💬 DM_CHAT_SCREEN - Friend UID: ${args.friendUid}');
 
     return Scaffold(
       appBar: AppBar(

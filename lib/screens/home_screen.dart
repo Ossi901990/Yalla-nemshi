@@ -35,8 +35,8 @@ import 'walks_screen.dart';
 import 'events_screen.dart';
 import 'walk_search_screen.dart';
 import 'active_walk_screen.dart';
-import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
+import '../screens/notifications_screen.dart';
 import '../providers/auth_provider.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
@@ -669,31 +669,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }).toList();
   }
 
-  String _formatNotificationTime(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final thatDay = DateTime(dt.year, dt.month, dt.day);
-
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    final timePart = '$hh:$mm';
-
-    if (thatDay == today) {
-      return 'Today ΓÇó $timePart';
-    }
-
-    final yesterday = today.subtract(const Duration(days: 1));
-    if (thatDay == yesterday) {
-      return 'Yesterday ΓÇó $timePart';
-    }
-
-    // Fallback: simple date
-    final dd = dt.day.toString().padLeft(2, '0');
-    final mm2 = dt.month.toString().padLeft(2, '0');
-    final yyyy = dt.year.toString();
-    return '$dd/$mm2/$yyyy ΓÇó $timePart';
-  }
-
   Widget _buildCalendarDayCell(
     DateTime day,
     bool isDark, {
@@ -822,6 +797,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _currentTab = widget.initialTab;
+    
+    // DEBUG: Print current user info
+    final user = FirebaseAuth.instance.currentUser;
+    debugPrint('🆔 HOME SCREEN - Current User ID: ${user?.uid}');
+    debugPrint('🆔 HOME SCREEN - Current User Email: ${user?.email}');
+    debugPrint('🆔 HOME SCREEN - Current User Name: ${user?.displayName}');
+    
     if (!kIsWeb) {
       _initStepCounter();
     }
@@ -1078,16 +1060,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
 
     debugPrint(buffer.toString());
-  }
-
-  /// Call this when a *new nearby* walk arrives from your backend / API.
-  void _onNewNearbyWalk(WalkEvent event) {
-    setState(() {
-      _events.add(event); // add to main list
-    });
-
-    // ≡ƒöö Instant ΓÇ£nearby walkΓÇ¥ notification (honors Settings toggle)
-    NotificationService.instance.showNearbyWalkAlert(event);
   }
 
   Future<void> _toggleJoin(WalkEvent event) async {
@@ -1416,151 +1388,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  // === NEW: notification bottom sheet (uses stored notifications) ===
+  // === Open notifications screen (full page) ===
   Future<void> _openNotificationsSheet() async {
-    final List<AppNotification> notifications =
-        await NotificationStorage.getNotifications();
-
-    // Γ£à mark all read when opening
+    // Mark all as read when opening
     await NotificationStorage.markAllRead();
     await _refreshNotificationsCount();
 
-    // Newest first
-    notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
     if (!mounted) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusCard)),
-      ),
-      builder: (ctx) {
-        // Γ£à If nothing stored yet ΓåÆ same placeholder as before
-        if (notifications.isEmpty) {
-          return Padding(
-            padding: EdgeInsets.fromLTRB(kSpace2, 20, kSpace2, kSpace4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.notifications_none,
-                  size: 36,
-                  color: Colors.grey,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'No notifications yet',
-                  style:
-                      Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ) ??
-                      const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'YouΓÇÖll see reminders and new nearby walks here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                SizedBox(height: kSpace2),
-              ],
-            ),
-          );
-        }
-
-        // Γ£à Real notifications list
-        return SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Icon(Icons.notifications, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Notifications',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style:
-                                  Theme.of(context).textTheme.headlineSmall
-                                      ?.copyWith(fontWeight: FontWeight.w700) ??
-                                  const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ≡ƒö╣ Clear button (top-right)
-                    TextButton(
-                      onPressed: () async {
-                        await NotificationStorage.clearNotifications();
-                        if (!mounted) return;
-                        Navigator.of(context).pop(); // close sheet
-                        _openNotificationsSheet(); // reopen with updated list
-                      },
-                      child: const Text(
-                        'Clear',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-                ...notifications.map(
-                  (n) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
-                      Icons.circle,
-                      size: 10,
-                      color: Color(0xFF00D97E),
-                    ),
-                    title: Text(
-                      n.title,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(n.message),
-                    trailing: Text(
-                      _formatNotificationTime(n.timestamp),
-                      style:
-                          Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.grey.shade600,
-                          ) ??
-                          TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    await Navigator.pushNamed(context, NotificationsScreen.routeName);
+    
+    // Refresh count when returning
+    await _refreshNotificationsCount();
   }
 
   // Profile icon should go directly to Profile

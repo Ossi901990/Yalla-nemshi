@@ -369,15 +369,6 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
     _showSnack('Invite code copied');
   }
 
-  Future<void> _copyLink(String code) async {
-    final link = InviteUtils.buildInviteLink(
-      walkId: widget.event.firestoreId,
-      shareCode: code,
-    );
-    await Clipboard.setData(ClipboardData(text: link));
-    _showSnack('Invite link copied');
-  }
-
   Future<void> _extendExpiry() async {
     setState(() {
       _extendingExpiry = true;

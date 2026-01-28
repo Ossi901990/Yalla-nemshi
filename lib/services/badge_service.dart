@@ -126,6 +126,7 @@ class BadgeService {
         await NotificationStorage.addNotification(
           AppNotification(
             id: 'badge_${b.id}_${DateTime.now().millisecondsSinceEpoch}',
+            type: NotificationType.badgeEarned,
             title: 'Badge earned! 🎉',
             message: '${b.title}: ${b.description}',
             timestamp: DateTime.now(),

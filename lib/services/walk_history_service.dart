@@ -102,24 +102,6 @@ class WalkHistoryService {
     }
   }
 
-  Future<void> _updateParticipantStateOnWalk(
-    String walkId,
-    String userId,
-    String state,
-  ) async {
-    try {
-      await _firestore.collection('walks').doc(walkId).update({
-        'participantStates.$userId': state,
-      });
-    } catch (e, st) {
-      CrashService.recordError(
-        e,
-        st,
-        reason: 'WalkHistoryService._updateParticipantStateOnWalk error',
-      );
-    }
-  }
-
   /// Mark a walk as completed by the user
   Future<void> markWalkCompleted(
     String walkId, {

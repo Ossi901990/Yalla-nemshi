@@ -507,14 +507,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     _draftWalkId = null;
   }
 
-  String? _buildInviteLink() {
-    if (_draftWalkId == null || _privateShareCode == null) return null;
-    return InviteUtils.buildInviteLink(
-      walkId: _draftWalkId!,
-      shareCode: _privateShareCode!,
-    );
-  }
-
   Future<void> _copyInviteCode() async {
     final code = _privateShareCode;
     if (code == null) return;
@@ -525,18 +517,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Invite code copied')));
-  }
-
-  Future<void> _copyInviteLink() async {
-    final link = _buildInviteLink();
-    if (link == null) return;
-
-    await Clipboard.setData(ClipboardData(text: link));
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Invite link copied')));
   }
 
   void _regenerateInviteCode() {
@@ -557,7 +537,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final expiresAt = generatedAt.add(InviteUtils.privateInviteTtl);
     final expiryText = _formatDateTime(expiresAt);
     final expiresInDays = InviteUtils.privateInviteTtl.inDays;
-    final hasInviteLink = _buildInviteLink() != null;
 
     final borderColor = (isDark ? Colors.white : Colors.black).withAlpha(
       (0.12 * 255).round(),
