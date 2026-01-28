@@ -216,22 +216,6 @@ class WalkControlService {
         'status': 'cancelled',
       });
 
-      // Mark all participants as cancelled
-      final participantsSnapshot = await _firestore
-          .collectionGroup('walks')
-          .where('walkId', isEqualTo: walkId)
-          .get();
-
-      final batch = _firestore.batch();
-      for (final doc in participantsSnapshot.docs) {
-        batch.update(doc.reference, {
-          'status': 'host_cancelled',
-          'cancelledAt': Timestamp.now(),
-          'participationState': 'left',
-        });
-      }
-      await batch.commit();
-
       CrashService.log('Walk $walkId cancelled by $uid: $reason');
     } catch (e) {
       CrashService.recordError(
