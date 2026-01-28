@@ -1,16 +1,20 @@
 // lib/services/notification_storage.dart
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_notification.dart';
 
 class NotificationStorage {
-  static const _key = 'app_notifications';
+  static String _keyForUser(String uid) => 'app_notifications_$uid';
 
   static Future<List<AppNotification>> getNotifications() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return [];
+    
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_key);
+    final raw = prefs.getStringList(_keyForUser(uid));
 
     if (raw == null) return [];
 
@@ -28,9 +32,12 @@ class NotificationStorage {
   }
 
   static Future<void> _save(List<AppNotification> list) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    
     final prefs = await SharedPreferences.getInstance();
     final raw = list.map((n) => jsonEncode(n.toJson())).toList();
-    await prefs.setStringList(_key, raw);
+    await prefs.setStringList(_keyForUser(uid), raw);
   }
 
   static Future<void> add(AppNotification notification) async {
@@ -45,8 +52,11 @@ class NotificationStorage {
   }
 
   static Future<void> clearNotifications() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    await prefs.remove(_keyForUser(uid));
   }
 
   /// Update one notification (used for read / unread)
@@ -71,5 +81,42 @@ class NotificationStorage {
   static Future<int> getUnreadCount() async {
     final list = await getNotifications();
     return list.where((n) => !n.isRead).length;
+  }
+
+  /// Delete notification by ID
+  static Future<void> deleteById(String id) async {
+    final list = await getNotifications();
+    final filtered = list.where((n) => n.id != id).toList();
+    await _save(filtered);
+  }
+
+  /// Delete all walk-related notifications
+  static Future<void> deleteByWalkId(String walkId) async {
+    final list = await getNotifications();
+    final filtered = list.where((n) => n.walkId != walkId).toList();
+    await _save(filtered);
+  }
+
+  /// Delete all expired notifications
+  static Future<void> deleteExpired() async {
+    final list = await getNotifications();
+    final now = DateTime.now();
+    final filtered = list.where((n) {
+      if (n.expiresAt == null) return true;
+      return n.expiresAt!.isAfter(now);
+    }).toList();
+    await _save(filtered);
+  }
+
+  /// Get notifications by type
+  static Future<List<AppNotification>> getByType(NotificationType type) async {
+    final list = await getNotifications();
+    return list.where((n) => n.type == type).toList();
+  }
+
+  /// Get walk-related notifications
+  static Future<List<AppNotification>> getByWalkId(String walkId) async {
+    final list = await getNotifications();
+    return list.where((n) => n.walkId == walkId).toList();
   }
 }

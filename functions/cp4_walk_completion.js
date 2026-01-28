@@ -35,7 +35,7 @@ const badgeCatalog = [
 
 /**
  * Send walk start confirmation prompt to all participants
- * Trigger: /walks/{walkId} updated with status: "starting"
+ * Trigger: /walks/{walkId} updated with status: "active"
  */
 exports.onWalkStarted = onDocumentUpdated(
   "walks/{walkId}",
@@ -45,8 +45,8 @@ exports.onWalkStarted = onDocumentUpdated(
     const walkAfter = event.data.after.data();
     const walkBefore = event.data.before.data();
 
-    // Only proceed if status changed to "starting"
-    if (walkBefore.status === "starting" || walkAfter.status !== "starting") {
+    // Only proceed if status changed to "active"
+    if (walkBefore.status === "active" || walkAfter.status !== "active") {
       return;
     }
 

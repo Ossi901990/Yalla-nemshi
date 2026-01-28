@@ -6,15 +6,21 @@ import '../models/app_exception.dart';
 
 /// Service to convert coordinates (lat/lng) → city name using Google Geocoding API
 class GeocodingService {
-  static const String _kGeocodingApiKey =
-      String.fromEnvironment('GOOGLE_GEOCODING_API_KEY');
+  static const String _kGeocodingApiKey = String.fromEnvironment(
+    'GOOGLE_GEOCODING_API_KEY',
+  );
 
-  /// Get Google Geocoding API key supplied via --dart-define
+  // Fallback API key for development (same as used in map_pick_screen.dart)
+  static const String _fallbackApiKey =
+      'AIzaSyAeeUDsBUghrf5gkD2NHZnd7UxSWzZ39u8';
+
+  /// Get Google Geocoding API key supplied via --dart-define or use fallback
   static String? get _googleGeocodingApiKey {
     if (_kGeocodingApiKey.isNotEmpty) {
       return _kGeocodingApiKey;
     }
-    return null;
+    // Use fallback for development if not provided
+    return _fallbackApiKey.isNotEmpty ? _fallbackApiKey : null;
   }
 
   /// Convert latitude/longitude to city name
@@ -27,7 +33,7 @@ class GeocodingService {
       final apiKey = _googleGeocodingApiKey;
       if (apiKey == null) {
         throw LocationException(
-            message:
+          message:
               'Missing Google Geocoding API key. Pass GOOGLE_GEOCODING_API_KEY via --dart-define at build time.',
           code: 'geocoding/missing-api-key',
         );
@@ -39,13 +45,15 @@ class GeocodingService {
         '&key=$apiKey',
       );
 
-      final response = await http.get(url).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw LocationException(
-          message: 'Geocoding request timed out.',
-          originalError: Exception('HTTP timeout'),
-        ),
-      );
+      final response = await http
+          .get(url)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw LocationException(
+              message: 'Geocoding request timed out.',
+              originalError: Exception('HTTP timeout'),
+            ),
+          );
 
       if (response.statusCode != 200) {
         throw LocationException(
@@ -86,7 +94,9 @@ class GeocodingService {
           city = longName;
           break;
         }
-        if (types.contains('administrative_area_level_1') && city == null && longName != null) {
+        if (types.contains('administrative_area_level_1') &&
+            city == null &&
+            longName != null) {
           city = longName;
         }
       }

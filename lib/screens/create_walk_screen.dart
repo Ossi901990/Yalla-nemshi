@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 
 import '../models/walk_event.dart';
 import '../models/recurrence_rule.dart';
@@ -35,7 +36,6 @@ const Color kLightSurface = Color(0xFFFBFEF8);
 const double kCardElevationLight = 0.6;
 const double kCardElevationDark = 0.0;
 const double kCardBorderAlpha = 0.06;
-
 
 class CreateWalkScreen extends StatefulWidget {
   final void Function(WalkEvent) onEventCreated;
@@ -141,6 +141,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
   // ===== Point-to-point visibility =====
   bool _isPrivatePointToPoint = false;
+  bool _isPrivateLoop = false;
   String? _privateShareCode;
   DateTime? _shareCodeGeneratedAt;
   String? _draftWalkId;
@@ -497,22 +498,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   void _preparePrivateInviteState() {
     _privateShareCode ??= _generateShareCode();
     _shareCodeGeneratedAt ??= DateTime.now();
-    _draftWalkId ??=
-        FirebaseFirestore.instance.collection('walks').doc().id;
+    _draftWalkId ??= FirebaseFirestore.instance.collection('walks').doc().id;
   }
 
   void _resetPrivateInviteState() {
     _privateShareCode = null;
     _shareCodeGeneratedAt = null;
     _draftWalkId = null;
-  }
-
-  String? _buildInviteLink() {
-    if (_draftWalkId == null || _privateShareCode == null) return null;
-    return InviteUtils.buildInviteLink(
-      walkId: _draftWalkId!,
-      shareCode: _privateShareCode!,
-    );
   }
 
   Future<void> _copyInviteCode() async {
@@ -527,24 +519,11 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     ).showSnackBar(const SnackBar(content: Text('Invite code copied')));
   }
 
-  Future<void> _copyInviteLink() async {
-    final link = _buildInviteLink();
-    if (link == null) return;
-
-    await Clipboard.setData(ClipboardData(text: link));
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Invite link copied')),
-    );
-  }
-
   void _regenerateInviteCode() {
     setState(() {
       _privateShareCode = _generateShareCode();
       _shareCodeGeneratedAt = DateTime.now();
-      _draftWalkId ??=
-          FirebaseFirestore.instance.collection('walks').doc().id;
+      _draftWalkId ??= FirebaseFirestore.instance.collection('walks').doc().id;
     });
 
     ScaffoldMessenger.of(
@@ -558,7 +537,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final expiresAt = generatedAt.add(InviteUtils.privateInviteTtl);
     final expiryText = _formatDateTime(expiresAt);
     final expiresInDays = InviteUtils.privateInviteTtl.inDays;
-    final hasInviteLink = _buildInviteLink() != null;
 
     final borderColor = (isDark ? Colors.white : Colors.black).withAlpha(
       (0.12 * 255).round(),
@@ -636,19 +614,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
               color: isDark ? Colors.white70 : Colors.black54,
             ),
           ),
-          const SizedBox(height: 12),
-          FilledButton.tonalIcon(
-            onPressed: hasInviteLink ? _copyInviteLink : null,
-            icon: const Icon(Icons.link),
-            label: const Text('Copy invite link'),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'The invite link becomes active once you publish this private walk.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark ? Colors.white54 : Colors.black54,
-            ),
-          ),
         ],
       ),
     );
@@ -705,12 +670,72 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     });
   }
 
-  Future<_SelectedPhoto> _createSelectedPhoto(XFile file) async {
-    if (kIsWeb) {
-      final bytes = await file.readAsBytes();
-      return _SelectedPhoto(bytes: bytes, mimeType: file.mimeType);
+  /// Compress image to reduce file size and improve upload performance
+  /// Resizes to max 1080px width/height and applies 70% JPEG quality
+  /// Reduces typical 5MB images to ~300KB
+  Future<Uint8List> _compressImage(Uint8List bytes) async {
+    try {
+      // Decode the image
+      final image = img.decodeImage(bytes);
+      if (image == null) {
+        debugPrint('⚠️ Image decode failed, using original');
+        return bytes;
+      }
+
+      // Resize if larger than 1080px on either dimension
+      final maxDimension = 1080;
+      img.Image resized;
+      if (image.width > maxDimension || image.height > maxDimension) {
+        if (image.width > image.height) {
+          resized = img.copyResize(image, width: maxDimension);
+        } else {
+          resized = img.copyResize(image, height: maxDimension);
+        }
+        debugPrint(
+          '📐 Resized image from ${image.width}x${image.height} to ${resized.width}x${resized.height}',
+        );
+      } else {
+        resized = image;
+        debugPrint(
+          '📐 Image already optimal size: ${image.width}x${image.height}',
+        );
+      }
+
+      // Encode as JPEG with 70% quality
+      final compressed = img.encodeJpg(resized, quality: 70);
+      final originalSizeKb = (bytes.length / 1024).toStringAsFixed(1);
+      final compressedSizeKb = (compressed.length / 1024).toStringAsFixed(1);
+      debugPrint(
+        '✅ Compressed image: $originalSizeKb KB → $compressedSizeKb KB (${((1 - compressed.length / bytes.length) * 100).toStringAsFixed(1)}% reduction)',
+      );
+
+      return Uint8List.fromList(compressed);
+    } catch (e, st) {
+      debugPrint('❌ Compression error: $e');
+      CrashService.recordError(e, st, reason: 'Image compression failed');
+      return bytes; // Return original if compression fails
     }
-    return _SelectedPhoto(file: File(file.path), mimeType: file.mimeType);
+  }
+
+  Future<_SelectedPhoto> _createSelectedPhoto(XFile file) async {
+    final originalBytes = await file.readAsBytes();
+
+    // Compress the image before storing
+    final compressedBytes = await _compressImage(originalBytes);
+
+    if (kIsWeb) {
+      return _SelectedPhoto(bytes: compressedBytes, mimeType: file.mimeType);
+    }
+
+    // For mobile/desktop, save compressed bytes to a temp file
+    // This avoids keeping large images in memory
+    final tempDir = Directory.systemTemp;
+    final tempFile = File(
+      '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+    await tempFile.writeAsBytes(compressedBytes);
+
+    return _SelectedPhoto(file: tempFile, mimeType: 'image/jpeg');
   }
 
   /// Upload selected photos to Firebase Storage and return URLs
@@ -790,14 +815,17 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final walkType = _walkTypeIndex == 0 ? 'point_to_point' : 'loop';
     final bool isPrivatePointToPoint =
         walkType == 'point_to_point' && _isPrivatePointToPoint;
+    final bool isPrivateLoop =
+        walkType == 'loop' && _isPrivateLoop;
+    final bool isPrivate = isPrivatePointToPoint || isPrivateLoop;
 
-    if (isPrivatePointToPoint) {
+    if (isPrivate) {
       _preparePrivateInviteState();
     }
 
-    final Timestamp? shareCodeExpiresAt = isPrivatePointToPoint
-      ? Timestamp.fromDate(InviteUtils.nextExpiry())
-      : null;
+    final Timestamp? shareCodeExpiresAt = isPrivate
+        ? Timestamp.fromDate(InviteUtils.nextExpiry())
+        : null;
     final DateTime? shareCodeExpiresAtDate = shareCodeExpiresAt?.toDate();
 
     // Compute effective points:
@@ -829,8 +857,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
 
     final sanitizedDescription = _description.trim();
-    final descriptionForPayload =
-        sanitizedDescription.isEmpty ? null : sanitizedDescription;
+    final descriptionForPayload = sanitizedDescription.isEmpty
+        ? null
+        : sanitizedDescription;
 
     final selectedTagsList = _selectedTags.toList(growable: false);
 
@@ -861,10 +890,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'joinedUserPhotoUrls': [],
       'joinedCount': 0,
 
-      // ===== Visibility & join rules (Point-to-point only for now) =====
-      'visibility': isPrivatePointToPoint ? 'private' : 'open',
+      // ===== Visibility & join rules =====
+      'visibility': isPrivate ? 'private' : 'open',
       'joinPolicy': 'request',
-      'shareCode': isPrivatePointToPoint ? _privateShareCode : null,
+      'shareCode': isPrivate ? _privateShareCode : null,
       'shareCodeExpiresAt': shareCodeExpiresAt,
 
       // Loop fields
@@ -972,21 +1001,32 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             '✅ Payload hostUid matches user UID: ${payload['hostUid'] == uid}',
           );
 
-            final walksCollection =
-              FirebaseFirestore.instance.collection('walks');
-            late final DocumentReference<Map<String, dynamic>> docRef;
+          final walksCollection = FirebaseFirestore.instance.collection(
+            'walks',
+          );
+          late final DocumentReference<Map<String, dynamic>> docRef;
 
-            if (isPrivatePointToPoint) {
+          if (isPrivatePointToPoint) {
             final forcedWalkId = _draftWalkId ?? walksCollection.doc().id;
             docRef = walksCollection.doc(forcedWalkId);
-            await docRef
-              .set(payload)
-              .timeout(const Duration(seconds: 30));
-            } else {
+
+            // Use transaction to ensure ID is available (prevents data overwrite)
+            await FirebaseFirestore.instance
+                .runTransaction((transaction) async {
+                  final snapshot = await transaction.get(docRef);
+                  if (snapshot.exists) {
+                    throw Exception(
+                      'Walk ID already exists. Please regenerate your invite code and try again.',
+                    );
+                  }
+                  transaction.set(docRef, payload);
+                })
+                .timeout(const Duration(seconds: 30));
+          } else {
             docRef = await walksCollection
-              .add(payload)
-              .timeout(const Duration(seconds: 30));
-            }
+                .add(payload)
+                .timeout(const Duration(seconds: 30));
+          }
 
           // Upload photos if any selected
           List<String> photoUrls = [];
@@ -1008,6 +1048,25 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                 st,
                 reason: 'Photo upload after walk creation',
               );
+
+              // Show user-friendly error message
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Walk created, but photos failed to upload. '
+                      'Try adding them later from walk details.',
+                    ),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 5),
+                    action: SnackBarAction(
+                      label: 'OK',
+                      textColor: Colors.white,
+                      onPressed: () {},
+                    ),
+                  ),
+                );
+              }
               // Don't throw - walk is already created
             }
           }
@@ -1650,6 +1709,82 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 16),
+
+                                          // Private walk option for loop
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              'Visibility',
+                                              style: theme.textTheme.titleMedium
+                                                  ?.copyWith(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF1A2332,
+                                                          ),
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ChoiceChip(
+                                                  label: const Text('Open'),
+                                                  selected:
+                                                      !_isPrivateLoop,
+                                                  onSelected: (_) {
+                                                    setState(() {
+                                                      _isPrivateLoop =
+                                                          false;
+                                                      _resetPrivateInviteState();
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: ChoiceChip(
+                                                  label: const Text('Private'),
+                                                  selected:
+                                                      _isPrivateLoop,
+                                                  onSelected: (_) {
+                                                    setState(() {
+                                                      _isPrivateLoop =
+                                                          true;
+                                                      _preparePrivateInviteState();
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              _isPrivateLoop
+                                                  ? 'Hidden from Nearby walks. Share a link or QR to invite.'
+                                                  : 'Visible in Nearby walks. Others can request to join.',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    fontFamily: 'Inter',
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? Colors.white70
+                                                        : Colors.black54,
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+
+                                          if (_isPrivateLoop) ...[
+                                            _buildInviteCodeCard(theme, isDark),
+                                            const SizedBox(height: 16),
+                                          ],
                                         ] else ...[
                                           // Free
                                           Align(
@@ -1852,13 +1987,17 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
                                         Text(
                                           'Tags & vibe',
-                                          style: theme.textTheme.titleMedium?.copyWith(
-                                                fontFamily: 'Poppins',
-                                                fontWeight: FontWeight.w700,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : const Color(0xFF1A2332),
-                                              ) ??
+                                          style:
+                                              theme.textTheme.titleMedium
+                                                  ?.copyWith(
+                                                    fontFamily: 'Poppins',
+                                                    fontWeight: FontWeight.w700,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF1A2332,
+                                                          ),
+                                                  ) ??
                                               TextStyle(
                                                 fontFamily: 'Poppins',
                                                 fontWeight: FontWeight.w700,
@@ -1872,7 +2011,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           spacing: 8,
                                           runSpacing: 8,
                                           children: _walkTagOptions.map((tag) {
-                                            final selected = _selectedTags.contains(tag);
+                                            final selected = _selectedTags
+                                                .contains(tag);
                                             return GestureDetector(
                                               onTap: () {
                                                 setState(() {
@@ -1884,17 +2024,23 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                 });
                                               },
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 6,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: selected ? Colors.teal.shade100 : Colors.transparent,
+                                                  color: selected
+                                                      ? Colors.teal.shade100
+                                                      : Colors.transparent,
                                                   border: Border.all(
-                                                    color: selected ? Colors.teal : Colors.grey.shade400,
+                                                    color: selected
+                                                        ? Colors.teal
+                                                        : Colors.grey.shade400,
                                                     width: 1,
                                                   ),
-                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
                                                 ),
                                                 child: Text(
                                                   tag,
@@ -1902,7 +2048,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                     fontFamily: 'Inter',
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w600,
-                                                    color: selected ? Colors.teal : Colors.grey.shade700,
+                                                    color: selected
+                                                        ? Colors.teal
+                                                        : Colors.grey.shade700,
                                                   ),
                                                 ),
                                               ),
@@ -1926,7 +2074,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               .toList(),
                                           onChanged: (val) {
                                             if (val != null) {
-                                              setState(() => _comfortLevel = val);
+                                              setState(
+                                                () => _comfortLevel = val,
+                                              );
                                             }
                                           },
                                         ),
@@ -1947,7 +2097,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               .toList(),
                                           onChanged: (val) {
                                             if (val != null) {
-                                              setState(() => _experienceLevel = val);
+                                              setState(
+                                                () => _experienceLevel = val,
+                                              );
                                             }
                                           },
                                         ),
@@ -2082,8 +2234,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                                   12,
                                                                 ),
                                                             image: DecorationImage(
-                                                              image:
-                                                                  photo.imageProvider,
+                                                              image: photo
+                                                                  .imageProvider,
                                                               fit: BoxFit.cover,
                                                             ),
                                                           ),

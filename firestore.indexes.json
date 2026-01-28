@@ -102,6 +102,16 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "cancelled", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" },
+        { "fieldPath": "dateTime", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "walks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cancelled", "order": "ASCENDING" },
         { "fieldPath": "isRecurring", "order": "ASCENDING" },
         { "fieldPath": "dateTime", "order": "ASCENDING" },
         { "fieldPath": "__name__", "order": "ASCENDING" }
@@ -274,6 +284,31 @@
         { "fieldPath": "searchKeywords", "arrayConfig": "CONTAINS" },
         { "fieldPath": "dateTime", "order": "ASCENDING" },
         { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rankings",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "hideFromLeaderboards", "order": "ASCENDING" },
+        { "fieldPath": "totalBadgesEarned", "order": "DESCENDING" },
+        { "fieldPath": "lastBadgeEarnedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rankings",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "hideFromLeaderboards", "order": "ASCENDING" },
+        { "fieldPath": "earnedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "walks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "shareCode", "order": "ASCENDING" },
+        { "fieldPath": "cancelled", "order": "ASCENDING" }
       ]
     }
   ],

@@ -21,6 +21,7 @@ class LeaderboardService {
           .collection('leaderboards')
           .doc('global_badges')
           .collection('rankings')
+          .where('hideFromLeaderboards', isEqualTo: false)
           .orderBy('totalBadgesEarned', descending: true)
           .orderBy('lastBadgeEarnedAt', descending: true)
           .limit(limit);
@@ -50,6 +51,7 @@ class LeaderboardService {
           .collection('leaderboards')
           .doc('global_badges')
           .collection('rankings')
+          .where('hideFromLeaderboards', isEqualTo: false)
           .orderBy('totalBadgesEarned', descending: true)
           .orderBy('lastBadgeEarnedAt', descending: true)
           .limit(limit)
@@ -79,6 +81,7 @@ class LeaderboardService {
           .collection('leaderboards')
           .doc('badge_$badgeId')
           .collection('rankings')
+          .where('hideFromLeaderboards', isEqualTo: false)
           .orderBy('earnedAt', descending: false) // First to earn is rank 1
           .limit(limit);
 
@@ -108,6 +111,7 @@ class LeaderboardService {
           .collection('leaderboards')
           .doc('badge_$badgeId')
           .collection('rankings')
+          .where('hideFromLeaderboards', isEqualTo: false)
           .orderBy('earnedAt', descending: false)
           .limit(limit)
           .snapshots()

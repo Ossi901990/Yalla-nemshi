@@ -188,9 +188,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildDateRangeSection(ThemeData theme) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
+    
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(screenWidth > 600 ? 16.0 : 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -218,20 +221,40 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${_rangeFormat.format(_range.start)} → ${_rangeFormat.format(_range.end)}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                TextButton.icon(
-                  onPressed: _pickCustomRange,
-                  icon: const Icon(Icons.date_range),
-                  label: const Text('Custom range'),
-                ),
-              ],
-            ),
+            isSmallScreen
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_rangeFormat.format(_range.start)} → ${_rangeFormat.format(_range.end)}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: _pickCustomRange,
+                        icon: const Icon(Icons.date_range),
+                        label: const Text('Custom range'),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_rangeFormat.format(_range.start)} → ${_rangeFormat.format(_range.end)}',
+                          style: theme.textTheme.bodyMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _pickCustomRange,
+                        icon: const Icon(Icons.date_range),
+                        label: const Text('Custom range'),
+                      ),
+                    ],
+                  ),
           ],
         ),
       ),
@@ -239,9 +262,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildMyStatsCard(ThemeData theme, MyAnalyticsSummary summary) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardPadding = screenWidth > 600 ? 16.0 : 12.0;
+    final spacing = screenWidth > 600 ? 12.0 : 8.0;
+    
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -251,8 +278,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: spacing,
+              runSpacing: spacing,
               children: [
                 _StatTile(
                   label: 'Total walks',
@@ -294,11 +321,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Widget _buildCharts(ThemeData theme, MyAnalyticsSummary summary) {
     final buckets = summary.dailyBuckets;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardPadding = screenWidth > 600 ? 16.0 : 12.0;
+    
     return Column(
       children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -319,7 +349,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         const SizedBox(height: 16),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -342,9 +372,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Widget _buildComparisonSection(ThemeData theme, MyAnalyticsSummary mySummary) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardPadding = screenWidth > 600 ? 16.0 : 12.0;
+    
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -510,8 +543,12 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Responsive width: 2 columns on small screens, 3 on larger
+    final tileWidth = screenWidth > 600 ? (screenWidth - 80) / 3 : (screenWidth - 64) / 2;
+    
     return SizedBox(
-      width: 150,
+      width: tileWidth,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -524,10 +561,14 @@ class _StatTile extends StatelessWidget {
                 Text(
                   value,
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   label,
                   style: theme.textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -561,13 +602,21 @@ class _AnalyticsBarChart extends StatelessWidget {
       return const Text('No data yet.');
     }
 
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Responsive chart height based on screen size
+    final chartHeight = (screenHeight * 0.25).clamp(150.0, 200.0);
+    final maxBarHeight = chartHeight - 60; // Reserve space for labels
+    final barWidth = screenWidth > 600 ? 32.0 : 24.0;
+    final spacing = screenWidth > 600 ? 12.0 : 8.0;
+
     return SizedBox(
-      height: 180,
+      height: chartHeight,
       child: Scrollbar(
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: buckets.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 8),
+          separatorBuilder: (context, index) => SizedBox(width: spacing),
           itemBuilder: (context, index) {
             final bucket = buckets[index];
             final value = values[index];
@@ -576,14 +625,18 @@ class _AnalyticsBarChart extends StatelessWidget {
             return Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(
-                  valueFormatter(value),
-                  style: Theme.of(context).textTheme.labelSmall,
+                Flexible(
+                  child: Text(
+                    valueFormatter(value),
+                    style: Theme.of(context).textTheme.labelSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  width: 24,
-                  height: 120 * heightFactor,
+                  width: barWidth,
+                  height: maxBarHeight * heightFactor,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
                     color: Theme.of(context).colorScheme.primary,
@@ -591,9 +644,15 @@ class _AnalyticsBarChart extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 if (showLabel)
-                  Text(
-                    bucket.label,
-                    style: Theme.of(context).textTheme.labelSmall,
+                  SizedBox(
+                    width: barWidth + 8,
+                    child: Text(
+                      bucket.label,
+                      style: Theme.of(context).textTheme.labelSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
               ],
             );
@@ -618,6 +677,9 @@ class _ComparisonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final spacing = screenWidth > 600 ? 12.0 : 8.0;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -626,7 +688,12 @@ class _ComparisonRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: theme.textTheme.bodyMedium),
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -637,7 +704,7 @@ class _ComparisonRow extends StatelessWidget {
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: spacing),
                     Expanded(
                       child: _ComparisonValueTile(
                         label: 'Friend',
@@ -669,8 +736,11 @@ class _ComparisonValueTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final padding = screenWidth > 600 ? 12.0 : 8.0;
+    
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: color.withValues(alpha: 0.1),
@@ -678,11 +748,18 @@ class _ComparisonValueTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 4),
           Text(
             value,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

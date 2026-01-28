@@ -61,24 +61,26 @@ class GPSTrackingService {
       _debug('Initialized route buffer for $walkId');
 
       // Start listening to position updates
-      final subscription = Geolocator.getPositionStream(
-        locationSettings: LocationSettings(
-          accuracy: LocationAccuracy.best,
-          distanceFilter: 5, // Update on 5m change
-          timeLimit: updateInterval,
-        ),
-      ).listen(
-        (Position position) async {
-          await _onPositionUpdate(walkId, position);
-        },
-        onError: (e) {
-          CrashService.recordError(
-            e,
-            StackTrace.current,
-            reason: 'GPSTrackingService position stream error for walk $walkId',
+      final subscription =
+          Geolocator.getPositionStream(
+            locationSettings: LocationSettings(
+              accuracy: LocationAccuracy.best,
+              distanceFilter: 5, // Update on 5m change
+              timeLimit: updateInterval,
+            ),
+          ).listen(
+            (Position position) async {
+              await _onPositionUpdate(walkId, position);
+            },
+            onError: (e) {
+              CrashService.recordError(
+                e,
+                StackTrace.current,
+                reason:
+                    'GPSTrackingService position stream error for walk $walkId',
+              );
+            },
           );
-        },
-      );
 
       _trackingSubscriptions[walkId] = subscription;
       CrashService.log('Started tracking walk $walkId');
@@ -155,7 +157,8 @@ class GPSTrackingService {
       CrashService.recordError(
         e,
         StackTrace.current,
-        reason: 'GPSTrackingService._saveBatchToFirestore error for walk $walkId',
+        reason:
+            'GPSTrackingService._saveBatchToFirestore error for walk $walkId',
       );
     }
   }
@@ -194,8 +197,12 @@ class GPSTrackingService {
       _routeData.remove(walkId);
       _debug('stopTracking($walkId) cleared local buffers and updated summary');
 
-      CrashService.log('Stopped tracking walk $walkId. Distance: ${stats['totalDistanceKm']} km');
-      _debug('stopTracking($walkId) complete with distance ${stats['totalDistanceKm']} km and ${route.length} points');
+      CrashService.log(
+        'Stopped tracking walk $walkId. Distance: ${stats['totalDistanceKm']} km',
+      );
+      _debug(
+        'stopTracking($walkId) complete with distance ${stats['totalDistanceKm']} km and ${route.length} points',
+      );
 
       return stats;
     } catch (e) {
@@ -211,11 +218,7 @@ class GPSTrackingService {
   /// Calculate distance and speed statistics from route
   Map<String, double> _calculateRouteStats(List<Map<String, dynamic>> route) {
     if (route.isEmpty) {
-      return {
-        'totalDistanceKm': 0.0,
-        'averageSpeed': 0.0,
-        'maxSpeed': 0.0,
-      };
+      return {'totalDistanceKm': 0.0, 'averageSpeed': 0.0, 'maxSpeed': 0.0};
     }
 
     double totalDistanceMeters = 0;
@@ -243,8 +246,22 @@ class GPSTrackingService {
     }
 
     final distanceKm = totalDistanceMeters / 1000;
-    final avgSpeedMps = route.isNotEmpty ? maxSpeedMps : 0;
-    
+
+    // Calculate actual average speed: total distance / total time
+    double avgSpeedMps = 0;
+    if (route.length >= 2) {
+      final firstTimestamp = (route.first['timestamp'] as Timestamp).toDate();
+      final lastTimestamp = (route.last['timestamp'] as Timestamp).toDate();
+      final totalTimeSeconds = lastTimestamp
+          .difference(firstTimestamp)
+          .inSeconds
+          .toDouble();
+
+      if (totalTimeSeconds > 0) {
+        avgSpeedMps = totalDistanceMeters / totalTimeSeconds;
+      }
+    }
+
     // Convert m/s to mph (1 m/s = 2.237 mph)
     final avgSpeedMph = avgSpeedMps * 2.237;
     final maxSpeedMph = maxSpeedMps * 2.237;
@@ -268,7 +285,8 @@ class GPSTrackingService {
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
 
-    final a = (math.sin(dLat / 2) * math.sin(dLat / 2)) +
+    final a =
+        (math.sin(dLat / 2) * math.sin(dLat / 2)) +
         (math.cos(_toRadians(lat1)) *
             math.cos(_toRadians(lat2)) *
             math.sin(dLng / 2) *
@@ -293,7 +311,9 @@ class GPSTrackingService {
   /// Stop all active tracking
   Future<void> stopAllTracking() async {
     try {
-      _debug('stopAllTracking invoked for ${_trackingSubscriptions.length} active walks');
+      _debug(
+        'stopAllTracking invoked for ${_trackingSubscriptions.length} active walks',
+      );
       for (final subscription in _trackingSubscriptions.values) {
         subscription.cancel();
       }

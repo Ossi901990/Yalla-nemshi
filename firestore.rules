@@ -125,6 +125,12 @@ service cloud.firestore {
         allow read: if isAuth(userId);
         allow write: if isAuth(userId);
       }
+
+      // Notifications subcollection
+      match /notifications/{notificationId} {
+        allow read: if isAuth(userId);
+        allow write, delete: if isAuth(userId);
+      }
     }
 
     // ===== REVIEWS COLLECTION =====
@@ -166,17 +172,21 @@ service cloud.firestore {
     // ===== WALKS COLLECTION =====
     match /walks/{walkId} {
 
-      // READ walks: allow any signed-in user to query/list. If you re-enable
-      // privacy, add back the visibility/host/allowed checks below.
-      allow get, list: if signedIn();
-
-      // Previous stricter check (kept for reference):
-      // allow get, list: if signedIn()
-      //   && (
-      //     isOpenWalk(resource.data) ||
-      //     isHostOfWalk(resource.data) ||
-      //     isAllowedViewer(walkId)
-      //   );
+      // GET single walk: Check permissions on the document
+      // Also allow reading non-existent documents (for transaction-based creation)
+      allow get: if signedIn()
+        && (
+          resource == null  // Allow reading non-existent docs (for create transactions)
+          || isOpenWalk(resource.data)
+          || isHostOfWalk(resource.data)
+          || isAllowedViewer(walkId)
+          || (resource.data.joinedUids != null && request.auth.uid in resource.data.joinedUids)
+        );
+      
+      // LIST/QUERY walks: Allow all authenticated users to query
+      // Client-side queries filter by city, date, visibility, etc.
+      // Note: Firestore cannot efficiently filter by resource.data in queries
+      allow list: if signedIn();
 
       // CREATE: only if hostUid == current user (simplified - no field validation)
       allow create: if signedIn()
@@ -244,7 +254,15 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 1000  // Max message length
           && request.resource.data.sentAt != null;
 
-        allow update, delete: if false;
+        // Allow soft-delete: user can mark their own message as deleted
+        allow update: if isParticipant(walkId)
+          && resource.data.senderId == request.auth.uid
+          && request.resource.data.deleted == true
+          && request.resource.data.senderId == resource.data.senderId
+          && request.resource.data.text == resource.data.text
+          && request.resource.data.sentAt == resource.data.sentAt;
+
+        allow delete: if false;
       }
     }
 
@@ -278,16 +296,19 @@ service cloud.firestore {
       allow get: if isAuth(userId);
 
       match /friendsList/{friendId} {
-        allow read: if isAuth(userId) || isAuth(friendId);
-        allow write: if (
-            isAuth(userId)
-            && request.auth.uid == userId
-          ) || (
+        allow get: if isAuth(userId) || isAuth(friendId);
+        allow list: if isAuth(userId);
+        
+        // Allow writes if authenticated as the user whose list this is
+        // OR if authenticated as the friend being added (for reciprocal adds)
+        allow write: if (isAuth(userId) && request.auth.uid == userId)
+          || (
             request.auth != null
             && request.auth.uid == friendId
             && request.resource.data.friendId == friendId
             && request.resource.data.keys().hasOnly(['friendId','since'])
           );
+        
         allow delete: if isAuth(userId)
           || (request.auth != null && request.auth.uid == friendId);
       }
@@ -314,7 +335,7 @@ service cloud.firestore {
 
     // ===== DIRECT MESSAGE THREADS =====
     match /dm_threads/{threadId} {
-      allow get: if dmResourceHasParticipant();
+      allow get: if signedIn();
       allow list: if false;
 
       allow create: if signedIn()

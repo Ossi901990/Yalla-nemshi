@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/firestore_user.dart';
 import '../services/app_preferences.dart';
 import '../services/firestore_user_service.dart';
-import '../widgets/redeem_invite_sheet.dart';
 import 'safety_tips_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
@@ -33,6 +32,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double _weeklyGoalKmLocal = AppPreferences.weeklyGoalKmFallback;
   bool _monthlyDigestEnabled = false;
   bool _monthlyDigestSaving = false;
+  bool _hideFromLeaderboards = false;
+  bool _hideFromLeaderboardsSaving = false;
   String? _currentUserId;
 
   @override
@@ -100,14 +101,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _monthlyDigestEnabled = fallback;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not update email digest: $e'),
-        ),
+        SnackBar(content: Text('Could not update email digest: $e')),
       );
     } finally {
       if (mounted) {
         setState(() {
           _monthlyDigestSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _onHideFromLeaderboardsToggle(
+    String uid,
+    bool nextValue,
+    bool fallback,
+  ) async {
+    setState(() {
+      _hideFromLeaderboardsSaving = true;
+      _hideFromLeaderboards = nextValue;
+    });
+
+    try {
+      await FirestoreUserService.setHideFromLeaderboards(
+        uid: uid,
+        hide: nextValue,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _hideFromLeaderboards = fallback;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update leaderboard privacy: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _hideFromLeaderboardsSaving = false;
         });
       }
     }
@@ -123,11 +154,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       stream: FirestoreUserService.watchUser(uid),
       builder: (context, snapshot) {
         final serverValue = snapshot.data?.monthlyDigestEnabled ?? false;
-        final effectiveValue =
-            _monthlyDigestSaving ? _monthlyDigestEnabled : serverValue;
+        final effectiveValue = _monthlyDigestSaving
+            ? _monthlyDigestEnabled
+            : serverValue;
 
         final waitingForData =
-          snapshot.connectionState == ConnectionState.waiting &&
+            snapshot.connectionState == ConnectionState.waiting &&
             !_monthlyDigestSaving &&
             !snapshot.hasData;
         final disableToggle = waitingForData || _monthlyDigestSaving;
@@ -147,23 +179,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _openRedeemInviteSheet() async {
-    final redeemed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const RedeemInviteSheet(),
-    );
-
-    if (redeemed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invite redeemed! Check your walks list.'),
-        ),
-      );
+  Widget _buildHideFromLeaderboardsTile(bool isDark) {
+    final uid = _currentUserId;
+    if (uid == null) {
+      return const SizedBox.shrink();
     }
+
+    return StreamBuilder<FirestoreUser?>(
+      stream: FirestoreUserService.watchUser(uid),
+      builder: (context, snapshot) {
+        final serverValue = snapshot.data?.hideFromLeaderboards ?? false;
+        final effectiveValue = _hideFromLeaderboardsSaving
+            ? _hideFromLeaderboards
+            : serverValue;
+
+        final waitingForData =
+            snapshot.connectionState == ConnectionState.waiting &&
+            !_hideFromLeaderboardsSaving &&
+            !snapshot.hasData;
+        final disableToggle = waitingForData || _hideFromLeaderboardsSaving;
+
+        return SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Hide from leaderboards'),
+          subtitle: const Text(
+            'Don\'t show my achievements on public leaderboards',
+          ),
+          value: effectiveValue,
+          onChanged: disableToggle
+              ? null
+              : (value) =>
+                    _onHideFromLeaderboardsToggle(uid, value, serverValue),
+        );
+      },
+    );
   }
 
   @override
@@ -455,6 +504,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 },
                               ),
                               _buildMonthlyDigestTile(isDark),
+                              _buildHideFromLeaderboardsTile(isDark),
                               const SizedBox(height: 16),
 
                               // ===== Preferences =====
@@ -652,15 +702,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-
-                              ListTile(
-                                leading: const Icon(Icons.vpn_key_outlined),
-                                title: const Text('Redeem private invite'),
-                                subtitle: const Text(
-                                  'Enter a walk ID and invite code from a host',
-                                ),
-                                onTap: _openRedeemInviteSheet,
-                              ),
 
                               ListTile(
                                 leading: const Icon(Icons.shield_outlined),

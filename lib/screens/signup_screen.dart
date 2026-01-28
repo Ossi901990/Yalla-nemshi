@@ -82,6 +82,17 @@ class _SignupScreenState extends State<SignupScreen> {
 
       await cred.user?.updateDisplayName(name);
 
+      // ✅ Send email verification before allowing full access
+      if (cred.user != null && !cred.user!.emailVerified) {
+        try {
+          await cred.user!.sendEmailVerification();
+          debugPrint('✅ Verification email sent to $email');
+        } catch (e) {
+          debugPrint('⚠️ Failed to send verification email: $e');
+          // Continue anyway - user can request resend later
+        }
+      }
+
       // ✅ Create user profile in Firestore (with error handling)
       if (cred.user != null) {
         try {
@@ -98,19 +109,62 @@ class _SignupScreenState extends State<SignupScreen> {
             StackTrace.current,
             reason: 'Failed to create Firestore user on signup',
           );
-          
+
           // Don't block signup even if Firestore fails
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Account created but profile sync failed. Please retry profile setup.'),
+              content: Text(
+                'Account created but profile sync failed. Please retry profile setup.',
+              ),
               duration: Duration(seconds: 3),
             ),
           );
         }
       }
 
-      // ✅ Success → go to home
+      // ✅ Show verification notice before proceeding
+      if (!mounted) return;
+
+      if (cred.user != null && !cred.user!.emailVerified) {
+        // Show dialog explaining email verification
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Verify Your Email'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('We sent a verification link to:'),
+                const SizedBox(height: 8),
+                Text(
+                  email,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Please check your inbox and click the link to verify your email address.',
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'You can use the app with limited features until verified.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // ✅ Success → go to home (user can use app but with limitations)
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/home');
     } on FirebaseAuthException catch (e) {
@@ -190,14 +244,14 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 8),
                     Text(
                       "Create account",
-                      style: Theme.of(
-                        context,
-                      ).textTheme.displaySmall?.copyWith(
+                      style:
+                          Theme.of(context).textTheme.displaySmall?.copyWith(
                             fontFamily: 'Poppins',
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.3,
-                            color: kPrimaryText) ??
+                            color: kPrimaryText,
+                          ) ??
                           const TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 28,
@@ -209,19 +263,24 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 6),
                     Text(
                       "Join Yalla Nemshi and start walking with others.",
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        height: 1.55,
-                        color: kSecondaryText.withAlpha((0.78 * 255).round()),
-                      ) ??
+                      style:
+                          Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            height: 1.55,
+                            color: kSecondaryText.withAlpha(
+                              (0.78 * 255).round(),
+                            ),
+                          ) ??
                           TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
                             height: 1.55,
-                            color: kSecondaryText.withAlpha((0.78 * 255).round()),
+                            color: kSecondaryText.withAlpha(
+                              (0.78 * 255).round(),
+                            ),
                           ),
                     ),
                   ],
@@ -422,10 +481,7 @@ class _SignupScreenState extends State<SignupScreen> {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            color: kPrimaryText,
-          ),
+          style: const TextStyle(fontFamily: 'Inter', color: kPrimaryText),
           decoration: InputDecoration(
             hintText: label,
             hintStyle: TextStyle(
@@ -490,7 +546,8 @@ class _GradientButton extends StatelessWidget {
           ),
           child: Text(
             text,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            style:
+                Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontFamily: 'Poppins',
                   fontSize: 17,
                   fontWeight: FontWeight.w700,

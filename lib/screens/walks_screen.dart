@@ -5,6 +5,7 @@ import '../models/walk_event.dart';
 import 'nearby_walks_screen.dart';
 import 'create_walk_screen.dart';
 import 'walk_search_screen.dart';
+import 'notifications_screen.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -91,43 +92,7 @@ class _WalksScreenState extends State<WalksScreen>
   }
 
   void _showNotificationsSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final theme = Theme.of(context);
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFFBFEF8),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Notifications',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1F2933),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'No notifications yet. We\'ll show walk updates here.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.black54,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    Navigator.pushNamed(context, NotificationsScreen.routeName);
   }
 
   @override
@@ -184,7 +149,10 @@ class _WalksScreenState extends State<WalksScreen>
                           offset: const Offset(0, -2),
                           child: Text(
                             'Yalla Nemshi',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style:
+                                Theme.of(
+                                  context,
+                                ).textTheme.titleLarge?.copyWith(
                                   fontFamily: 'Poppins',
                                   color: Colors.white,
                                   fontSize: 20,
@@ -302,7 +270,10 @@ class _WalksScreenState extends State<WalksScreen>
                             offset: const Offset(0, -2),
                             child: Text(
                               'Yalla Nemshi',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              style:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.titleLarge?.copyWith(
                                     fontFamily: 'Poppins',
                                     color: Colors.white,
                                     fontSize: 20,
@@ -411,10 +382,14 @@ class _WalksScreenState extends State<WalksScreen>
                         controller: _tabController,
                         indicatorColor: const Color(0xFF1ABFC4),
                         indicatorWeight: 3,
-                        indicatorPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        indicatorPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
                         dividerColor: Colors.transparent,
                         labelColor: const Color(0xFF1ABFC4),
-                        unselectedLabelColor: isDark ? kTextMuted : Colors.black54,
+                        unselectedLabelColor: isDark
+                            ? kTextMuted
+                            : Colors.black54,
                         labelStyle: const TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 15,
@@ -439,34 +414,46 @@ class _WalksScreenState extends State<WalksScreen>
                       child: TabBarView(
                         controller: _tabController,
                         children: [
-                // ===== TAB 1: MY WALKS =====
-                _MyWalksTab(
-                  walks: widget.myWalks,
-                  onTapEvent: widget.onTapEvent,
-                ),
+                          // ===== TAB 1: MY WALKS =====
+                          _MyWalksTab(
+                            walks: widget.myWalks,
+                            onTapEvent: widget.onTapEvent,
+                            onCreateWalk: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CreateWalkScreen(
+                                    onEventCreated: widget.onEventCreated,
+                                    onCreatedNavigateHome:
+                                        widget.onCreatedNavigateHome,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
 
-                // ===== TAB 2: NEARBY WALKS =====
-                NearbyWalksScreen(
-                  events: widget.nearbyWalks,
-                  onToggleJoin: widget.onToggleJoin,
-                  onToggleInterested: widget.onToggleInterested,
-                  onTapEvent: widget.onTapEvent,
-                  onCancelHosted: widget.onCancelHosted,
-                  walksJoined: widget.walksJoined,
-                  eventsHosted: widget.eventsHosted,
-                  totalKm: widget.totalKm,
-                  interestedCount: widget.interestedCount,
-                  weeklyKm: widget.weeklyKm,
-                  weeklyWalks: widget.weeklyWalks,
-                  streakDays: widget.streakDays,
-                  weeklyGoalKm: widget.weeklyGoalKm,
-                  userName: widget.userName,
-                  hasMoreWalks: widget.hasMoreWalks,
-                  isLoadingMore: widget.isLoadingMore,
-                  onLoadMore: widget.onLoadMore,
-                ),
-              ],
-                    ),
+                          // ===== TAB 2: NEARBY WALKS =====
+                          NearbyWalksScreen(
+                            events: widget.nearbyWalks,
+                            onToggleJoin: widget.onToggleJoin,
+                            onToggleInterested: widget.onToggleInterested,
+                            onTapEvent: widget.onTapEvent,
+                            onCancelHosted: widget.onCancelHosted,
+                            walksJoined: widget.walksJoined,
+                            eventsHosted: widget.eventsHosted,
+                            totalKm: widget.totalKm,
+                            interestedCount: widget.interestedCount,
+                            weeklyKm: widget.weeklyKm,
+                            weeklyWalks: widget.weeklyWalks,
+                            streakDays: widget.streakDays,
+                            weeklyGoalKm: widget.weeklyGoalKm,
+                            userName: widget.userName,
+                            hasMoreWalks: widget.hasMoreWalks,
+                            isLoadingMore: widget.isLoadingMore,
+                            onLoadMore: widget.onLoadMore,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -502,10 +489,12 @@ class _WalksScreenState extends State<WalksScreen>
 class _MyWalksTab extends StatelessWidget {
   final List<WalkEvent> walks;
   final void Function(WalkEvent) onTapEvent;
+  final VoidCallback onCreateWalk;
 
   const _MyWalksTab({
     required this.walks,
     required this.onTapEvent,
+    required this.onCreateWalk,
   });
 
   @override
@@ -528,7 +517,8 @@ class _MyWalksTab extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'No walks yet',
-                style: theme.textTheme.titleLarge?.copyWith(
+                style:
+                    theme.textTheme.titleLarge?.copyWith(
                       fontFamily: 'Poppins',
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
@@ -545,7 +535,8 @@ class _MyWalksTab extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Create or join a walk to get started',
-                style: theme.textTheme.bodyMedium?.copyWith(
+                style:
+                    theme.textTheme.bodyMedium?.copyWith(
                       fontFamily: 'Inter',
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
@@ -561,6 +552,26 @@ class _MyWalksTab extends StatelessWidget {
                     ),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 200,
+                child: FilledButton.icon(
+                  onPressed: onCreateWalk,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1ABFC4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create Walk'),
+                ),
+              ),
             ],
           ),
         ),
@@ -572,10 +583,7 @@ class _MyWalksTab extends StatelessWidget {
       itemCount: walks.length,
       itemBuilder: (context, index) {
         final walk = walks[index];
-        return _WalkCard(
-          event: walk,
-          onTap: () => onTapEvent(walk),
-        );
+        return _WalkCard(event: walk, onTap: () => onTapEvent(walk));
       },
     );
   }
@@ -586,10 +594,7 @@ class _WalkCard extends StatelessWidget {
   final WalkEvent event;
   final VoidCallback onTap;
 
-  const _WalkCard({
-    required this.event,
-    required this.onTap,
-  });
+  const _WalkCard({required this.event, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -616,7 +621,8 @@ class _WalkCard extends StatelessWidget {
             children: [
               Text(
                 event.title,
-                style: theme.textTheme.titleMedium?.copyWith(
+                style:
+                    theme.textTheme.titleMedium?.copyWith(
                       fontFamily: 'Poppins',
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
@@ -633,7 +639,8 @@ class _WalkCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 '${event.distanceKm} km • ${_formatDate(event.dateTime)}',
-                style: theme.textTheme.bodySmall?.copyWith(
+                style:
+                    theme.textTheme.bodySmall?.copyWith(
                       fontFamily: 'Inter',
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -660,10 +667,7 @@ class _WalkCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.teal.shade100,
-                        border: Border.all(
-                          color: Colors.teal,
-                          width: 1,
-                        ),
+                        border: Border.all(color: Colors.teal, width: 1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

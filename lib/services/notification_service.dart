@@ -16,51 +16,306 @@ import 'crash_service.dart';
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('📬 Background message received: ${message.messageId}');
+  debugPrint('Background message received: ${message.messageId}');
   // Handle background notification here if needed
 }
 
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   FirebaseMessaging? _messagingOverride;
-  FirebaseMessaging get _messaging => _messagingOverride ?? FirebaseMessaging.instance;
+  FirebaseMessaging get _messaging =>
+      _messagingOverride ?? FirebaseMessaging.instance;
   String? _currentToken;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<QuerySnapshot>? _notificationListener;
   Map<String, String?>? _pendingDmNavigation;
 
   /// Initialize FCM and request permissions
   static Future<void> init() async {
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      debugPrint('🔔🔔🔔 NOTIFICATION SERVICE INIT - Current User: ${currentUser?.uid}');
+      debugPrint('🔔🔔🔔 NOTIFICATION SERVICE INIT - Email: ${currentUser?.email}');
+      debugPrint('🔔🔔🔔 NOTIFICATION SERVICE INIT - Display Name: ${currentUser?.displayName}');
+      
       final instance = NotificationService.instance;
-      
-      // Set background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
+
+      // Background message handler is registered in main.dart (must be top-level)
+
       // Request permissions (iOS requires explicit request)
       await instance._requestPermissions();
-      
+
       // Get and store FCM token
       await instance._initializeToken();
-      
+
       // Listen for token refresh
       instance._listenForTokenRefresh();
-      
+
       // Listen for foreground messages
       instance._listenForForegroundMessages();
-      
+
       // Handle notification taps when app is opened from terminated state
       instance._handleInitialMessage();
 
       // Persist tokens when auth state changes
       instance._listenForAuthChanges();
-      
+
       debugPrint('✅ NotificationService initialized');
     } catch (e, st) {
       debugPrint('❌ NotificationService init error: $e');
-      CrashService.recordError(e, st, reason: 'NotificationService initialization failed');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'NotificationService initialization failed',
+      );
+    }
+  }
+
+  /// Start listening to Firestore notifications for current user
+  void startListeningToNotifications(String uid) {
+    final user = FirebaseAuth.instance.currentUser;
+    debugPrint('📡 NOTIFICATION SERVICE - Starting listener for user: ${user?.uid}');
+    debugPrint('📡 NOTIFICATION SERVICE - User email: ${user?.email}');
+    debugPrint('📡 NOTIFICATION SERVICE - Display name: ${user?.displayName}');
+    debugPrint('🔔 Starting notification listener for user: $uid');
+    
+    // Cancel existing listener if any
+    _notificationListener?.cancel();
+    
+    _notificationListener = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .where('expiresAt', isGreaterThan: Timestamp.now()) // Only non-expired
+        .orderBy('expiresAt', descending: false)
+        .orderBy('timestamp', descending: true)
+        .limit(100) // Last 100 notifications
+        .snapshots()
+        .listen(
+          (snapshot) async {
+            debugPrint('📬 Received ${snapshot.docChanges.length} notification changes');
+            
+            // Get existing notifications to avoid duplicates
+            final existingNotifications = await NotificationStorage.getNotifications();
+            final existingIds = existingNotifications.map((n) => n.id).toSet();
+            
+            for (var change in snapshot.docChanges) {
+              debugPrint('   Change type: ${change.type}, doc: ${change.doc.id}');
+              
+              if (change.type == DocumentChangeType.added) {
+                final data = change.doc.data() as Map<String, dynamic>;
+                debugPrint('   Raw data: ${data.toString().substring(0, data.toString().length > 200 ? 200 : data.toString().length)}...');
+                
+                final notif = AppNotification.fromFirestore(data, change.doc.id);
+                
+                // Don't add if already exists in local storage
+                if (existingIds.contains(notif.id)) {
+                  debugPrint('   🔄 SKIPPING: Notification already in local storage (${notif.id})');
+                  continue;
+                }
+                
+                // Don't add expired notifications
+                if (notif.isExpired) {
+                  debugPrint('   ⏱️ SKIPPING: Notification expired');
+                  continue;
+                }
+                
+                // Don't show notifications for messages we sent ourselves
+                final currentUid = FirebaseAuth.instance.currentUser?.uid;
+                final senderId = notif.userId ?? notif.data?['senderId'] as String?;
+                debugPrint('➕ New notification: ${notif.type.name} - ${notif.title}');
+                debugPrint('   Doc ID: ${notif.id}');
+                debugPrint('   Current user: $currentUid');
+                debugPrint('   Sender ID: $senderId');
+                debugPrint('   Match: ${currentUid == senderId}');
+                
+                if (currentUid != null && senderId != null && currentUid == senderId) {
+                  debugPrint('   🚫 SKIPPING: This is a notification for a message we sent');
+                  continue;
+                }
+                
+                await NotificationStorage.add(notif);
+              } else if (change.type == DocumentChangeType.modified) {
+                final notif = AppNotification.fromFirestore(
+                  change.doc.data() as Map<String, dynamic>,
+                  change.doc.id,
+                );
+                debugPrint('🔄 Updated notification: ${notif.id}');
+                await NotificationStorage.update(notif);
+              } else if (change.type == DocumentChangeType.removed) {
+                debugPrint('➖ Removed notification: ${change.doc.id}');
+                await NotificationStorage.deleteById(change.doc.id);
+              }
+            }
+          },
+          onError: (error, stackTrace) {
+            debugPrint('❌ Notification listener error: $error');
+            CrashService.recordError(
+              error,
+              stackTrace,
+              reason: 'Firestore notification listener failed',
+            );
+          },
+        );
+  }
+
+  /// Stop listening to notifications
+  void stopListeningToNotifications() {
+    debugPrint('🔕 Stopping notification listener');
+    _notificationListener?.cancel();
+    _notificationListener = null;
+  }
+
+  /// Create a notification in Firestore (for local/testing)
+  Future<void> createNotification({
+    required String uid,
+    required NotificationType type,
+    required String title,
+    required String message,
+    String? walkId,
+    String? userId,
+    String? threadId,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final expiresAt = DateTime.now().add(const Duration(days: 30));
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notifications')
+          .add({
+        'type': type.name,
+        'title': title,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': false,
+        if (walkId != null) 'walkId': walkId,
+        if (userId != null) 'userId': userId,
+        if (threadId != null) 'threadId': threadId,
+        if (data != null) 'data': data,
+        'expiresAt': Timestamp.fromDate(expiresAt),
+      });
+      
+      debugPrint('✅ Created notification: $type for user $uid');
+    } catch (e, st) {
+      debugPrint('❌ Failed to create notification: $e');
+      CrashService.recordError(e, st, reason: 'Create notification failed');
+    }
+  }
+
+  /// Mark notification as read in Firestore
+  Future<void> markAsRead(String uid, String notificationId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notifications')
+          .doc(notificationId)
+          .update({'isRead': true});
+      
+      debugPrint('✅ Marked notification as read: $notificationId');
+    } catch (e) {
+      debugPrint('❌ Failed to mark as read: $e');
+    }
+  }
+
+  /// Delete notification from Firestore
+  Future<void> deleteNotification(String uid, String notificationId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notifications')
+          .doc(notificationId)
+          .delete();
+      
+      debugPrint('✅ Deleted notification: $notificationId');
+    } catch (e) {
+      debugPrint('❌ Failed to delete notification: $e');
+    }
+  }
+
+  /// Delete all walk-related notifications
+  Future<void> deleteWalkNotifications(String uid, String walkId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notifications')
+          .where('walkId', isEqualTo: walkId)
+          .get();
+      
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      
+      debugPrint('✅ Deleted ${snapshot.docs.length} walk notifications for walk: $walkId');
+    } catch (e) {
+      debugPrint('❌ Failed to delete walk notifications: $e');
+    }
+  }
+
+  /// Handle notification tap - navigate to appropriate screen
+  void handleNotificationTap(BuildContext context, AppNotification notification) {
+    debugPrint('👆 Notification tapped: ${notification.type.name}');
+    
+    switch (notification.type) {
+      case NotificationType.walkJoined:
+      case NotificationType.walkCancelled:
+      case NotificationType.walkRescheduled:
+      case NotificationType.walkReminder:
+      case NotificationType.walkStarting:
+      case NotificationType.walkEnded:
+      case NotificationType.nearbyWalk:
+      case NotificationType.suggestedWalk:
+        if (notification.walkId != null) {
+          // Navigate to walk details
+          // You'll need to import EventDetailsScreen and fetch walk
+          debugPrint('Navigate to walk: ${notification.walkId}');
+          // navigator.pushNamed('/walk-details', arguments: notification.walkId);
+        }
+        break;
+        
+      case NotificationType.dmMessage:
+        if (notification.threadId != null && notification.userId != null) {
+          _navigateToDmThread(
+            threadId: notification.threadId,
+            friendUid: notification.userId,
+            friendName: notification.data?['friendName'] as String? ?? 'Friend',
+            friendPhotoUrl: notification.data?['friendPhotoUrl'] as String?,
+          );
+        }
+        break;
+        
+      case NotificationType.friendRequest:
+        if (notification.userId != null) {
+          // Navigate to friend profile or requests screen
+          debugPrint('Navigate to friend request from: ${notification.userId}');
+        }
+        break;
+        
+      case NotificationType.badgeEarned:
+      case NotificationType.milestoneReached:
+        // Navigate to profile/badges screen
+        debugPrint('Navigate to badges/achievements');
+        break;
+        
+      case NotificationType.weeklyDigest:
+      case NotificationType.monthlyAchievements:
+        // Navigate to analytics screen
+        debugPrint('Navigate to analytics');
+        // navigator.pushNamed('/analytics');
+        break;
+        
+      default:
+        debugPrint('No navigation action for type: ${notification.type.name}');
     }
   }
 
@@ -79,7 +334,8 @@ class NotificationService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         debugPrint('✅ Notification permissions granted');
-      } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.provisional) {
         debugPrint('⚠️ Provisional notification permissions granted');
       } else {
         debugPrint('❌ Notification permissions denied');
@@ -103,7 +359,11 @@ class NotificationService {
       }
     } catch (e, st) {
       debugPrint('❌ Token initialization error: $e');
-      CrashService.recordError(e, st, reason: 'FCM token initialization failed');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'FCM token initialization failed',
+      );
     }
   }
 
@@ -119,49 +379,67 @@ class NotificationService {
           .collection('fcmTokens')
           .doc(token)
           .set({
-        'token': token,
-        'platform': defaultTargetPlatform.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'token': token,
+            'platform': defaultTargetPlatform.name,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       debugPrint('✅ FCM token saved to Firestore for ${user.uid}');
     } catch (e, st) {
       debugPrint('❌ Token save error: $e');
-      CrashService.recordError(e, st, reason: 'Failed to save FCM token to Firestore');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'Failed to save FCM token to Firestore',
+      );
     }
   }
 
   /// Listen for token refresh
   void _listenForTokenRefresh() {
-    _messaging.onTokenRefresh.listen((newToken) {
-      debugPrint('🔄 FCM token refreshed');
-      _currentToken = newToken;
-      _persistTokenForCurrentUser(tokenOverride: newToken);
-    }).onError((error, stackTrace) {
-      debugPrint('❌ Token refresh error: $error');
-      CrashService.recordError(error, stackTrace, reason: 'FCM token refresh failed');
-    });
+    _messaging.onTokenRefresh
+        .listen((newToken) {
+          debugPrint('🔄 FCM token refreshed');
+          _currentToken = newToken;
+          _persistTokenForCurrentUser(tokenOverride: newToken);
+        })
+        .onError((error, stackTrace) {
+          debugPrint('❌ Token refresh error: $error');
+          CrashService.recordError(
+            error,
+            stackTrace,
+            reason: 'FCM token refresh failed',
+          );
+        });
   }
 
   /// Listen for foreground messages
   void _listenForForegroundMessages() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('📬 Foreground message received: ${message.notification?.title}');
-      
-      // Show local notification
-      if (message.notification != null) {
-        _showLocalNotification(message);
-      }
-      
-      // Handle data payload
-      if (message.data.isNotEmpty) {
-        _handleNotificationData(message.data);
-      }
-    }).onError((error, stackTrace) {
-      debugPrint('❌ Foreground message error: $error');
-      CrashService.recordError(error, stackTrace, reason: 'FCM foreground message handling failed');
-    });
+    FirebaseMessaging.onMessage
+        .listen((RemoteMessage message) {
+          debugPrint(
+            'Foreground message received: ${message.notification?.title}',
+          );
+
+          // Show local notification
+          if (message.notification != null) {
+            _showLocalNotification(message);
+          }
+
+          // Handle data payload
+          if (message.data.isNotEmpty) {
+            _handleNotificationData(message.data);
+          }
+        })
+        .onError((error, stackTrace) {
+          debugPrint('❌ Foreground message error: $error');
+          CrashService.recordError(
+            error,
+            stackTrace,
+            reason: 'FCM foreground message handling failed',
+          );
+        });
   }
 
   /// Show local notification when app is in foreground
@@ -169,15 +447,15 @@ class NotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
-    final appNotification = AppNotification(
-      id: message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: notification.title ?? 'Yalla Nemshi',
-      message: notification.body ?? '',
-      timestamp: DateTime.now(),
-      isRead: false,
-    );
-
-    await NotificationStorage.addNotification(appNotification);
+    // ✅ Don't store FCM notifications when app is in foreground
+    // The Firestore listener already handles persistent notifications
+    // FCM push notifications are only needed for background/terminated state
+    debugPrint('📲 FCM notification received in foreground (not stored, Firestore handles it)');
+    debugPrint('   Title: ${notification.title}');
+    debugPrint('   Body: ${notification.body}');
+    
+    // Note: If you want to show a banner/toast in the future, add it here
+    // For now, Firestore listener provides real-time updates to the UI
   }
 
   /// Handle notification data payload
@@ -208,7 +486,9 @@ class NotificationService {
 
     // Handle notification tap when app is in background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('📲 App opened from background notification: ${message.messageId}');
+      debugPrint(
+        '📲 App opened from background notification: ${message.messageId}',
+      );
       if (message.data.isNotEmpty) {
         _handleNotificationData(message.data);
       }
@@ -230,10 +510,10 @@ class NotificationService {
             .collection('fcmTokens')
             .doc(_currentToken)
             .delete();
-        
+
         debugPrint('✅ FCM token deleted from Firestore');
       }
-      
+
       // Delete token from FCM
       await _messaging.deleteToken();
       _currentToken = null;
@@ -251,13 +531,16 @@ class NotificationService {
 
     final n = AppNotification(
       id: 'reminder_${event.firestoreId.isNotEmpty ? event.firestoreId : event.id}',
+      type: NotificationType.walkReminder,
       title: 'Walk will start soon',
       message: 'Your walk "${event.title}" is coming up.',
       timestamp: DateTime.now(),
       isRead: false,
+      walkId: event.firestoreId.isNotEmpty ? event.firestoreId : event.id,
+      expiresAt: event.dateTime.add(const Duration(hours: 2)), // Expire 2 hours after walk
     );
 
-    await NotificationStorage.addNotification(n);
+    await NotificationStorage.add(n);
   }
 
   /// Optional: remove/cancel reminder (for now we just do nothing safely).
@@ -273,13 +556,16 @@ class NotificationService {
 
     final n = AppNotification(
       id: 'nearby_${event.firestoreId.isNotEmpty ? event.firestoreId : event.id}',
+      type: NotificationType.nearbyWalk,
       title: 'New nearby walk',
       message: '"${event.title}" is available nearby.',
       timestamp: DateTime.now(),
       isRead: false,
+      walkId: event.firestoreId.isNotEmpty ? event.firestoreId : event.id,
+      expiresAt: event.dateTime.add(const Duration(hours: 1)), // Expire 1 hour after walk starts
     );
 
-    await NotificationStorage.addNotification(n);
+    await NotificationStorage.add(n);
   }
 
   void _navigateToDmThread({
@@ -332,12 +618,17 @@ class NotificationService {
   }
 
   void _listenForAuthChanges() {
-    _authSubscription ??=
-        FirebaseAuth.instance.authStateChanges().listen((user) async {
+    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((
+      user,
+    ) async {
       if (user == null) {
+        stopListeningToNotifications();
         return;
       }
       await _persistTokenForUser(user);
+      
+      // Start listening to Firestore notifications
+      startListeningToNotifications(user.uid);
     });
   }
 
@@ -350,12 +641,10 @@ class NotificationService {
     await _persistTokenForUser(user, tokenOverride: tokenOverride);
   }
 
-  Future<void> _persistTokenForUser(
-    User user, {
-    String? tokenOverride,
-  }) async {
+  Future<void> _persistTokenForUser(User user, {String? tokenOverride}) async {
     try {
-      final token = tokenOverride ?? _currentToken ?? await _messaging.getToken();
+      final token =
+          tokenOverride ?? _currentToken ?? await _messaging.getToken();
       if (token == null) {
         debugPrint('⚠️ Cannot persist token: token is null');
         return;

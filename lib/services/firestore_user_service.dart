@@ -368,4 +368,27 @@ class FirestoreUserService {
       rethrow;
     }
   }
+
+  /// Enable/disable leaderboard visibility for a user
+  static Future<void> setHideFromLeaderboards({
+    required String uid,
+    required bool hide,
+  }) async {
+    try {
+      await _firestore.collection(_usersCollection).doc(uid).set(
+        {
+          'hideFromLeaderboards': hide,
+        },
+        SetOptions(merge: true),
+      );
+      CrashService.log('Leaderboard visibility ${hide ? 'hidden' : 'shown'} for $uid');
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'FirestoreUserService.setHideFromLeaderboards',
+      );
+      rethrow;
+    }
+  }
 }

@@ -43,7 +43,8 @@ class _PrivateInviteManagement extends StatefulWidget {
   final WalkEvent event;
 
   @override
-  State<_PrivateInviteManagement> createState() => _PrivateInviteManagementState();
+  State<_PrivateInviteManagement> createState() =>
+      _PrivateInviteManagementState();
 }
 
 class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
@@ -97,8 +98,10 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withAlpha(
                       (0.18 * 255).round(),
@@ -125,11 +128,11 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                 }
 
                 final data = snapshot.data?.data();
-                final shareCode =
-                    (data?['shareCode'] ?? widget.event.shareCode)?.toString();
+                final shareCode = (data?['shareCode'] ?? widget.event.shareCode)
+                    ?.toString();
                 final expiresAt =
                     _asDateTime(data?['shareCodeExpiresAt']) ??
-                        widget.event.shareCodeExpiresAt;
+                    widget.event.shareCodeExpiresAt;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,9 +148,8 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                             ? Colors.white.withAlpha((0.05 * 255).round())
                             : Colors.black.withAlpha((0.03 * 255).round()),
                         border: Border.all(
-                          color: (isDark ? Colors.white : Colors.black).withAlpha(
-                            (0.12 * 255).round(),
-                          ),
+                          color: (isDark ? Colors.white : Colors.black)
+                              .withAlpha((0.12 * 255).round()),
                         ),
                       ),
                       child: Row(
@@ -168,12 +170,14 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                                 const SizedBox(height: 4),
                                 SelectableText(
                                   shareCode ?? '------',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    letterSpacing: 2,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        isDark ? Colors.white : const Color(0xFF111827),
-                                  ),
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(
+                                        letterSpacing: 2,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF111827),
+                                      ),
                                 ),
                               ],
                             ),
@@ -207,16 +211,6 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                     Row(
                       children: [
                         Expanded(
-                          child: FilledButton.tonalIcon(
-                            onPressed: (shareCode == null || shareCode.isEmpty)
-                                ? null
-                                : () => _copyLink(shareCode),
-                            icon: const Icon(Icons.link),
-                            label: const Text('Copy invite link'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _extendingExpiry || shareCode == null
                                 ? null
@@ -239,9 +233,11 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed:
-                            _rotatingCode || shareCode == null || shareCode.isEmpty
-                                ? null
-                                : _regenerateShareCode,
+                            _rotatingCode ||
+                                shareCode == null ||
+                                shareCode.isEmpty
+                            ? null
+                            : _regenerateShareCode,
                         icon: _rotatingCode
                             ? const SizedBox(
                                 height: 16,
@@ -303,22 +299,37 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
           );
         }
 
-        return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: docs.length,
-          separatorBuilder: (context, _) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-            final uid = doc.id;
-            final redeemedAt = _asDateTime(doc.data()['redeemedAt']);
-            final isRevoking = _revoking.contains(uid);
+        // Batch fetch all user profiles (fixes N+1 query issue)
+        return FutureBuilder<Map<String, Map<String, dynamic>>>(
+          future: _batchFetchUserProfiles(docs.map((d) => d.id).toList()),
+          builder: (context, profilesSnapshot) {
+            if (!profilesSnapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            return _InviteeListTile(
-              userId: uid,
-              redeemedAt: redeemedAt,
-              isRevoking: isRevoking,
-              onRevoke: () => _revokeInvite(uid),
+            final userProfiles = profilesSnapshot.data!;
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: docs.length,
+              separatorBuilder: (context, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final doc = docs[index];
+                final uid = doc.id;
+                final redeemedAt = _asDateTime(doc.data()['redeemedAt']);
+                final isRevoking = _revoking.contains(uid);
+                final userProfile = userProfiles[uid];
+
+                return _InviteeListTile(
+                  userId: uid,
+                  displayName: userProfile?['displayName'] as String?,
+                  photoUrl: userProfile?['photoUrl'] as String?,
+                  redeemedAt: redeemedAt,
+                  isRevoking: isRevoking,
+                  onRevoke: () => _revokeInvite(uid),
+                );
+              },
             );
           },
         );
@@ -326,18 +337,36 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
     );
   }
 
+  /// Batch fetch user profiles to avoid N+1 query issue
+  /// Makes 1 read instead of N reads for N invitees
+  Future<Map<String, Map<String, dynamic>>> _batchFetchUserProfiles(
+    List<String> userIds,
+  ) async {
+    if (userIds.isEmpty) return {};
+
+    final profiles = <String, Map<String, dynamic>>{};
+
+    // Firestore 'in' queries are limited to 10 items, so batch in chunks
+    const chunkSize = 10;
+    for (int i = 0; i < userIds.length; i += chunkSize) {
+      final chunk = userIds.skip(i).take(chunkSize).toList();
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        profiles[doc.id] = doc.data();
+      }
+    }
+
+    return profiles;
+  }
+
   Future<void> _copyCode(String code) async {
     await Clipboard.setData(ClipboardData(text: code));
     _showSnack('Invite code copied');
-  }
-
-  Future<void> _copyLink(String code) async {
-    final link = InviteUtils.buildInviteLink(
-      walkId: widget.event.firestoreId,
-      shareCode: code,
-    );
-    await Clipboard.setData(ClipboardData(text: link));
-    _showSnack('Invite link copied');
   }
 
   Future<void> _extendExpiry() async {
@@ -499,21 +528,25 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
 class _InviteeListTile extends StatelessWidget {
   const _InviteeListTile({
     required this.userId,
+    required this.displayName,
+    required this.photoUrl,
     required this.redeemedAt,
     required this.onRevoke,
     required this.isRevoking,
   });
 
   final String userId;
+  final String? displayName;
+  final String? photoUrl;
   final DateTime? redeemedAt;
   final VoidCallback onRevoke;
   final bool isRevoking;
@@ -522,60 +555,55 @@ class _InviteeListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
-      builder: (context, snapshot) {
-        final data = snapshot.data?.data();
-        final rawName = (data?['displayName'] as String?)?.trim();
-        final displayName =
-            (rawName != null && rawName.isNotEmpty)
-                ? rawName
-                : 'User ${_shortId(userId)}';
-        final photoUrl = (data?['photoUrl'] as String?)?.trim();
+    // Use provided data instead of fetching from Firestore
+    final rawName = displayName?.trim();
+    final effectiveDisplayName = (rawName != null && rawName.isNotEmpty)
+        ? rawName
+        : 'User ${_shortId(userId)}';
+    final effectivePhotoUrl = photoUrl?.trim();
 
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(
-            radius: 22,
-            backgroundColor: theme.colorScheme.primary.withAlpha(30),
-            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                ? NetworkImage(photoUrl)
-                : null,
-            child: (photoUrl == null || photoUrl.isEmpty)
-                ? Text(
-                    displayName.isNotEmpty
-                        ? displayName.substring(0, 1).toUpperCase()
-                        : '?',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  )
-                : null,
-          ),
-          title: Text(
-            displayName,
-            style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
-          ),
-          subtitle: Text(
-            _formatRedeemedAt(redeemedAt),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withAlpha(160),
-            ),
-          ),
-          trailing: isRevoking
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : IconButton(
-                  tooltip: 'Revoke invite',
-                  icon: const Icon(Icons.block),
-                  onPressed: onRevoke,
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        radius: 22,
+        backgroundColor: theme.colorScheme.primary.withAlpha(30),
+        backgroundImage:
+            (effectivePhotoUrl != null && effectivePhotoUrl.isNotEmpty)
+            ? NetworkImage(effectivePhotoUrl)
+            : null,
+        child: (effectivePhotoUrl == null || effectivePhotoUrl.isEmpty)
+            ? Text(
+                effectiveDisplayName.isNotEmpty
+                    ? effectiveDisplayName.substring(0, 1).toUpperCase()
+                    : '?',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
                 ),
-        );
-      },
+              )
+            : null,
+      ),
+      title: Text(
+        effectiveDisplayName,
+        style: theme.textTheme.titleMedium?.copyWith(fontSize: 15),
+      ),
+      subtitle: Text(
+        _formatRedeemedAt(redeemedAt),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurface.withAlpha(160),
+        ),
+      ),
+      trailing: isRevoking
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : IconButton(
+              tooltip: 'Revoke invite',
+              icon: const Icon(Icons.block),
+              onPressed: onRevoke,
+            ),
     );
   }
 
@@ -715,10 +743,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           children: [
             Text(
               emoji,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 14),
             ),
             const SizedBox(width: 4),
             Text(
@@ -772,7 +797,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
   Future<void> _confirmCancelSingle(BuildContext context) async {
     final theme = Theme.of(context);
-    final dateStr = '${widget.event.dateTime.day}/${widget.event.dateTime.month}/${widget.event.dateTime.year}';
+    final dateStr =
+        '${widget.event.dateTime.day}/${widget.event.dateTime.month}/${widget.event.dateTime.year}';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -835,7 +861,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     if (ok == true) {
       if (!context.mounted) return;
-      
+
       final groupId = widget.event.recurringGroupId;
       if (groupId == null || groupId.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -847,16 +873,16 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       try {
         await RecurringWalkService.cancelAllFutureInstances(groupId);
         if (!context.mounted) return;
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('All future walks cancelled')),
         );
         Navigator.pop(context);
       } catch (e) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error cancelling walks: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error cancelling walks: $e')));
       }
     }
   }
@@ -997,7 +1023,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         // Show participant count if walk has started
         if (event.status == 'active') ...[
           FutureBuilder<int>(
-            future: WalkControlService.instance.getActiveParticipantCount(event.firestoreId),
+            future: WalkControlService.instance.getActiveParticipantCount(
+              event.firestoreId,
+            ),
             builder: (context, snapshot) {
               final count = snapshot.data ?? 0;
               return Container(
@@ -1016,14 +1044,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.group,
-                      color: const Color(0xFF00D97E),
-                      size: 16,
-                    ),
+                    Icon(Icons.group, color: const Color(0xFF00D97E), size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      '$count participants confirmed',
+                      '$count participants registered',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: isDark ? Colors.white70 : Colors.black87,
                       ),
@@ -1061,7 +1085,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.check_circle),
-            label: const Text('Confirm - I\'m Joining Now'),
+            label: const Text('Register - I\'m Joining Now'),
           ),
         ),
         const SizedBox(height: 8),
@@ -1089,21 +1113,23 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   Future<void> _startWalk(BuildContext context, WalkEvent event) async {
     try {
       await WalkControlService.instance.startWalk(event.firestoreId);
-      
+
       // Start GPS tracking for the host
       await GPSTrackingService.instance.startTracking(event.firestoreId);
-      
+
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Walk started! GPS tracking enabled...')),
+        const SnackBar(
+          content: Text('✅ Walk started! GPS tracking enabled...'),
+        ),
       );
       // Refresh the screen
       setState(() {});
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error starting walk: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Error starting walk: $e')));
     }
   }
 
@@ -1134,45 +1160,46 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     try {
       // Stop GPS tracking and persist stats server-side
       await GPSTrackingService.instance.stopTracking(event.firestoreId);
-      
+
       // End the walk on Firestore
       await WalkControlService.instance.endWalk(event.firestoreId);
-      
+
       if (!context.mounted) return;
-      
+
       // Navigate to summary screen
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => WalkSummaryScreen(
-            walkId: event.firestoreId,
-            initialWalk: event,
-          ),
+          builder: (context) =>
+              WalkSummaryScreen(walkId: event.firestoreId, initialWalk: event),
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error ending walk: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Error ending walk: $e')));
     }
   }
 
-  Future<void> _confirmParticipation(BuildContext context, WalkEvent event) async {
+  Future<void> _confirmParticipation(
+    BuildContext context,
+    WalkEvent event,
+  ) async {
     try {
       await WalkHistoryService.instance.confirmParticipation(event.firestoreId);
       await GPSTrackingService.instance.startTracking(event.firestoreId);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Confirmed! You\'re walking with us!')),
+        const SnackBar(content: Text('✅ Registered! You\'re walking with us!')),
       );
       setState(() {
         _didConfirmParticipation = true;
       });
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error confirming: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Error confirming: $e')));
     }
   }
 
@@ -1187,15 +1214,15 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ActiveWalkScreen(
-          walkId: walkId,
-          initialWalk: event,
-        ),
+        builder: (_) => ActiveWalkScreen(walkId: walkId, initialWalk: event),
       ),
     );
   }
 
-  Future<void> _declineParticipation(BuildContext context, WalkEvent event) async {
+  Future<void> _declineParticipation(
+    BuildContext context,
+    WalkEvent event,
+  ) async {
     try {
       await WalkHistoryService.instance.declineParticipation(event.firestoreId);
       await GPSTrackingService.instance.stopTracking(event.firestoreId);
@@ -1206,9 +1233,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       setState(() {});
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error declining: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('❌ Error declining: $e')));
     }
   }
 
@@ -1224,15 +1251,15 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final participantState = currentUid != null
-      ? event.participantStates[currentUid]
-      : null;
+        ? event.participantStates[currentUid]
+        : null;
     final bool isConfirmed =
-      _didConfirmParticipation || participantState == 'confirmed';
+        _didConfirmParticipation || participantState == 'confirmed';
 
     final canJoin = !event.isOwner && !event.cancelled;
     final joinText = event.joined
-      ? (event.status == 'active' ? 'Leave Walk' : 'Cancel Join')
-      : 'Join walk';
+        ? (event.status == 'active' ? 'Leave Walk' : 'Cancel Join')
+        : 'Join walk';
 
     final canInterested = !event.isOwner && !event.cancelled;
     final interestedText = event.interested
@@ -1511,7 +1538,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                   label: 'Cancelled',
                                   danger: true,
                                 ),
-                              if (event.isRecurring && !event.isRecurringTemplate)
+                              if (event.isRecurring &&
+                                  !event.isRecurringTemplate)
                                 _eventPill(
                                   isDark: isDark,
                                   theme: theme,
@@ -1522,15 +1550,20 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             ],
                           ),
 
-                          if (event.isRecurring && !event.isRecurringTemplate && event.recurrence != null) ...[
+                          if (event.isRecurring &&
+                              !event.isRecurringTemplate &&
+                              event.recurrence != null) ...[
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer.withAlpha((0.3 * 255).round()),
+                                color: theme.colorScheme.primaryContainer
+                                    .withAlpha((0.3 * 255).round()),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: theme.colorScheme.primary.withAlpha((0.3 * 255).round()),
+                                  color: theme.colorScheme.primary.withAlpha(
+                                    (0.3 * 255).round(),
+                                  ),
                                 ),
                               ),
                               child: Column(
@@ -1546,10 +1579,13 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                       const SizedBox(width: 8),
                                       Text(
                                         'Part of a recurring series',
-                                        style: theme.textTheme.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white : theme.colorScheme.primary,
-                                        ),
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : theme.colorScheme.primary,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -1557,7 +1593,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                   Text(
                                     event.recurrence!.getDescription(),
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: isDark ? Colors.white70 : Colors.black87,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black87,
                                     ),
                                   ),
                                 ],
@@ -1641,7 +1679,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             decoration: BoxDecoration(
                               color: isDark
                                   ? Colors.white.withAlpha((0.05 * 255).round())
-                                  : Colors.black.withAlpha((0.03 * 255).round()),
+                                  : Colors.black.withAlpha(
+                                      (0.03 * 255).round(),
+                                    ),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: (isDark ? Colors.white : Colors.black)
@@ -1654,11 +1694,13 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                   radius: 24,
                                   backgroundColor: theme.colorScheme.primary
                                       .withAlpha((0.2 * 255).round()),
-                                  backgroundImage: (event.hostPhotoUrl != null &&
+                                  backgroundImage:
+                                      (event.hostPhotoUrl != null &&
                                           event.hostPhotoUrl!.isNotEmpty)
                                       ? NetworkImage(event.hostPhotoUrl!)
                                       : null,
-                                  child: (event.hostPhotoUrl == null ||
+                                  child:
+                                      (event.hostPhotoUrl == null ||
                                           event.hostPhotoUrl!.isEmpty)
                                       ? Icon(
                                           Icons.person,
@@ -1685,7 +1727,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                             ),
                                       ),
                                       const SizedBox(height: 4),
-                                      _buildHostRatingBadge(context, event.hostUid),
+                                      _buildHostRatingBadge(
+                                        context,
+                                        event.hostUid,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -1713,64 +1758,65 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                 width: event.joinedUserPhotoUrls.isEmpty
                                     ? 88
                                     : (event.joinedUserPhotoUrls.length > 4
-                                        ? 120
-                                        : (event.joinedUserPhotoUrls.length * 24.0 + 16)),
+                                          ? 120
+                                          : (event.joinedUserPhotoUrls.length *
+                                                    24.0 +
+                                                16)),
                                 height: 40,
                                 child: Stack(
                                   clipBehavior: Clip.none,
                                   children: [
                                     if (event.joinedUserPhotoUrls.isEmpty)
-                                      // Show 3 placeholder avatars when no one joined
-                                      ...[
-                                        Positioned(
-                                          left: 0,
-                                          child: CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: Colors.grey
-                                                .withAlpha((0.3 * 255).round()),
-                                            child: Icon(
-                                              Icons.person_outline,
-                                              size: 20,
-                                              color: Colors.grey[600],
-                                            ),
+                                    // Show 3 placeholder avatars when no one joined
+                                    ...[
+                                      Positioned(
+                                        left: 0,
+                                        child: CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: Colors.grey
+                                              .withAlpha((0.3 * 255).round()),
+                                          child: Icon(
+                                            Icons.person_outline,
+                                            size: 20,
+                                            color: Colors.grey[600],
                                           ),
                                         ),
-                                        Positioned(
-                                          left: 24,
-                                          child: CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: Colors.grey
-                                                .withAlpha((0.3 * 255).round()),
-                                            child: Icon(
-                                              Icons.person_outline,
-                                              size: 20,
-                                              color: Colors.grey[600],
-                                            ),
+                                      ),
+                                      Positioned(
+                                        left: 24,
+                                        child: CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: Colors.grey
+                                              .withAlpha((0.3 * 255).round()),
+                                          child: Icon(
+                                            Icons.person_outline,
+                                            size: 20,
+                                            color: Colors.grey[600],
                                           ),
                                         ),
-                                        Positioned(
-                                          left: 48,
-                                          child: CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: Colors.grey
-                                                .withAlpha((0.3 * 255).round()),
-                                            child: Icon(
-                                              Icons.person_outline,
-                                              size: 20,
-                                              color: Colors.grey[600],
-                                            ),
+                                      ),
+                                      Positioned(
+                                        left: 48,
+                                        child: CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: Colors.grey
+                                              .withAlpha((0.3 * 255).round()),
+                                          child: Icon(
+                                            Icons.person_outline,
+                                            size: 20,
+                                            color: Colors.grey[600],
                                           ),
                                         ),
-                                      ]
-                                    else
+                                      ),
+                                    ] else
                                       // Show actual participant avatars (max 4)
                                       ...List.generate(
                                         event.joinedUserPhotoUrls.length > 4
                                             ? 4
                                             : event.joinedUserPhotoUrls.length,
                                         (index) {
-                                          final photoUrl = event
-                                              .joinedUserPhotoUrls[index];
+                                          final photoUrl =
+                                              event.joinedUserPhotoUrls[index];
                                           return Positioned(
                                             left: index * 24.0,
                                             child: Container(
@@ -1785,20 +1831,22 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                               ),
                                               child: CircleAvatar(
                                                 radius: 20,
-                                                backgroundColor:
-                                                    theme.colorScheme.primary
-                                                        .withAlpha(
-                                                          (0.2 * 255).round(),
-                                                        ),
-                                                backgroundImage: photoUrl
-                                                        .isNotEmpty
+                                                backgroundColor: theme
+                                                    .colorScheme
+                                                    .primary
+                                                    .withAlpha(
+                                                      (0.2 * 255).round(),
+                                                    ),
+                                                backgroundImage:
+                                                    photoUrl.isNotEmpty
                                                     ? NetworkImage(photoUrl)
                                                     : null,
                                                 child: photoUrl.isEmpty
                                                     ? Icon(
                                                         Icons.person,
                                                         size: 20,
-                                                        color: theme.colorScheme
+                                                        color: theme
+                                                            .colorScheme
                                                             .primary,
                                                       )
                                                     : null,
@@ -1814,14 +1862,15 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                               Text(
                                 event.joinedCount > 0
                                     ? (event.joinedCount > 4
-                                        ? '+${event.joinedCount - 4} others joining'
-                                        : event.joinedCount == 1
-                                            ? '1 person joining'
-                                            : '${event.joinedCount} people joining')
+                                          ? '+${event.joinedCount - 4} others joining'
+                                          : event.joinedCount == 1
+                                          ? '1 person joining'
+                                          : '${event.joinedCount} people joining')
                                     : '+0 others joining',
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color:
-                                      isDark ? Colors.white70 : Colors.black87,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black87,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -1921,14 +1970,20 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
                           // CP-4: Host walk control buttons (start/end walk)
                           if (event.isOwner && !event.cancelled) ...[
-                            _buildHostControlButtons(context, event, theme, isDark),
+                            _buildHostControlButtons(
+                              context,
+                              event,
+                              theme,
+                              isDark,
+                            ),
                           ],
 
                           if (event.status == 'active' &&
                               (event.isOwner ||
                                   (currentUid != null &&
-                                      event.participantStates
-                                          .containsKey(currentUid)))) ...[
+                                      event.participantStates.containsKey(
+                                        currentUid,
+                                      )))) ...[
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
@@ -1941,13 +1996,15 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             ),
                           ],
 
-                          if (event.isOwner && !event.cancelled && event.isPrivate) ...[
+                          if (event.isOwner &&
+                              !event.cancelled &&
+                              event.isPrivate) ...[
                             const SizedBox(height: 16),
                             _PrivateInviteManagement(event: event),
                           ],
 
                           // CP-4: Participant confirmation button (shown when walk is starting)
-                            if (!event.isOwner &&
+                          if (!event.isOwner &&
                               event.joined &&
                               !event.cancelled &&
                               event.status == 'active' &&
@@ -2073,21 +2130,21 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                                 review: review,
                                                 onDelete:
                                                     currentUser?.uid ==
-                                                            review.userId
-                                                        ? () async {
-                                                            final walkId = widget
-                                                                    .event
-                                                                    .firestoreId
-                                                                .isNotEmpty
-                                                            ? widget.event
+                                                        review.userId
+                                                    ? () async {
+                                                        final walkId =
+                                                            widget
+                                                                .event
                                                                 .firestoreId
-                                                            : widget
-                                                                .event.id;
-                                                            await ReviewService
-                                                                .deleteReview(
-                                                              walkId,
-                                                              review.userId,
-                                                            );
+                                                                .isNotEmpty
+                                                            ? widget
+                                                                  .event
+                                                                  .firestoreId
+                                                            : widget.event.id;
+                                                        await ReviewService.deleteReview(
+                                                          walkId,
+                                                          review.userId,
+                                                        );
                                                         if (context.mounted) {
                                                           ScaffoldMessenger.of(
                                                             context,
@@ -2125,13 +2182,14 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                                     );
                                                     return;
                                                   }
-                                                  final walkId = widget
-                                                          .event.firestoreId
-                                                      .isNotEmpty
-                                                  ? widget.event.firestoreId
-                                                  : widget.event.id;
-                                                  await ReviewService
-                                                      .markHelpful(
+                                                  final walkId =
+                                                      widget
+                                                          .event
+                                                          .firestoreId
+                                                          .isNotEmpty
+                                                      ? widget.event.firestoreId
+                                                      : widget.event.id;
+                                                  await ReviewService.markHelpful(
                                                     walkId,
                                                     review.userId,
                                                     currentUser.uid,
@@ -2192,7 +2250,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
                           // Host-only cancel button(s)
                           if (event.isOwner && !event.cancelled) ...[
-                            if (event.isRecurring && !event.isRecurringTemplate && event.recurringGroupId != null) ...[
+                            if (event.isRecurring &&
+                                !event.isRecurringTemplate &&
+                                event.recurringGroupId != null) ...[
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton.icon(
@@ -2206,7 +2266,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                       color: theme.colorScheme.error,
                                     ),
                                   ),
-                                  onPressed: () => _confirmCancelSingle(context),
+                                  onPressed: () =>
+                                      _confirmCancelSingle(context),
                                   icon: const Icon(Icons.cancel_outlined),
                                   label: const Text('Cancel this occurrence'),
                                 ),
@@ -2225,7 +2286,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                       color: theme.colorScheme.error,
                                     ),
                                   ),
-                                  onPressed: () => _confirmCancelAllFuture(context),
+                                  onPressed: () =>
+                                      _confirmCancelAllFuture(context),
                                   icon: const Icon(Icons.event_busy),
                                   label: const Text('Cancel all future walks'),
                                 ),

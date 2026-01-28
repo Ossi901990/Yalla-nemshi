@@ -23,6 +23,7 @@ class FirestoreUser {
   final bool profilePublic;
   final bool monthlyDigestEnabled;
   final DateTime? monthlyDigestUpdatedAt;
+  final bool hideFromLeaderboards;
 
   FirestoreUser({
     required this.uid,
@@ -41,6 +42,7 @@ class FirestoreUser {
     this.profilePublic = true,
     this.monthlyDigestEnabled = false,
     this.monthlyDigestUpdatedAt,
+    this.hideFromLeaderboards = false,
   }) : displayNameLower = (displayNameLower ?? displayName).toLowerCase();
 
   /// Convert to Firestore map
@@ -64,6 +66,7 @@ class FirestoreUser {
       'monthlyDigestUpdatedAt': monthlyDigestUpdatedAt != null
           ? Timestamp.fromDate(monthlyDigestUpdatedAt!)
           : null,
+      'hideFromLeaderboards': hideFromLeaderboards,
     };
   }
 
@@ -94,6 +97,7 @@ class FirestoreUser {
       monthlyDigestEnabled: map['monthlyDigestEnabled'] as bool? ?? false,
       monthlyDigestUpdatedAt:
           (map['monthlyDigestUpdatedAt'] as Timestamp?)?.toDate(),
+      hideFromLeaderboards: map['hideFromLeaderboards'] as bool? ?? false,
     );
   }
 
@@ -115,6 +119,7 @@ class FirestoreUser {
     bool? profilePublic,
     bool? monthlyDigestEnabled,
     DateTime? monthlyDigestUpdatedAt,
+    bool? hideFromLeaderboards,
   }) {
     return FirestoreUser(
       uid: uid ?? this.uid,
@@ -134,6 +139,7 @@ class FirestoreUser {
       monthlyDigestEnabled: monthlyDigestEnabled ?? this.monthlyDigestEnabled,
       monthlyDigestUpdatedAt:
           monthlyDigestUpdatedAt ?? this.monthlyDigestUpdatedAt,
+      hideFromLeaderboards: hideFromLeaderboards ?? this.hideFromLeaderboards,
     );
   }
 }

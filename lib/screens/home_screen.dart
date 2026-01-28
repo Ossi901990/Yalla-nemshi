@@ -35,8 +35,8 @@ import 'walks_screen.dart';
 import 'events_screen.dart';
 import 'walk_search_screen.dart';
 import 'active_walk_screen.dart';
-import '../models/app_notification.dart';
 import '../services/notification_storage.dart';
+import '../screens/notifications_screen.dart';
 import '../providers/auth_provider.dart';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
@@ -88,163 +88,98 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late int _currentTab;
   static const Duration _hostStartEarlyWindow = Duration(minutes: 10);
   static const Duration _hostStartGraceWindow = Duration(minutes: 15);
+
+  /// Poll walks periodically (every 30s) instead of real-time listening
+  /// This reduces Firestore read costs and battery drain while keeping the feed fresh
+  /// Real-time updates are only needed for active walks, not discovery
   void _listenToWalks() {
     _walksSub?.cancel();
+    _walksPollingTimer?.cancel();
 
-    // Get user's city first
-    AppPreferences.getUserCity()
-        .then((userCity) {
-          if (!mounted) return;
+    // Initial load
+    _fetchWalks();
 
-          final nowTimestamp = Timestamp.fromDate(DateTime.now());
+    // Set up periodic polling (every 30 seconds)
+    _walksPollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _fetchWalks();
+      }
+    });
+  }
 
-          // Build query: filter by city if user has one set
-          Query<Map<String, dynamic>> query = FirebaseFirestore.instance
-              .collection('walks');
+  /// Fetch walks using a one-time query (not a real-time listener)
+  Future<void> _fetchWalks() async {
+    try {
+      final userCity = await AppPreferences.getUserCity();
+      if (!mounted) return;
 
-          if (userCity != null && userCity.isNotEmpty) {
-            debugPrint(
-              '≡ƒÅÖ∩╕Å Filtering walks by city (including cityless): $userCity',
-            );
-            query = query.where(
-              Filter.or(
-                Filter('city', isEqualTo: userCity),
-                Filter('city', isNull: true),
-              ),
-            );
-          } else {
-            debugPrint('ΓÜá∩╕Å No user city set; showing all walks');
-          }
+      final nowTimestamp = Timestamp.fromDate(DateTime.now());
 
-          // Exclude cancelled and past walks (show upcoming only)
-          query = query
-              .where('cancelled', isEqualTo: false)
-              .where('dateTime', isGreaterThan: nowTimestamp)
-              .orderBy('dateTime')
-              .orderBy('createdAt', descending: true)
-              .limit(_walksPerPage);
+      // Build query: filter by city if user has one set
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection(
+        'walks',
+      );
 
-          _walksSub = query.snapshots().listen(
-            (snap) {
-              try {
-                final currentUid = FirebaseAuth.instance.currentUser?.uid;
-                debugPrint(
-                  'WALKS SNAP: docs=${snap.docs.length} uid=$currentUid city=$userCity',
-                );
+      if (userCity != null && userCity.isNotEmpty) {
+        debugPrint(
+          'Polling walks by city (including cityless): $userCity',
+        );
+        query = query.where(
+          Filter.or(
+            Filter('city', isEqualTo: userCity),
+            Filter('city', isNull: true),
+          ),
+        );
+      } else {
+        debugPrint('ΓÜá∩╕Å No user city set; polling all walks');
+      }
 
-                if (snap.docs.isNotEmpty) {
-                  _lastDocument = snap.docs.last;
-                  _hasMoreWalks = snap.docs.length >= _walksPerPage;
-                } else {
-                  _lastDocument = null;
-                  _hasMoreWalks = false;
-                }
+      // Exclude cancelled and past walks (show upcoming only)
+      query = query
+          .where('cancelled', isEqualTo: false)
+          .where('dateTime', isGreaterThan: nowTimestamp)
+          .orderBy('dateTime')
+          .orderBy('createdAt', descending: true)
+          .limit(_walksPerPage);
 
-                final List<WalkEvent> loaded =
-                  _parseWalkDocs(snap.docs, currentUid);
-                final List<WalkEvent> merged =
-                    _collapseRecurringWalks(loaded);
+      final snap = await query.get();
 
-                if (!mounted) return;
+      if (!mounted) return;
 
-                for (var change in snap.docChanges) {
-                  if (change.type == DocumentChangeType.added) {
-                    final newWalk = _parseWalkDoc(
-                      change.doc,
-                      currentUid,
-                      isFromCache: change.doc.metadata.isFromCache,
-                    );
-                    if (newWalk != null && newWalk.hostUid != currentUid) {
-                      _onNewNearbyWalk(newWalk);
-                    }
-                  }
-                }
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
-                setState(() {
-                  _events
-                    ..clear()
-                    ..addAll(merged);
-                });
+      if (snap.docs.isNotEmpty) {
+        _lastDocument = snap.docs.last;
+        _hasMoreWalks = snap.docs.length >= _walksPerPage;
+      } else {
+        _lastDocument = null;
+        _hasMoreWalks = false;
+      }
 
-                _refreshHostedCountdown();
+      final List<WalkEvent> loaded = _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> merged = _collapseRecurringWalks(loaded);
 
-                OfflineService.instance.cacheWalks(merged);
+      setState(() {
+        _events
+          ..clear()
+          ..addAll(merged);
+      });
 
-                _logHomeFeedSummary(
-                  source: 'stream',
-                  totalDocs: snap.docs.length,
-                  parsedCount: loaded.length,
-                  keptCount: merged.length,
-                  fromCache: snap.metadata.isFromCache,
-                );
-              } catch (e, st) {
-                debugPrint('Γ¥î Error processing walks snapshot: $e');
-                CrashService.recordError(e, st);
-              }
-            },
-            onError: (e, st) {
-              debugPrint('Γ¥î WALKS STREAM ERROR: $e');
-              CrashService.recordError(e, st);
-            },
-          );
-        })
-        .catchError((e, st) {
-          debugPrint('Γ¥î Error getting user city: $e');
-          CrashService.recordError(e, st ?? StackTrace.current);
-          if (!mounted) return;
+      _refreshHostedCountdown();
 
-          try {
-            _walksSub = FirebaseFirestore.instance
-                .collection('walks')
-                .where('cancelled', isEqualTo: false)
-                .where(
-                  'dateTime',
-                  isGreaterThan: DateTime.now().toIso8601String(),
-                )
-                .orderBy('dateTime')
-                .orderBy('createdAt', descending: true)
-                .limit(_walksPerPage)
-                .snapshots()
-                .listen(
-                  (snap) {
-                    try {
-                      final currentUid = FirebaseAuth.instance.currentUser?.uid;
-                      final List<WalkEvent> loaded =
-                          _parseWalkDocs(snap.docs, currentUid);
-                      final List<WalkEvent> merged =
-                          _collapseRecurringWalks(loaded);
+      OfflineService.instance.cacheWalks(merged);
 
-                      if (mounted) {
-                        setState(() {
-                          _events
-                            ..clear()
-                            ..addAll(merged);
-                        });
-
-                        _refreshHostedCountdown();
-
-                        OfflineService.instance.cacheWalks(merged);
-
-                        _logHomeFeedSummary(
-                          source: 'stream_fallback',
-                          totalDocs: snap.docs.length,
-                          parsedCount: loaded.length,
-                          keptCount: merged.length,
-                          fromCache: snap.metadata.isFromCache,
-                        );
-                      }
-                    } catch (e, st) {
-                      CrashService.recordError(e, st);
-                    }
-                  },
-                  onError: (e, st) {
-                    CrashService.recordError(e, st);
-                  },
-                );
-          } catch (e, st) {
-            CrashService.recordError(e, st);
-          }
-        });
+      _logHomeFeedSummary(
+        source: 'polling',
+        totalDocs: snap.docs.length,
+        parsedCount: loaded.length,
+        keptCount: merged.length,
+        fromCache: snap.metadata.isFromCache,
+      );
+    } catch (e, st) {
+      debugPrint('Γ¥î Error fetching walks: $e');
+      CrashService.recordError(e, st);
+    }
   }
 
   void _openWalkSearch() {
@@ -267,7 +202,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final userCity = await AppPreferences.getUserCity();
 
-        Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false)
           .where('dateTime', isGreaterThan: DateTime.now().toIso8601String())
@@ -302,8 +237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _hasMoreWalks = snap.docs.length >= _walksPerPage;
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final List<WalkEvent> newWalks =
-          _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> newWalks = _parseWalkDocs(snap.docs, currentUid);
 
       _logHomeFeedSummary(
         source: 'load_more',
@@ -376,8 +310,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     DocumentSnapshot<Map<String, dynamic>> doc,
     String? currentUid, {
     bool isFromCache = false,
-  }
-  ) {
+  }) {
     try {
       final raw = doc.data();
       if (raw == null) {
@@ -420,9 +353,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
         return null;
       }
-      if (walk.visibility == 'private' && !walk.isOwner) {
+      if (walk.visibility == 'private' && !walk.isOwner && !walk.joined) {
         _debugWalkDrop(
-          'visibility=private for non-owner',
+          'visibility=private for non-owner who hasn\'t joined',
           id: doc.id,
           data: data,
           parsed: walk,
@@ -499,11 +432,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           final reason = event.dateTime.isAfter(now)
               ? 'recurring collapse kept ${candidate.id} (group ${event.recurringGroupId})'
               : 'recurring collapse dropped past instance (kept ${candidate.id})';
-          _debugWalkDrop(
-            reason,
-            id: event.id,
-            parsed: event,
-          );
+          _debugWalkDrop(reason, id: event.id, parsed: event);
         }
         merged.add(candidate);
       }
@@ -548,6 +477,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // --- Step counter (Android, session-based for now) ---
   StreamSubscription<QuerySnapshot>? _walksSub;
+  Timer? _walksPollingTimer; // For periodic polling instead of real-time
 
   int _unreadNotifCount = 0;
 
@@ -739,31 +669,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }).toList();
   }
 
-  String _formatNotificationTime(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final thatDay = DateTime(dt.year, dt.month, dt.day);
-
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    final timePart = '$hh:$mm';
-
-    if (thatDay == today) {
-      return 'Today ΓÇó $timePart';
-    }
-
-    final yesterday = today.subtract(const Duration(days: 1));
-    if (thatDay == yesterday) {
-      return 'Yesterday ΓÇó $timePart';
-    }
-
-    // Fallback: simple date
-    final dd = dt.day.toString().padLeft(2, '0');
-    final mm2 = dt.month.toString().padLeft(2, '0');
-    final yyyy = dt.year.toString();
-    return '$dd/$mm2/$yyyy ΓÇó $timePart';
-  }
-
   Widget _buildCalendarDayCell(
     DateTime day,
     bool isDark, {
@@ -892,6 +797,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _currentTab = widget.initialTab;
+    
+    // DEBUG: Print current user info
+    final user = FirebaseAuth.instance.currentUser;
+    debugPrint('🆔 HOME SCREEN - Current User ID: ${user?.uid}');
+    debugPrint('🆔 HOME SCREEN - Current User Email: ${user?.email}');
+    debugPrint('🆔 HOME SCREEN - Current User Name: ${user?.displayName}');
+    
     if (!kIsWeb) {
       _initStepCounter();
     }
@@ -929,6 +841,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _walksSub?.cancel();
+    _walksPollingTimer?.cancel(); // Stop periodic polling
     _stepSubscription?.cancel();
     _hostedCountdownTimer?.cancel();
 
@@ -1130,7 +1043,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dynamic rawDateTime = parsed?.dateTime ?? data?['dateTime'];
     final DateTime? dateTime = normalizeDateTime(rawDateTime);
     final buffer = StringBuffer()
-      ..writeln('🕵️ WALK DROP id=$id reason=$reason cache=${isFromCache ?? false}')
+      ..writeln(
+        '🕵️ WALK DROP id=$id reason=$reason cache=${isFromCache ?? false}',
+      )
       ..writeln(
         '  dateTime=${dateTime ?? data?['dateTime']} status=${parsed?.status ?? data?['status']} visibility=${parsed?.visibility ?? data?['visibility']}',
       )
@@ -1145,16 +1060,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
 
     debugPrint(buffer.toString());
-  }
-
-  /// Call this when a *new nearby* walk arrives from your backend / API.
-  void _onNewNearbyWalk(WalkEvent event) {
-    setState(() {
-      _events.add(event); // add to main list
-    });
-
-    // ≡ƒöö Instant ΓÇ£nearby walkΓÇ¥ notification (honors Settings toggle)
-    NotificationService.instance.showNearbyWalkAlert(event);
   }
 
   Future<void> _toggleJoin(WalkEvent event) async {
@@ -1483,151 +1388,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  // === NEW: notification bottom sheet (uses stored notifications) ===
+  // === Open notifications screen (full page) ===
   Future<void> _openNotificationsSheet() async {
-    final List<AppNotification> notifications =
-        await NotificationStorage.getNotifications();
-
-    // Γ£à mark all read when opening
+    // Mark all as read when opening
     await NotificationStorage.markAllRead();
     await _refreshNotificationsCount();
 
-    // Newest first
-    notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
     if (!mounted) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusCard)),
-      ),
-      builder: (ctx) {
-        // Γ£à If nothing stored yet ΓåÆ same placeholder as before
-        if (notifications.isEmpty) {
-          return Padding(
-            padding: EdgeInsets.fromLTRB(kSpace2, 20, kSpace2, kSpace4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.notifications_none,
-                  size: 36,
-                  color: Colors.grey,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'No notifications yet',
-                  style:
-                      Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ) ??
-                      const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'YouΓÇÖll see reminders and new nearby walks here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                SizedBox(height: kSpace2),
-              ],
-            ),
-          );
-        }
-
-        // Γ£à Real notifications list
-        return SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Icon(Icons.notifications, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Notifications',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style:
-                                  Theme.of(context).textTheme.headlineSmall
-                                      ?.copyWith(fontWeight: FontWeight.w700) ??
-                                  const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ≡ƒö╣ Clear button (top-right)
-                    TextButton(
-                      onPressed: () async {
-                        await NotificationStorage.clearNotifications();
-                        if (!mounted) return;
-                        Navigator.of(context).pop(); // close sheet
-                        _openNotificationsSheet(); // reopen with updated list
-                      },
-                      child: const Text(
-                        'Clear',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-                ...notifications.map(
-                  (n) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
-                      Icons.circle,
-                      size: 10,
-                      color: Color(0xFF00D97E),
-                    ),
-                    title: Text(
-                      n.title,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(n.message),
-                    trailing: Text(
-                      _formatNotificationTime(n.timestamp),
-                      style:
-                          Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.grey.shade600,
-                          ) ??
-                          TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    await Navigator.pushNamed(context, NotificationsScreen.routeName);
+    
+    // Refresh count when returning
+    await _refreshNotificationsCount();
   }
 
   // Profile icon should go directly to Profile
@@ -1696,6 +1468,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildEmailVerificationBanner() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    // Only show if user is logged in and email is not verified
+    if (user == null || user.emailVerified) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      color: Colors.amber.shade700,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Email not verified',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Check your inbox for the verification link',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => _resendVerificationEmail(),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: const Text(
+              'Resend',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.emailVerified) return;
+
+    try {
+      await user.sendEmailVerification();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Verification email sent to ${user.email}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send email: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildHostedWalkBanner(BuildContext context, bool isDark) {
@@ -1916,6 +1768,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           if (_isOffline) _buildOfflineBanner(),
           if (_pendingActions > 0 && !_isOffline) _buildSyncingBanner(),
+          _buildEmailVerificationBanner(),
           Expanded(child: body),
         ],
       ),
@@ -2744,7 +2597,7 @@ class _RecommendationCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '${event.distanceKm} km ΓÇó ${event.dateTime.month}/${event.dateTime.day}',
+                '${event.distanceKm} km • ${event.dateTime.month}/${event.dateTime.day}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: isDark ? kTextSecondary : Colors.black54,
                 ),
@@ -2818,12 +2671,12 @@ class _WeeklySummaryCard extends StatelessWidget {
       if (kmGoal <= 0) {
         return 'Set a weekly goal in Settings to start tracking.';
       }
-      if (p <= 0.01) return 'LetΓÇÖs get the first steps in ≡ƒÆ¬';
-      if (p < 0.25) return 'Nice start ΓÇö keep the momentum going!';
-      if (p < 0.50) return 'YouΓÇÖre building a habit ΓÇö great progress!';
-      if (p < 0.75) return 'More than halfway ΓÇö youΓÇÖve got this!';
-      if (p < 1.00) return 'Almost there ΓÇö one more push!';
-      return 'Goal reached ≡ƒÄë Amazing work this week!';
+      if (p <= 0.01) return 'Let\'s get the first steps in!';
+      if (p < 0.25) return 'Nice start - keep the momentum going!';
+      if (p < 0.50) return 'You\'re building a habit - great progress!';
+      if (p < 0.75) return 'More than halfway - you\'ve got this!';
+      if (p < 1.00) return 'Almost there - one more push!';
+      return 'Goal reached! Amazing work this week!';
     }
 
     final percent = (progress * 100).round();
@@ -2849,7 +2702,7 @@ class _WeeklySummaryCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '$walks walk${walks == 1 ? '' : 's'} ΓÇó '
+                    '$walks walk${walks == 1 ? '' : 's'} • '
                     '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -2971,7 +2824,7 @@ class _WalkCard extends StatelessWidget {
     final yyyy = dt.year.toString();
     final hh = dt.hour.toString().padLeft(2, '0');
     final min = dt.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yyyy ΓÇó $hh:$min';
+    return '$dd/$mm/$yyyy • $hh:$min';
   }
 
   @override

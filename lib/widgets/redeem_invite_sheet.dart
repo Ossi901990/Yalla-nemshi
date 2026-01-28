@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/invite_service.dart';
+import '../services/deep_link_service.dart';
 
 class RedeemInviteSheet extends StatefulWidget {
   const RedeemInviteSheet({super.key});
@@ -17,6 +19,50 @@ class _RedeemInviteSheetState extends State<RedeemInviteSheet> {
 
   bool _submitting = false;
   String? _error;
+
+  Future<void> _pasteAndParse() async {
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = clipboardData?.text?.trim();
+
+      if (text == null || text.isEmpty) {
+        setState(() {
+          _error = 'Clipboard is empty';
+        });
+        return;
+      }
+
+      // Check if it's a URL
+      if (text.startsWith('http')) {
+        final parsed = DeepLinkService.instance.parseInviteUrl(text);
+        final walkId = parsed['walkId'];
+        final code = parsed['code'];
+
+        if (walkId != null && walkId.isNotEmpty) {
+          _walkIdCtrl.text = walkId;
+          if (code != null && code.isNotEmpty) {
+            _codeCtrl.text = code;
+          }
+          setState(() {
+            _error = null;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invite link parsed successfully!')),
+          );
+          return;
+        }
+      }
+
+      // If not a valid URL, show error
+      setState(() {
+        _error = 'Invalid invite link format';
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Could not parse clipboard';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -78,6 +124,15 @@ class _RedeemInviteSheetState extends State<RedeemInviteSheet> {
                 'Enter the walk ID and invite code you received from the host. '
                 'Valid codes unlock private walks instantly.',
                 style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _pasteAndParse,
+                icon: const Icon(Icons.content_paste, size: 18),
+                label: const Text('Paste invite link'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 40),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(

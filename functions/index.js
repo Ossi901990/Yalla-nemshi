@@ -5,8 +5,9 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
-const { defineSecret } = require("firebase-functions/params");
-const sgMail = require("@sendgrid/mail");
+// TODO: Uncomment when ready to add SendGrid for email digests (free tier: 100 emails/day)
+// const { defineSecret } = require("firebase-functions/params");
+// const sgMail = require("@sendgrid/mail");
 
 const db = admin.firestore();
 const friendProfiles = require("./friend_profiles")(admin);
@@ -20,9 +21,10 @@ const {
   enforceWalkSummaryLimit,
 } = friendProfiles;
 
-const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
-const DIGEST_FROM_EMAIL = process.env.DIGEST_FROM_EMAIL || "no-reply@yallanemshi.app";
-const DIGEST_FROM_NAME = "Yalla Nemshi";
+// TODO: Uncomment when ready to add SendGrid
+// const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
+// const DIGEST_FROM_EMAIL = process.env.DIGEST_FROM_EMAIL || "no-reply@yallanemshi.app";
+// const DIGEST_FROM_NAME = "Yalla Nemshi";
 
 // ===== SET GLOBAL REGION FOR HTTPS AND HTTPS-CALLABLE FUNCTIONS =====
 // HTTPS functions can be in europe-west1 (closer to Middle East)
@@ -329,19 +331,37 @@ exports.onWalkJoined = onDocumentWritten("users/{userId}/walks/{walkId}", async 
     const user = userSnap.exists ? userSnap.data() : {};
     const userName = user.displayName || "Someone";
     
-    // Send notification to host
+    const notificationData = {
+      type: "walk_joined",
+      walkId: walkId,
+      userId: userId,
+    };
+    
+    // Send FCM notification to host
     await sendNotificationToUser(
       hostUid,
       {
         title: "New walker joined! 🎉",
         body: `${userName} joined your walk "${walk.title}"`,
       },
-      {
-        type: "walk_joined",
-        walkId: walkId,
-        userId: userId,
-      }
+      notificationData,
+      "walk_joined"
     );
+    
+    // Write notification to Firestore
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // Expire in 30 days
+    
+    await db.collection("users").doc(hostUid).collection("notifications").add({
+      type: "walkJoined",
+      title: "New walker joined! 🎉",
+      message: `${userName} joined your walk "${walk.title}"`,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      isRead: false,
+      walkId: walkId,
+      userId: userId,
+      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    });
     
     console.log(`✅ Notified host ${hostUid} about ${userId} joining walk ${walkId}`);
   } catch (error) {
@@ -379,9 +399,13 @@ exports.onWalkCancelled = onDocumentUpdated("walks/{walkId}", async (event) => {
     }
     
     // Send notifications in parallel
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
+    
     await Promise.all(
-      participantsToNotify.map((uid) =>
-        sendNotificationToUser(
+      participantsToNotify.map(async (uid) => {
+        // Send FCM notification
+        await sendNotificationToUser(
           uid,
           {
             title: "Walk cancelled ❌",
@@ -391,8 +415,19 @@ exports.onWalkCancelled = onDocumentUpdated("walks/{walkId}", async (event) => {
             type: "walk_cancelled",
             walkId: walkId,
           }
-        )
-      )
+        );
+        
+        // Write notification to Firestore
+        await db.collection("users").doc(uid).collection("notifications").add({
+          type: "walkCancelled",
+          title: "Walk cancelled ❌",
+          message: `The walk "${walk.title}" has been cancelled`,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          isRead: false,
+          walkId: walkId,
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        });
+      })
     );
     
     console.log(`✅ Notified ${participantsToNotify.length} participants about walk cancellation`);
@@ -410,6 +445,8 @@ const COMPLETED_STATES = new Set([
 ]);
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
+// TODO: Uncomment when SendGrid is configured - monthly email digests
+/* 
 exports.sendMonthlyDigests = onSchedule(
   {
     schedule: "0 6 1 * *", // 06:00 UTC on the first of every month
@@ -443,7 +480,9 @@ exports.sendMonthlyDigests = onSchedule(
     console.log(`📬 [Digest] Completed run for ${window.yearMonth}`);
   }
 );
+*/
 
+/* Temporarily commented out - digest helper functions
 async function processMonthlyDigestForUser(userDoc, window) {
   const uid = userDoc.id;
   const userData = userDoc.data() || {};
@@ -854,6 +893,8 @@ function getPreviousMonthWindow() {
     monthLabel: label,
   };
 }
+*/
+// End of commented SendGrid digest functions
 
 /**
  * Trigger: When walk details are updated (title, dateTime, meetingPlace, etc.)
@@ -906,9 +947,13 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
     }
     
     // Send notifications in parallel
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry for updates
+    
     await Promise.all(
-      participantsToNotify.map((uid) =>
-        sendNotificationToUser(
+      participantsToNotify.map(async (uid) => {
+        // Send FCM notification
+        await sendNotificationToUser(
           uid,
           {
             title: "Walk updated 📝",
@@ -919,8 +964,20 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
             walkId: walkId,
             changeType: changeDescription,
           }
-        )
-      )
+        );
+        
+        // Write notification to Firestore
+        await db.collection("users").doc(uid).collection("notifications").add({
+          type: "walkUpdated",
+          title: "Walk updated 📝",
+          message: `"${walk.title}" - ${changeDescription}`,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          isRead: false,
+          walkId: walkId,
+          data: { changeType: changeDescription },
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        });
+      })
     );
     
     console.log(`✅ Notified ${participantsToNotify.length} participants about walk update`);
@@ -984,9 +1041,15 @@ exports.onDmMessageCreated = onDocumentCreated(
         body = text.length > 120 ? `${text.substring(0, 117)}...` : text || "New message";
       }
 
+      console.log(`📝 About to create notifications for recipients: ${JSON.stringify(recipients)}`);
+      console.log(`📝 Sender ID: ${senderId}`);
+      console.log(`📝 All participants from thread: ${JSON.stringify(rawParticipants)}`);
+
       await Promise.all(
-        recipients.map((uid) =>
-          sendNotificationToUser(
+        recipients.map(async (uid) => {
+          console.log(`📝 Creating notification for recipient: ${uid}`);
+          // Send FCM notification
+          await sendNotificationToUser(
             uid,
             {
               title: senderName,
@@ -1000,8 +1063,24 @@ exports.onDmMessageCreated = onDocumentCreated(
               senderPhotoUrl,
             },
             `dm:${threadId}:${event.params.messageId}`,
-          ),
-        ),
+          );
+          
+          // Write notification to Firestore
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30); // 30 days expiry
+          
+          await db.collection("users").doc(uid).collection("notifications").add({
+            type: "dmMessage",
+            title: senderName,
+            message: body,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            isRead: false,
+            threadId: threadId,
+            userId: senderId,
+            data: { senderPhotoUrl },
+            expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+          });
+        }),
       );
 
       console.log(`✅ Sent DM notifications for thread ${threadId}`);
@@ -1067,9 +1146,13 @@ exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}",
     const messageText = (message.text || message.content || "sent a message").substring(0, 100);
     
     // Send notifications in parallel
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry for chat
+    
     await Promise.all(
-      participantsToNotify.map((uid) =>
-        sendNotificationToUser(
+      participantsToNotify.map(async (uid) => {
+        // Send FCM notification
+        await sendNotificationToUser(
           uid,
           {
             title: `${senderName} • ${walk.title}`,
@@ -1081,8 +1164,21 @@ exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}",
             senderId: senderId,
             messageId: event.params.messageId,
           }
-        )
-      )
+        );
+        
+        // Write notification to Firestore
+        await db.collection("users").doc(uid).collection("notifications").add({
+          type: "chatMessage",
+          title: `${senderName} • ${walk.title}`,
+          message: messageText,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          isRead: false,
+          walkId: walkId,
+          userId: senderId,
+          data: { messageId: event.params.messageId },
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        });
+      })
     );
     
     console.log(`✅ Notified ${participantsToNotify.length} participants about new message`);
@@ -1090,6 +1186,112 @@ exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}",
     console.error("❌ Error in onChatMessage:", error);
   }
 });
+
+// ===== SCHEDULED MAINTENANCE =====
+
+/**
+ * Cleanup old GPS tracking data (runs daily at midnight UTC)
+ * Deletes tracking subcollections for walks that ended more than 30 days ago
+ * Keeps walk summary stats (distance, speed, etc.) but removes detailed GPS points
+ * 
+ * Privacy & Cost Optimization: GPS traces contain sensitive location data and 
+ * consume significant storage. This function enforces a 30-day retention policy.
+ */
+exports.cleanupOldGpsData = onSchedule(
+  {
+    schedule: "0 0 * * *", // Daily at midnight UTC
+    region: "europe-west1",
+    timeZone: "UTC",
+  },
+  async () => {
+    console.log("🧹 [GPS Cleanup] Starting daily GPS data cleanup");
+    
+    try {
+      // Calculate cutoff date (30 days ago)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const cutoffTimestamp = admin.firestore.Timestamp.fromDate(thirtyDaysAgo);
+      
+      console.log(`🧹 [GPS Cleanup] Cutoff date: ${thirtyDaysAgo.toISOString()}`);
+      
+      // Find walks that ended more than 30 days ago
+      // Use endedAt for walks that have ended, or scheduledDate as fallback
+      const walksSnapshot = await db
+        .collection("walks")
+        .where("status", "in", ["completed", "completed_late", "ended", "cancelled"])
+        .where("endedAt", "<=", cutoffTimestamp)
+        .get();
+      
+      if (walksSnapshot.empty) {
+        console.log("🧹 [GPS Cleanup] No walks found that need cleanup");
+        return;
+      }
+      
+      console.log(`🧹 [GPS Cleanup] Found ${walksSnapshot.size} walks to clean up`);
+      
+      let totalPointsDeleted = 0;
+      let walksProcessed = 0;
+      
+      // Process walks in batches to avoid timeout
+      for (const walkDoc of walksSnapshot.docs) {
+        const walkId = walkDoc.id;
+        const walkData = walkDoc.data();
+        const walkTitle = walkData.title || "Unknown Walk";
+        
+        try {
+          // Get all tracking points for this walk
+          const trackingSnapshot = await db
+            .collection("walks")
+            .doc(walkId)
+            .collection("tracking")
+            .get();
+          
+          if (trackingSnapshot.empty) {
+            console.log(`  ↳ Walk ${walkId} (${walkTitle}): No tracking data to delete`);
+            continue;
+          }
+          
+          const pointCount = trackingSnapshot.size;
+          
+          // Delete tracking points in batches (Firestore batch limit: 500 operations)
+          const batchSize = 500;
+          let batch = db.batch();
+          let operationsInBatch = 0;
+          
+          for (const pointDoc of trackingSnapshot.docs) {
+            batch.delete(pointDoc.ref);
+            operationsInBatch++;
+            
+            // Commit batch when it reaches the limit
+            if (operationsInBatch >= batchSize) {
+              await batch.commit();
+              batch = db.batch();
+              operationsInBatch = 0;
+            }
+          }
+          
+          // Commit any remaining operations
+          if (operationsInBatch > 0) {
+            await batch.commit();
+          }
+          
+          totalPointsDeleted += pointCount;
+          walksProcessed++;
+          
+          console.log(`  ✅ Walk ${walkId} (${walkTitle}): Deleted ${pointCount} GPS points`);
+        } catch (error) {
+          console.error(`  ❌ Walk ${walkId} (${walkTitle}): Error deleting tracking data:`, error);
+          // Continue processing other walks even if one fails
+        }
+      }
+      
+      console.log(`🧹 [GPS Cleanup] Complete: Processed ${walksProcessed} walks, deleted ${totalPointsDeleted} GPS points`);
+    } catch (error) {
+      console.error("❌ [GPS Cleanup] Fatal error during cleanup:", error);
+      throw error; // Re-throw to mark function execution as failed
+    }
+  }
+);
 
 // ===== CP-4: WALK COMPLETION FUNCTIONS =====
 // Import CP-4 walk tracking functions

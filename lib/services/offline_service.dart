@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/walk_event.dart';
 import 'crash_service.dart';
+import 'walk_history_service.dart';
 
 /// Centralized offline helpers: persistence, connectivity state, cached data, and
 /// lightweight action queueing for sync-on-reconnect flows.
@@ -100,7 +101,10 @@ class OfflineService {
 
   // --- Pending join/leave actions ---
 
-  Future<void> queueJoinAction({required String walkId, required bool join}) async {
+  Future<void> queueJoinAction({
+    required String walkId,
+    required bool join,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final pending = prefs.getStringList(_pendingJoinKey) ?? <String>[];
@@ -123,11 +127,53 @@ class OfflineService {
       final pending = prefs.getStringList(_pendingJoinKey) ?? <String>[];
       if (pending.isEmpty) return;
 
-      // Firestore already has offline writes queued, so here we simply clear
-      // our local bookkeeping and wait for Firestore to push pending writes.
-      await FirebaseFirestore.instance.waitForPendingWrites();
-      await prefs.remove(_pendingJoinKey);
-      pendingActionCount.value = 0;
+      debugPrint('🔄 Syncing ${pending.length} pending offline actions...');
+
+      // Re-execute each action explicitly instead of just waiting for Firestore
+      // This ensures actions aren't lost if Firestore dropped them
+      final succeeded = <String>[];
+      final failed = <String>[];
+
+      for (final actionJson in pending) {
+        try {
+          final action = jsonDecode(actionJson) as Map<String, dynamic>;
+          final walkId = action['walkId'] as String;
+          final join = action['join'] as bool;
+
+          debugPrint(
+            '  → Re-executing ${join ? "join" : "leave"} for walk $walkId',
+          );
+
+          // Actually call the service methods to re-execute the action
+          if (join) {
+            await WalkHistoryService.instance.recordWalkJoin(walkId);
+          } else {
+            await WalkHistoryService.instance.recordWalkLeave(walkId);
+          }
+
+          // Mark as succeeded
+          succeeded.add(actionJson);
+          debugPrint('  ✅ Action succeeded');
+        } catch (e) {
+          // Keep failed actions in queue for retry
+          failed.add(actionJson);
+          debugPrint('  ❌ Action failed: $e');
+        }
+      }
+
+      // Update queue: remove succeeded, keep failed for retry
+      if (succeeded.isNotEmpty) {
+        await prefs.setStringList(_pendingJoinKey, failed);
+        pendingActionCount.value = failed.length;
+        debugPrint(
+          '✅ Synced ${succeeded.length} actions, ${failed.length} remaining',
+        );
+      }
+
+      // If all succeeded, clear the pending writes from Firestore too
+      if (failed.isEmpty) {
+        await FirebaseFirestore.instance.waitForPendingWrites();
+      }
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'OfflineService.syncPending');
     }

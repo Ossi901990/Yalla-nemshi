@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/firestore_user.dart';
 import '../services/firestore_user_service.dart';
 import '../services/friends_service.dart';
+import '../utils/error_handler.dart';
 import 'friend_profile_screen.dart';
 
 class FriendSearchScreen extends StatefulWidget {
@@ -28,16 +29,23 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       _results = [];
     });
     try {
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
       final users = await FirestoreUserService.searchUsers(query);
+
+      // Filter out current user from results
+      final filteredUsers = users
+          .where((user) => user.uid != currentUserId)
+          .toList();
+
       if (!mounted) return;
       setState(() {
-        _results = users;
+        _results = filteredUsers;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = ErrorHandler.getUserMessage(e);
         _loading = false;
       });
     }
@@ -49,14 +57,12 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     try {
       await _friendsService.sendFriendRequest(user.uid, targetUid);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Friend request sent!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Friend request sent!')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ErrorHandler.showErrorSnackBar(context, ErrorHandler.getUserMessage(e));
     }
   }
 
@@ -81,7 +87,36 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
             ),
             const SizedBox(height: 16),
             if (_loading) const CircularProgressIndicator(),
-            if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
+            if (_error != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD97706).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFFD97706).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Color(0xFFD97706),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: Color(0xFFD97706),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (!_loading && _results.isNotEmpty)
               Expanded(
                 child: ListView.builder(
@@ -101,7 +136,9 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   },
                 ),
               ),
-            if (!_loading && _results.isEmpty && _searchController.text.isNotEmpty)
+            if (!_loading &&
+                _results.isEmpty &&
+                _searchController.text.isNotEmpty)
               const Text('No users found.'),
           ],
         ),

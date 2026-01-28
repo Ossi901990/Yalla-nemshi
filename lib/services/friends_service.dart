@@ -2,9 +2,54 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FriendsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static const int maxFriends = 500;
 
   // Send a friend request
   Future<void> sendFriendRequest(String senderUid, String recipientUid) async {
+    // Prevent self-friending
+    if (senderUid == recipientUid) {
+      throw Exception('You cannot add yourself as a friend.');
+    }
+
+    // Check if already friends
+    final existingFriendship = await _firestore
+        .collection('friends')
+        .doc(senderUid)
+        .collection('friendsList')
+        .doc(recipientUid)
+        .get();
+
+    if (existingFriendship.exists) {
+      throw Exception('You are already friends with this user.');
+    }
+
+    // Check if a pending request already exists (either direction)
+    final sentRequest = await _firestore
+        .collection('friend_requests')
+        .doc(senderUid)
+        .collection('sent')
+        .where('toUserId', isEqualTo: recipientUid)
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    if (sentRequest.docs.isNotEmpty) {
+      throw Exception('You already sent a friend request to this user.');
+    }
+
+    final receivedRequest = await _firestore
+        .collection('friend_requests')
+        .doc(senderUid)
+        .collection('received')
+        .where('fromUserId', isEqualTo: recipientUid)
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    if (receivedRequest.docs.isNotEmpty) {
+      throw Exception(
+        'This user already sent you a friend request. Check your friend requests.',
+      );
+    }
+
     final requestId = _firestore.collection('friend_requests').doc().id;
     final requestData = {
       'requestId': requestId,
@@ -28,7 +73,11 @@ class FriendsService {
   }
 
   // Accept a friend request
-  Future<void> acceptFriendRequest(String userId, String friendId, String requestId) async {
+  Future<void> acceptFriendRequest(
+    String userId,
+    String friendId,
+    String requestId,
+  ) async {
     final friendData = {
       'friendId': friendId,
       'since': FieldValue.serverTimestamp(),
@@ -62,7 +111,11 @@ class FriendsService {
   }
 
   // Decline a friend request
-  Future<void> declineFriendRequest(String userId, String friendId, String requestId) async {
+  Future<void> declineFriendRequest(
+    String userId,
+    String friendId,
+    String requestId,
+  ) async {
     await _firestore
         .collection('friend_requests')
         .doc(userId)
@@ -104,7 +157,11 @@ class FriendsService {
     await batch.commit();
   }
 
-  Future<void> blockUser(String blockerUid, String targetUid, {String? reason}) async {
+  Future<void> blockUser(
+    String blockerUid,
+    String targetUid, {
+    String? reason,
+  }) async {
     final blockRef = _firestore
         .collection('blocks')
         .doc(blockerUid)
@@ -133,7 +190,8 @@ class FriendsService {
       'reporterUid': reporterUid,
       'targetUid': targetUid,
       'reason': reason.trim(),
-      if (details != null && details.trim().isNotEmpty) 'details': details.trim(),
+      if (details != null && details.trim().isNotEmpty)
+        'details': details.trim(),
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
