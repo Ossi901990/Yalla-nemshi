@@ -91,8 +91,7 @@ class NotificationService {
         .doc(uid)
         .collection('notifications')
         .where('expiresAt', isGreaterThan: Timestamp.now()) // Only non-expired
-        .orderBy('expiresAt', descending: false)
-        .orderBy('timestamp', descending: true)
+        .orderBy('timestamp', descending: true) // Newest first
         .limit(100) // Last 100 notifications
         .snapshots()
         .listen(

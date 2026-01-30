@@ -28,7 +28,8 @@ class NotificationStorage {
           }
         })
         .whereType<AppNotification>()
-        .toList();
+        .toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp)); // Newest first
   }
 
   static Future<void> _save(List<AppNotification> list) async {
