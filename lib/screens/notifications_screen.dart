@@ -3,10 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/app_notification.dart';
 import '../services/notification_service.dart';
 import '../services/notification_storage.dart';
+import '../services/walk_control_service.dart';
 import 'dm_chat_screen.dart';
 import 'friend_profile_screen.dart';
 import 'analytics_screen.dart';
 import 'active_walk_screen.dart';
+import 'review_walk_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   static const String routeName = '/notifications';
@@ -157,7 +159,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _handleNotificationTap(AppNotification notification) {
+  Future<void> _handleNotificationTap(AppNotification notification) async {
     _markAsRead(notification);
     
     debugPrint('🔔 Notification tapped: type=${notification.type}');
@@ -188,12 +190,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.walkRescheduled:
       case NotificationType.walkLocationChanged:
       case NotificationType.walkReminder:
-      case NotificationType.walkEnded:
       case NotificationType.walkHostLeft:
       case NotificationType.nearbyWalk:
       case NotificationType.suggestedWalk:
         // TODO: Navigate to event details when we have the screen
         // For now, just mark as read
+        break;
+      case NotificationType.walkEnded:
+        if (notification.walkId != null) {
+          final walk =
+              await WalkControlService().getWalk(notification.walkId!);
+          if (!mounted) return;
+          if (walk != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ReviewWalkScreen(walk: walk),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Unable to load walk')),
+            );
+          }
+        }
         break;
 
       // Message notifications → DM chat
@@ -465,9 +485,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
+          onTap: () async {
             debugPrint('🔔 TAP DETECTED on notification: ${notification.id}');
-            _handleNotificationTap(notification);
+            await _handleNotificationTap(notification);
           },
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

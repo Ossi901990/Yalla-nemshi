@@ -10,10 +10,12 @@ import '../models/app_notification.dart';
 import '../models/walk_event.dart';
 import '../screens/dm_chat_screen.dart';
 import '../screens/active_walk_screen.dart';
+import '../screens/review_walk_screen.dart';
 import 'walk_history_service.dart';
 import 'notification_storage.dart';
 import 'app_preferences.dart';
 import 'crash_service.dart';
+import 'walk_control_service.dart';
 
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
@@ -37,6 +39,8 @@ class NotificationService {
   Map<String, String?>? _pendingDmNavigation;
   bool _walkStartDialogOpen = false;
   String? _lastWalkStartDialogWalkId;
+  bool _walkEndDialogOpen = false;
+  String? _lastWalkEndDialogWalkId;
 
   /// Initialize FCM and request permissions
   static Future<void> init() async {
@@ -145,6 +149,8 @@ class NotificationService {
 
                 if (notif.type == NotificationType.walkStarting) {
                   _showWalkStartConfirmationDialog(notif);
+                } else if (notif.type == NotificationType.walkEnded) {
+                  _showWalkEndedDialog(notif);
                 }
               } else if (change.type == DocumentChangeType.modified) {
                 final notif = AppNotification.fromFirestore(
@@ -236,6 +242,84 @@ class NotificationService {
     );
 
     _walkStartDialogOpen = false;
+  }
+
+  Future<void> _showWalkEndedDialog(AppNotification notification) async {
+    final context = navigatorKey.currentState?.overlay?.context;
+    final walkId = notification.walkId ?? notification.data?['walkId'] as String?;
+    if (context == null || walkId == null) return;
+
+    if (_walkEndDialogOpen && _lastWalkEndDialogWalkId == walkId) {
+      return;
+    }
+
+    _walkEndDialogOpen = true;
+    _lastWalkEndDialogWalkId = walkId;
+
+    final distance = (notification.data?['actualDistanceKm'] as num?)?.toDouble();
+    final duration = (notification.data?['actualDurationMinutes'] as num?)?.round();
+    String statsMessage = '';
+    if (distance != null && distance > 0 && duration != null && duration > 0) {
+      statsMessage =
+          'You walked ${distance.toStringAsFixed(1)} km in $duration min.';
+    } else if (distance != null && distance > 0) {
+      statsMessage = 'You walked ${distance.toStringAsFixed(1)} km.';
+    } else if (duration != null && duration > 0) {
+      statsMessage = 'You walked for $duration min.';
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Walk ended 🎉'),
+          content: Text(
+            statsMessage.isNotEmpty
+                ? statsMessage
+                : (notification.message.isNotEmpty
+                    ? notification.message
+                    : 'Your walk has ended. Want to leave a review?'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Not now'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                try {
+                  final walk =
+                      await WalkControlService().getWalk(walkId);
+                  final navContext = navigatorKey.currentState?.overlay?.context;
+                  if (walk != null && navContext != null) {
+                    navigatorKey.currentState?.push(
+                      MaterialPageRoute(
+                        builder: (_) => ReviewWalkScreen(walk: walk),
+                      ),
+                    );
+                  } else if (navContext != null) {
+                    ScaffoldMessenger.of(navContext).showSnackBar(
+                      const SnackBar(content: Text('Unable to load walk')),
+                    );
+                  }
+                } catch (e, st) {
+                  CrashService.recordError(
+                    e,
+                    st,
+                    reason: 'Walk ended review navigation failed',
+                  );
+                }
+              },
+              child: const Text('Review walk'),
+            ),
+          ],
+        );
+      },
+    );
+
+    _walkEndDialogOpen = false;
   }
 
   /// Stop listening to notifications
@@ -347,7 +431,6 @@ class NotificationService {
       case NotificationType.walkRescheduled:
       case NotificationType.walkReminder:
       case NotificationType.walkStarting:
-      case NotificationType.walkEnded:
       case NotificationType.nearbyWalk:
       case NotificationType.suggestedWalk:
         if (notification.walkId != null) {
@@ -355,6 +438,21 @@ class NotificationService {
           // You'll need to import EventDetailsScreen and fetch walk
           debugPrint('Navigate to walk: ${notification.walkId}');
           // navigator.pushNamed('/walk-details', arguments: notification.walkId);
+        }
+        break;
+      case NotificationType.walkEnded:
+        if (notification.walkId != null) {
+          () async {
+            final walk =
+                await WalkControlService().getWalk(notification.walkId!);
+            if (walk == null) return;
+            if (!context.mounted) return;
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ReviewWalkScreen(walk: walk),
+              ),
+            );
+          }();
         }
         break;
         

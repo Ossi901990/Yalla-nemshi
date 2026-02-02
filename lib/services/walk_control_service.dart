@@ -232,7 +232,10 @@ class WalkControlService {
     try {
       final doc = await _firestore.collection('walks').doc(walkId).get();
       if (!doc.exists) return null;
-      return WalkEvent.fromMap(doc.data() ?? {});
+      final data = doc.data() ?? {};
+      data['id'] = doc.id;
+      data['firestoreId'] = doc.id;
+      return WalkEvent.fromMap(data);
     } catch (e) {
       CrashService.recordError(
         e,

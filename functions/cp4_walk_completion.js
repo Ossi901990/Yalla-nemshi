@@ -147,6 +147,8 @@ exports.onWalkEnded = onDocumentUpdated(
       const actualDurationMinutes = Math.round(
         (completedAt - startedAt) / 1000 / 60
       );
+      const actualDistanceKm =
+        walkAfter.actualDistanceKm || walkAfter.distanceKm || 0;
 
       // Get all "actively_walking" participants
       const participationSnapshot = await db
@@ -160,6 +162,7 @@ exports.onWalkEnded = onDocumentUpdated(
       // Update each participant's completion status
       const batch = db.batch();
       const userStatsToUpdate = [];
+      const usersToNotify = [];
 
       participationSnapshot.docs.forEach((doc) => {
         const participation = doc.data();
@@ -181,7 +184,13 @@ exports.onWalkEnded = onDocumentUpdated(
         userStatsToUpdate.push({
           userId,
           actualDurationMinutes: userActualDurationMinutes,
-          actualDistanceKm: walkAfter.distanceKm || 0,
+          actualDistanceKm,
+        });
+
+        usersToNotify.push({
+          userId,
+          actualDurationMinutes: userActualDurationMinutes,
+          actualDistanceKm,
         });
       });
 
@@ -196,6 +205,57 @@ exports.onWalkEnded = onDocumentUpdated(
       );
 
       console.log(`✅ Updated stats for ${userStatsToUpdate.length} users`);
+
+      if (usersToNotify.length > 0) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await Promise.all(
+          usersToNotify.map(async (entry) => {
+            const distanceLabel = entry.actualDistanceKm
+              ? `${Number(entry.actualDistanceKm).toFixed(1)} km`
+              : null;
+            const durationLabel = entry.actualDurationMinutes
+              ? `${entry.actualDurationMinutes} min`
+              : null;
+            const statsSummary = distanceLabel && durationLabel
+              ? `You walked ${distanceLabel} in ${durationLabel}.`
+              : distanceLabel
+                ? `You walked ${distanceLabel}.`
+                : durationLabel
+                  ? `You walked for ${durationLabel}.`
+                  : `Your walk has ended.`;
+
+            await sendNotificationToUser(
+              entry.userId,
+              {
+                title: "Walk ended ✅",
+                body: statsSummary,
+              },
+              {
+                type: "walk_ended",
+                walkId: walkId,
+                actualDurationMinutes: entry.actualDurationMinutes || 0,
+                actualDistanceKm: entry.actualDistanceKm || 0,
+              },
+              "walk_ended"
+            );
+
+            await db.collection("users").doc(entry.userId).collection("notifications").add({
+              type: "walkEnded",
+              title: "Walk ended ✅",
+              message: statsSummary,
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              isRead: false,
+              walkId: walkId,
+              data: {
+                actualDurationMinutes: entry.actualDurationMinutes || 0,
+                actualDistanceKm: entry.actualDistanceKm || 0,
+              },
+              expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+            });
+          })
+        );
+      }
     } catch (error) {
       console.error("❌ Error in onWalkEnded:", error);
     }

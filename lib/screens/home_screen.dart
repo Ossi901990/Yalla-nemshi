@@ -233,6 +233,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
 
       _refreshHostedCountdown();
+      _refreshParticipantCountdown();
 
       OfflineService.instance.cacheWalks(merged);
 
@@ -366,6 +367,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _isLoadingMore = false;
       });
 
+      _refreshHostedCountdown();
+      _refreshParticipantCountdown();
+
       OfflineService.instance.cacheWalks(_events);
 
       debugPrint(
@@ -470,6 +474,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (walk.status == 'ended') {
         _debugWalkDrop(
           'status=ended',
+          id: doc.id,
+          data: data,
+          parsed: walk,
+          isFromCache: isFromCache,
+        );
+        return null;
+      }
+      if (walk.status == 'completed') {
+        _debugWalkDrop(
+          'status=completed',
           id: doc.id,
           data: data,
           parsed: walk,
@@ -612,6 +626,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   WalkEvent? _nextHostedWalk;
   Duration _hostedCountdownRemaining = Duration.zero;
   bool _isStartingHostedWalk = false;
+  Timer? _participantCountdownTimer;
+  WalkEvent? _nextParticipantWalk;
+  Duration _participantCountdownRemaining = Duration.zero;
+  bool _isConfirmingParticipant = false;
 
   String _greetingForTime() {
     final hour = DateTime.now().hour;
@@ -690,6 +708,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return eligible.first;
   }
 
+  WalkEvent? _computeNextParticipantWalk() {
+    final now = DateTime.now();
+    final eligible = _events
+        .where(
+          (walk) =>
+              !walk.cancelled &&
+              !walk.isOwner &&
+              walk.joined &&
+              (walk.status == 'scheduled' || walk.status == 'active') &&
+              walk.dateTime.isAfter(now.subtract(const Duration(minutes: 15))),
+        )
+        .toList();
+
+    if (eligible.isEmpty) return null;
+
+    eligible.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    return eligible.first;
+  }
+
   void _refreshHostedCountdown() {
     _hostedCountdownTimer?.cancel();
     final next = _computeNextHostedWalk();
@@ -729,6 +766,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  void _refreshParticipantCountdown() {
+    _participantCountdownTimer?.cancel();
+    final next = _computeNextParticipantWalk();
+
+    if (!mounted) {
+      _nextParticipantWalk = next;
+      _participantCountdownRemaining = Duration.zero;
+      return;
+    }
+
+    if (next == null) {
+      setState(() {
+        _nextParticipantWalk = null;
+        _participantCountdownRemaining = Duration.zero;
+      });
+      return;
+    }
+
+    void updateRemaining() {
+      if (!mounted) return;
+      final remaining = next.dateTime.difference(DateTime.now());
+      setState(() {
+        _nextParticipantWalk = next;
+        _participantCountdownRemaining = remaining.isNegative
+            ? Duration.zero
+            : remaining;
+      });
+    }
+
+    updateRemaining();
+
+    if (next.status == 'scheduled') {
+      _participantCountdownTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => updateRemaining(),
+      );
+    }
+  }
+
   String _formatHostedCountdown(Duration duration) {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
@@ -737,6 +813,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     }
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _handleParticipantConfirm(WalkEvent walk) async {
+    if (_isConfirmingParticipant) return;
+    setState(() {
+      _isConfirmingParticipant = true;
+    });
+    try {
+      await WalkHistoryService.instance.confirmParticipation(walk.firestoreId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Confirmation sent')),
+      );
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'HomeScreen.confirmParticipation',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to confirm participation')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isConfirmingParticipant = false;
+        });
+      }
+    }
   }
 
   bool _canHostStartWalk(WalkEvent walk) {
@@ -964,6 +1070,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+      _participantCountdownTimer?.cancel();
     _walksSub?.cancel();
     _walksPollingTimer?.cancel(); // Stop periodic polling
     _stepSubscription?.cancel();
@@ -991,6 +1098,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _loadCachedWalks() async {
+      _refreshParticipantCountdown();
     try {
       final cached = await OfflineService.instance.loadCachedWalks();
       if (!mounted || cached.isEmpty) return;
@@ -2328,6 +2436,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             _buildHostedWalkBanner(context, isDark),
                             const SizedBox(height: 20),
                           ],
+                          if (_nextParticipantWalk != null) ...[
+                            _buildParticipantWalkBanner(context, isDark),
+                            const SizedBox(height: 20),
+                          ],
                           // Big inner card: greeting + calendar + "Your walks"
                           Card(
                             color: isDark ? kDarkSurface : kLightSurface,
@@ -2667,6 +2779,157 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildParticipantWalkBanner(BuildContext context, bool isDark) {
+    final walk = _nextParticipantWalk;
+    if (walk == null) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final Color headlineColor = isDark ? Colors.white : const Color(0xFF0A3B3A);
+    final Color detailColor = isDark
+        ? Colors.white.withAlpha(220)
+        : const Color(0xFF0D5552).withValues(alpha: 0.85);
+    final Color chipColor = isDark ? Colors.white : const Color(0xFF0D5552);
+    final bool isActive = walk.status == 'active';
+    final countdownText = isActive
+        ? 'Walk in progress'
+        : 'Starts in ${_formatHostedCountdown(_participantCountdownRemaining)}';
+    final subtitle = walk.meetingPlaceName != null
+        ? '${walk.meetingPlaceName} • ${DateFormat('MMM d, hh:mm a').format(walk.dateTime)}'
+        : DateFormat('MMM d, hh:mm a').format(walk.dateTime);
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final participantState = uid == null ? null : walk.participantStates[uid];
+    final bool needsConfirmation = isActive && participantState != 'confirmed';
+    final String primaryLabel = isActive
+        ? (needsConfirmation ? "Confirm I'm here" : 'Open Active Walk')
+        : 'Waiting for host';
+    final VoidCallback? primaryAction = isActive
+        ? (needsConfirmation
+            ? () => _handleParticipantConfirm(walk)
+            : () => _openActiveWalk(walk))
+        : null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: isDark
+            ? const LinearGradient(
+                colors: [Color(0xFF12202A), Color(0xFF153D45)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFEAFBF7), Color(0xFFD7F2EC)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withAlpha(30)
+              : const Color(0xFF0A3B3A).withValues(alpha: 0.15),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.directions_walk, size: 18, color: chipColor),
+              const SizedBox(width: 8),
+              Text(
+                'Your next walk',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: chipColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            walk.title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: headlineColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(color: detailColor),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                isActive ? Icons.run_circle : Icons.timer_outlined,
+                color: chipColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                countdownText,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: chipColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: _isConfirmingParticipant ? null : primaryAction,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isDark
+                        ? Colors.white
+                        : const Color(0xFF0F8A7B),
+                    foregroundColor: isDark
+                        ? const Color(0xFF0F2734)
+                        : Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: _isConfirmingParticipant && needsConfirmation
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isDark ? const Color(0xFF0F2734) : Colors.white,
+                            ),
+                          ),
+                        )
+                      : Text(primaryLabel),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                onPressed: isActive && needsConfirmation
+                    ? () => _openActiveWalk(walk)
+                    : () => _navigateToDetails(walk),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: chipColor,
+                  side: BorderSide(color: chipColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  isActive && needsConfirmation
+                      ? 'Open Active Walk'
+                      : 'View details',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

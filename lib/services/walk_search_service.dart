@@ -98,10 +98,10 @@ class WalkSearchService {
         data['id'] = doc.id;
         data['firestoreId'] = doc.id;
         final walk = WalkEvent.fromMap(data);
-        if (walk.status == 'ended') {
+        if (walk.status == 'ended' || walk.status == 'completed') {
           filteredOut++;
           _debugSearchDrop(
-            'status=ended',
+            'status=ended_or_completed',
             docId: doc.id,
             walk: walk,
             filters: filters,
