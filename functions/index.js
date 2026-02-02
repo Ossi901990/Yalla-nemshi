@@ -370,6 +370,84 @@ exports.onWalkJoined = onDocumentWritten("users/{userId}/walks/{walkId}", async 
 });
 
 /**
+ * Trigger: When a participant leaves a walk (participantStates changes to 'left')
+ * Action: Notify the host
+ */
+exports.onWalkLeft = onDocumentUpdated("walks/{walkId}", async (event) => {
+  const before = event.data?.before?.data();
+  const after = event.data?.after?.data();
+  
+  if (!before || !after) return;
+
+  const walkId = event.params.walkId;
+  const beforeStates = before.participantStates || {};
+  const afterStates = after.participantStates || {};
+
+  try {
+    const db = admin.firestore();
+    const hostUid = after.hostUid;
+    
+    // Find participants who changed to 'left'
+    const leftParticipants = [];
+    for (const [userId, state] of Object.entries(afterStates)) {
+      if (state === 'left' && beforeStates[userId] !== 'left' && userId !== hostUid) {
+        leftParticipants.push(userId);
+      }
+    }
+
+    if (leftParticipants.length === 0) return;
+
+    console.log(`👋 ${leftParticipants.length} participant(s) left walk ${walkId}`);
+
+    // Notify host for each participant who left
+    await Promise.all(
+      leftParticipants.map(async (userId) => {
+        // Get user details
+        const userSnap = await db.collection("users").doc(userId).get();
+        const user = userSnap.exists ? userSnap.data() : {};
+        const userName = user.displayName || "Someone";
+
+        const notificationData = {
+          type: "walk_left",
+          walkId: walkId,
+          userId: userId,
+        };
+
+        // Send FCM notification to host
+        await sendNotificationToUser(
+          hostUid,
+          {
+            title: "Walker left 👋",
+            body: `${userName} left your walk "${after.title}"`,
+          },
+          notificationData,
+          "walk_left"
+        );
+
+        // Write notification to Firestore
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        await db.collection("users").doc(hostUid).collection("notifications").add({
+          type: "walkLeft",
+          title: "Walker left 👋",
+          message: `${userName} left your walk "${after.title}"`,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          isRead: false,
+          walkId: walkId,
+          userId: userId,
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        });
+
+        console.log(`✅ Notified host ${hostUid} about ${userId} leaving walk ${walkId}`);
+      })
+    );
+  } catch (error) {
+    console.error("❌ Error in onWalkLeft:", error);
+  }
+});
+
+/**
  * Trigger: When a walk is cancelled (cancelled field set to true)
  * Action: Notify all participants
  */
