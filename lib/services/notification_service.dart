@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import '../models/app_notification.dart';
 import '../models/walk_event.dart';
 import '../screens/dm_chat_screen.dart';
+import '../screens/active_walk_screen.dart';
+import 'walk_history_service.dart';
 import 'notification_storage.dart';
 import 'app_preferences.dart';
 import 'crash_service.dart';
@@ -33,6 +35,8 @@ class NotificationService {
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot>? _notificationListener;
   Map<String, String?>? _pendingDmNavigation;
+  bool _walkStartDialogOpen = false;
+  String? _lastWalkStartDialogWalkId;
 
   /// Initialize FCM and request permissions
   static Future<void> init() async {
@@ -138,6 +142,10 @@ class NotificationService {
                 }
                 
                 await NotificationStorage.add(notif);
+
+                if (notif.type == NotificationType.walkStarting) {
+                  _showWalkStartConfirmationDialog(notif);
+                }
               } else if (change.type == DocumentChangeType.modified) {
                 final notif = AppNotification.fromFirestore(
                   change.doc.data() as Map<String, dynamic>,
@@ -160,6 +168,74 @@ class NotificationService {
             );
           },
         );
+  }
+
+  Future<void> _showWalkStartConfirmationDialog(AppNotification notification) async {
+    final context = navigatorKey.currentState?.overlay?.context;
+    final walkId = notification.walkId ?? notification.data?['walkId'] as String?;
+    if (context == null || walkId == null) return;
+
+    if (_walkStartDialogOpen && _lastWalkStartDialogWalkId == walkId) {
+      return;
+    }
+
+    _walkStartDialogOpen = true;
+    _lastWalkStartDialogWalkId = walkId;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Walk is starting'),
+          content: Text(
+            notification.message.isNotEmpty
+                ? notification.message
+                : 'Please confirm you are joining this walk.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Not now'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                try {
+                  await WalkHistoryService.instance.confirmParticipation(walkId);
+                  final snackbarContext = navigatorKey.currentState?.overlay?.context;
+                  if (snackbarContext != null) {
+                    ScaffoldMessenger.of(snackbarContext).showSnackBar(
+                      const SnackBar(content: Text('✅ Confirmation sent')),
+                    );
+                  }
+                } catch (e, st) {
+                  CrashService.recordError(
+                    e,
+                    st,
+                    reason: 'Walk start confirmation failed',
+                  );
+                }
+              },
+              child: const Text('Confirm'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                navigatorKey.currentState?.push(
+                  MaterialPageRoute(
+                    builder: (_) => ActiveWalkScreen(walkId: walkId),
+                  ),
+                );
+              },
+              child: const Text('Open walk'),
+            ),
+          ],
+        );
+      },
+    );
+
+    _walkStartDialogOpen = false;
   }
 
   /// Stop listening to notifications

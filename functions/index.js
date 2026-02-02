@@ -911,10 +911,13 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
     return;
   }
   
-  // Check if important fields changed
+  // Check if important fields changed (compare Timestamp values safely)
   const importantFields = ["title", "dateTime", "meetingPlaceName", "startLat", "startLng"];
-  const hasImportantChange = importantFields.some(
-    (field) => before[field] !== after[field]
+  const normalizeValue = (value) =>
+    value && typeof value.toMillis === "function" ? value.toMillis() : value;
+  const statusChangedToActive = before.status !== after.status && after.status === "active";
+  const hasImportantChange = statusChangedToActive || importantFields.some((field) =>
+    normalizeValue(before[field]) !== normalizeValue(after[field])
   );
   
   if (!hasImportantChange) {
@@ -937,10 +940,18 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
     
     // Determine what changed
     let changeDescription = "Details updated";
-    if (before.dateTime !== after.dateTime) {
+    let notificationTitle = "Walk updated 📝";
+    let notificationType = "walkUpdated";
+    let notificationDataType = "walkUpdated";
+    if (statusChangedToActive) {
+      changeDescription = "Please confirm you’re joining";
+      notificationTitle = "Walk starting ⏰";
+      notificationType = "walkStarting";
+      notificationDataType = "walkStarting";
+    } else if (normalizeValue(before.dateTime) !== normalizeValue(after.dateTime)) {
       changeDescription = "Time changed";
     } else if (before.meetingPlaceName !== after.meetingPlaceName || 
-               before.startLat !== after.startLat) {
+               normalizeValue(before.startLat) !== normalizeValue(after.startLat)) {
       changeDescription = "Location changed";
     } else if (before.title !== after.title) {
       changeDescription = "Title updated";
@@ -956,11 +967,11 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
         await sendNotificationToUser(
           uid,
           {
-            title: "Walk updated 📝",
+            title: notificationTitle,
             body: `"${walk.title}" - ${changeDescription}`,
           },
           {
-            type: "walk_updated",
+            type: notificationDataType,
             walkId: walkId,
             changeType: changeDescription,
           }
@@ -968,8 +979,8 @@ exports.onWalkUpdated = onDocumentUpdated("walks/{walkId}", async (event) => {
         
         // Write notification to Firestore
         await db.collection("users").doc(uid).collection("notifications").add({
-          type: "walkUpdated",
-          title: "Walk updated 📝",
+          type: notificationType,
+          title: notificationTitle,
           message: `"${walk.title}" - ${changeDescription}`,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
           isRead: false,

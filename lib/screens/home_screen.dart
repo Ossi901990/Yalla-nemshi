@@ -134,29 +134,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         debugPrint('ΓÜá∩╕Å No user city set; polling all walks');
       }
 
-      // Exclude cancelled and past walks (show upcoming only)
-      query = query
+      // Upcoming walks query (future dateTime)
+      final upcomingQuery = query
           .where('cancelled', isEqualTo: false)
           .where('dateTime', isGreaterThan: nowTimestamp)
           .orderBy('dateTime')
           .orderBy('createdAt', descending: true)
           .limit(_walksPerPage);
 
-      final snap = await query.get();
+      // Active walks query (keep visible even if dateTime is in the past)
+      final activeQuery = query
+          .where('cancelled', isEqualTo: false)
+          .where('status', isEqualTo: 'active')
+          .orderBy('createdAt', descending: true)
+          .limit(_walksPerPage);
+
+      final results = await Future.wait([
+        upcomingQuery.get(),
+        activeQuery.get(),
+      ]);
+      final upcomingSnap = results[0];
+      final activeSnap = results[1];
+
+      final docMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+      for (final doc in upcomingSnap.docs) {
+        docMap[doc.id] = doc;
+      }
+      for (final doc in activeSnap.docs) {
+        docMap[doc.id] = doc;
+      }
+      final combinedDocs = docMap.values.toList();
 
       if (!mounted) return;
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
-      if (snap.docs.isNotEmpty) {
-        _lastDocument = snap.docs.last;
-        _hasMoreWalks = snap.docs.length >= _walksPerPage;
+      if (upcomingSnap.docs.isNotEmpty) {
+        _lastDocument = upcomingSnap.docs.last;
+        _hasMoreWalks = upcomingSnap.docs.length >= _walksPerPage;
       } else {
         _lastDocument = null;
         _hasMoreWalks = false;
       }
 
-      final List<WalkEvent> loaded = _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> loaded = _parseWalkDocs(combinedDocs, currentUid);
       final List<WalkEvent> merged = _collapseRecurringWalks(loaded);
 
       setState(() {
@@ -171,10 +192,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       _logHomeFeedSummary(
         source: 'polling',
-        totalDocs: snap.docs.length,
+        totalDocs: combinedDocs.length,
         parsedCount: loaded.length,
         keptCount: merged.length,
-        fromCache: snap.metadata.isFromCache,
+        fromCache: upcomingSnap.metadata.isFromCache && activeSnap.metadata.isFromCache,
       );
     } catch (e, st) {
       debugPrint('Γ¥î Error fetching walks: $e');
@@ -201,17 +222,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     try {
       final userCity = await AppPreferences.getUserCity();
+      final nowTimestamp = Timestamp.fromDate(DateTime.now());
 
-      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+      Query<Map<String, dynamic>> baseQuery = FirebaseFirestore.instance
           .collection('walks')
-          .where('cancelled', isEqualTo: false)
-          .where('dateTime', isGreaterThan: DateTime.now().toIso8601String())
-          .orderBy('dateTime')
-          .orderBy('createdAt', descending: true)
-          .startAfterDocument(_lastDocument!);
+          .where('cancelled', isEqualTo: false);
 
       if (userCity != null && userCity.isNotEmpty) {
-        query = query.where(
+        baseQuery = baseQuery.where(
           Filter.or(
             Filter('city', isEqualTo: userCity),
             Filter('city', isNull: true),
@@ -219,13 +237,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       }
 
-      query = query.limit(_walksPerPage);
+      final upcomingQuery = baseQuery
+          .where('dateTime', isGreaterThan: nowTimestamp)
+          .orderBy('dateTime')
+          .orderBy('createdAt', descending: true)
+          .startAfterDocument(_lastDocument!)
+          .limit(_walksPerPage);
 
-      final snap = await query.get().timeout(const Duration(seconds: 20));
+      final activeQuery = baseQuery
+          .where('status', isEqualTo: 'active')
+          .orderBy('createdAt', descending: true)
+          .limit(_walksPerPage);
+
+      final results = await Future.wait([
+        upcomingQuery.get(),
+        activeQuery.get(),
+      ]).timeout(const Duration(seconds: 20));
+      final upcomingSnap = results[0];
+      final activeSnap = results[1];
+
+      final docMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+      for (final doc in upcomingSnap.docs) {
+        docMap[doc.id] = doc;
+      }
+      for (final doc in activeSnap.docs) {
+        docMap[doc.id] = doc;
+      }
+      final combinedDocs = docMap.values.toList();
 
       if (!mounted) return;
 
-      if (snap.docs.isEmpty) {
+      if (upcomingSnap.docs.isEmpty && activeSnap.docs.isEmpty) {
         setState(() {
           _hasMoreWalks = false;
           _isLoadingMore = false;
@@ -233,29 +275,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return;
       }
 
-      _lastDocument = snap.docs.last;
-      _hasMoreWalks = snap.docs.length >= _walksPerPage;
+      if (upcomingSnap.docs.isNotEmpty) {
+        _lastDocument = upcomingSnap.docs.last;
+        _hasMoreWalks = upcomingSnap.docs.length >= _walksPerPage;
+      } else {
+        _hasMoreWalks = false;
+      }
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final List<WalkEvent> newWalks = _parseWalkDocs(snap.docs, currentUid);
+      final List<WalkEvent> newWalks =
+          _parseWalkDocs(combinedDocs, currentUid);
+      final existingIds = _events.map((e) => e.firestoreId).toSet();
+      final List<WalkEvent> uniqueWalks =
+          newWalks.where((w) => !existingIds.contains(w.firestoreId)).toList();
 
       _logHomeFeedSummary(
         source: 'load_more',
-        totalDocs: snap.docs.length,
+        totalDocs: combinedDocs.length,
         parsedCount: newWalks.length,
-        keptCount: newWalks.length,
-        fromCache: snap.metadata.isFromCache,
+        keptCount: uniqueWalks.length,
+        fromCache: upcomingSnap.metadata.isFromCache && activeSnap.metadata.isFromCache,
       );
 
       setState(() {
-        _events.addAll(newWalks);
+        _events.addAll(uniqueWalks);
         _isLoadingMore = false;
       });
 
       OfflineService.instance.cacheWalks(_events);
 
       debugPrint(
-        '≡ƒôä Loaded ${newWalks.length} more walks. Total: ${_events.length}',
+        '≡ƒôä Loaded ${uniqueWalks.length} more walks. Total: ${_events.length}',
       );
     } on TimeoutException catch (e, st) {
       if (mounted) {

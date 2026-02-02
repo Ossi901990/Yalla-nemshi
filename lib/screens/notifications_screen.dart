@@ -6,6 +6,7 @@ import '../services/notification_storage.dart';
 import 'dm_chat_screen.dart';
 import 'friend_profile_screen.dart';
 import 'analytics_screen.dart';
+import 'active_walk_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   static const String routeName = '/notifications';
@@ -166,6 +167,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     // Navigate based on notification type
     switch (notification.type) {
       // Walk-related notifications → event details or walks screen
+      case NotificationType.walkStarting:
+        if (notification.walkId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ActiveWalkScreen(walkId: notification.walkId!),
+            ),
+          );
+        }
+        break;
       case NotificationType.walkJoined:
       case NotificationType.walkLeft:
       case NotificationType.walkInterested:
@@ -177,7 +188,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.walkRescheduled:
       case NotificationType.walkLocationChanged:
       case NotificationType.walkReminder:
-      case NotificationType.walkStarting:
       case NotificationType.walkEnded:
       case NotificationType.walkHostLeft:
       case NotificationType.nearbyWalk:
