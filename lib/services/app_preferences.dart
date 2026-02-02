@@ -9,6 +9,7 @@ class AppPreferences {
   static const _keyNearbyAlerts = 'nearby_alerts_enabled';
   static const _keyWeeklyGoalKm = 'weekly_goal_km';
   static const _keyUserCity = 'user_city';
+  static const _keyUserCityNormalized = 'user_city_normalized';
   static const _keyPushWalks = 'push_walks_enabled';
   static const _keyPushChat = 'push_chat_enabled';
   static const _keyPushUpdates = 'push_updates_enabled';
@@ -86,9 +87,26 @@ class AppPreferences {
     return prefs.getString(_keyUserCity);
   }
 
+  static Future<String?> getUserCityNormalized() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserCityNormalized);
+  }
+
   static Future<void> setUserCity(String city) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserCity, city);
+    final normalized = normalizeCity(city);
+    if (normalized.isNotEmpty) {
+      await prefs.setString(_keyUserCityNormalized, normalized);
+    }
+  }
+
+  static String normalizeCity(String city) {
+    final raw = city.trim();
+    if (raw.isEmpty) return '';
+    final primary = raw.split(',').first.trim();
+    final cleaned = primary.replaceAll(RegExp(r'\s+'), ' ');
+    return cleaned.toLowerCase();
   }
 
   // ===== Push Notifications =====

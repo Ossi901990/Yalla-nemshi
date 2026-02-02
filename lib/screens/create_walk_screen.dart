@@ -873,6 +873,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       pace: _pace,
     );
 
+    final String? cityNormalized =
+      cityForWalk != null ? AppPreferences.normalizeCity(cityForWalk) : null;
+
     final payload = <String, dynamic>{
       'walkType': walkType,
       'title': _title,
@@ -913,6 +916,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'endLng': effectiveEnd?.longitude,
 
       'city': cityForWalk,
+      'cityNormalized': cityNormalized,
       'description': descriptionForPayload,
       'tags': selectedTagsList,
       'comfortLevel': _comfortLevel,
@@ -955,6 +959,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             endLat: effectiveEnd?.latitude,
             endLng: effectiveEnd?.longitude,
             city: cityForWalk,
+            cityNormalized: cityNormalized,
             description: descriptionForPayload,
             tags: selectedTagsList,
             comfortLevel: _comfortLevel,
@@ -1097,6 +1102,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
             endLat: effectiveEnd?.latitude,
             endLng: effectiveEnd?.longitude,
             city: cityForWalk,
+            cityNormalized: cityNormalized,
             description: descriptionForPayload,
             tags: selectedTagsList,
             comfortLevel: _comfortLevel,

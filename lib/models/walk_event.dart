@@ -37,6 +37,9 @@ class WalkEvent {
   /// City where the walk takes place (auto-detected from coordinates)
   final String? city;
 
+  /// Normalized city for consistent filtering (lowercase, no country)
+  final String? cityNormalized;
+
   /// Whether the current user has joined this event.
   bool joined;
 
@@ -198,6 +201,7 @@ class WalkEvent {
     this.recurringRule,
     this.userNotes,
     this.city,
+    this.cityNormalized,
     this.isRecurring = false,
     this.recurringGroupId,
     this.recurrence,
@@ -265,6 +269,7 @@ class WalkEvent {
     String? recurringRule,
     String? userNotes,
     String? city,
+    String? cityNormalized,
     bool? isRecurring,
     String? recurringGroupId,
     RecurrenceRule? recurrence,
@@ -325,6 +330,7 @@ class WalkEvent {
       recurringRule: recurringRule ?? this.recurringRule,
       userNotes: userNotes ?? this.userNotes,
       city: city ?? this.city,
+      cityNormalized: cityNormalized ?? this.cityNormalized,
       isRecurring: isRecurring ?? this.isRecurring,
       recurringGroupId: recurringGroupId ?? this.recurringGroupId,
       recurrence: recurrence ?? this.recurrence,
@@ -392,6 +398,7 @@ class WalkEvent {
       'recurringRule': recurringRule,
       'userNotes': userNotes,
       'city': city,
+      'cityNormalized': cityNormalized,
       'isRecurring': isRecurring,
       'recurringGroupId': recurringGroupId,
       'recurrence': recurrence?.toMap(),
@@ -576,6 +583,7 @@ class WalkEvent {
       recurringRule: map['recurringRule']?.toString(),
       userNotes: map['userNotes']?.toString(),
       city: map['city']?.toString(),
+      cityNormalized: map['cityNormalized']?.toString(),
       isRecurring: _toBool(map['isRecurring']),
       recurringGroupId: map['recurringGroupId']?.toString(),
       recurrence: map['recurrence'] != null

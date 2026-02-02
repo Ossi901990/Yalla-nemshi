@@ -110,7 +110,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Fetch walks using a one-time query (not a real-time listener)
   Future<void> _fetchWalks() async {
     try {
-      final userCity = await AppPreferences.getUserCity();
+        final userCity = await AppPreferences.getUserCity();
+        final userCityNormalized =
+          await AppPreferences.getUserCityNormalized() ??
+          (userCity != null ? AppPreferences.normalizeCity(userCity) : null);
       if (!mounted) return;
 
       final nowTimestamp = Timestamp.fromDate(DateTime.now());
@@ -120,16 +123,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'walks',
       );
 
-      if (userCity != null && userCity.isNotEmpty) {
+      if ((userCityNormalized != null && userCityNormalized.isNotEmpty) ||
+          (userCity != null && userCity.isNotEmpty)) {
         debugPrint(
           'Polling walks by city (including cityless): $userCity',
         );
-        query = query.where(
-          Filter.or(
-            Filter('city', isEqualTo: userCity),
-            Filter('city', isNull: true),
-          ),
-        );
+        Filter? cityFilter;
+        if (userCityNormalized != null && userCityNormalized.isNotEmpty) {
+          cityFilter = Filter('cityNormalized', isEqualTo: userCityNormalized);
+        }
+        if (userCity != null && userCity.isNotEmpty) {
+          final rawFilter = Filter('city', isEqualTo: userCity);
+          cityFilter = cityFilter != null
+              ? Filter.or(cityFilter, rawFilter)
+              : rawFilter;
+        }
+        final nullCity = Filter('city', isNull: true);
+        cityFilter = cityFilter != null
+            ? Filter.or(cityFilter, nullCity)
+            : nullCity;
+        query = query.where(cityFilter);
       } else {
         debugPrint('ΓÜá∩╕Å No user city set; polling all walks');
       }
@@ -149,12 +162,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           .orderBy('createdAt', descending: true)
           .limit(_walksPerPage);
 
-      final results = await Future.wait([
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+      // Always include the user's own walks regardless of city filter
+      final List<Future<QuerySnapshot<Map<String, dynamic>>>> futures = [
         upcomingQuery.get(),
         activeQuery.get(),
-      ]);
+      ];
+
+      Query<Map<String, dynamic>>? ownHostQuery;
+      Query<Map<String, dynamic>>? ownJoinedQuery;
+      if (currentUid != null) {
+        final ownBase = FirebaseFirestore.instance
+            .collection('walks')
+            .where('cancelled', isEqualTo: false);
+
+        ownHostQuery = ownBase.where('hostUid', isEqualTo: currentUid).limit(
+          _walksPerPage,
+        );
+        ownJoinedQuery = ownBase
+            .where('joinedUserUids', arrayContains: currentUid)
+            .limit(_walksPerPage);
+
+        futures.add(ownHostQuery.get());
+        futures.add(ownJoinedQuery.get());
+      }
+
+      final results = await Future.wait(futures);
       final upcomingSnap = results[0];
       final activeSnap = results[1];
+      final ownHostSnap = results.length > 2 ? results[2] : null;
+      final ownJoinedSnap = results.length > 3 ? results[3] : null;
 
       final docMap = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
       for (final doc in upcomingSnap.docs) {
@@ -163,11 +201,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       for (final doc in activeSnap.docs) {
         docMap[doc.id] = doc;
       }
+      if (ownHostSnap != null) {
+        for (final doc in ownHostSnap.docs) {
+          docMap[doc.id] = doc;
+        }
+      }
+      if (ownJoinedSnap != null) {
+        for (final doc in ownJoinedSnap.docs) {
+          docMap[doc.id] = doc;
+        }
+      }
       final combinedDocs = docMap.values.toList();
 
       if (!mounted) return;
-
-      final currentUid = FirebaseAuth.instance.currentUser?.uid;
 
       if (upcomingSnap.docs.isNotEmpty) {
         _lastDocument = upcomingSnap.docs.last;
@@ -190,12 +236,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       OfflineService.instance.cacheWalks(merged);
 
+      final fromCache = upcomingSnap.metadata.isFromCache &&
+          activeSnap.metadata.isFromCache &&
+          (ownHostSnap?.metadata.isFromCache ?? true) &&
+          (ownJoinedSnap?.metadata.isFromCache ?? true);
+
       _logHomeFeedSummary(
         source: 'polling',
         totalDocs: combinedDocs.length,
         parsedCount: loaded.length,
         keptCount: merged.length,
-        fromCache: upcomingSnap.metadata.isFromCache && activeSnap.metadata.isFromCache,
+        fromCache: fromCache,
       );
     } catch (e, st) {
       debugPrint('Γ¥î Error fetching walks: $e');
@@ -221,20 +272,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     try {
-      final userCity = await AppPreferences.getUserCity();
+        final userCity = await AppPreferences.getUserCity();
+        final userCityNormalized =
+          await AppPreferences.getUserCityNormalized() ??
+          (userCity != null ? AppPreferences.normalizeCity(userCity) : null);
       final nowTimestamp = Timestamp.fromDate(DateTime.now());
 
       Query<Map<String, dynamic>> baseQuery = FirebaseFirestore.instance
           .collection('walks')
           .where('cancelled', isEqualTo: false);
 
-      if (userCity != null && userCity.isNotEmpty) {
-        baseQuery = baseQuery.where(
-          Filter.or(
-            Filter('city', isEqualTo: userCity),
-            Filter('city', isNull: true),
-          ),
-        );
+      if ((userCityNormalized != null && userCityNormalized.isNotEmpty) ||
+          (userCity != null && userCity.isNotEmpty)) {
+        Filter? cityFilter;
+        if (userCityNormalized != null && userCityNormalized.isNotEmpty) {
+          cityFilter = Filter('cityNormalized', isEqualTo: userCityNormalized);
+        }
+        if (userCity != null && userCity.isNotEmpty) {
+          final rawFilter = Filter('city', isEqualTo: userCity);
+          cityFilter = cityFilter != null
+              ? Filter.or(cityFilter, rawFilter)
+              : rawFilter;
+        }
+        final nullCity = Filter('city', isNull: true);
+        cityFilter = cityFilter != null
+            ? Filter.or(cityFilter, nullCity)
+            : nullCity;
+        baseQuery = baseQuery.where(cityFilter);
       }
 
       final upcomingQuery = baseQuery
@@ -396,6 +460,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (walk.cancelled) {
         _debugWalkDrop(
           'status=cancelled',
+          id: doc.id,
+          data: data,
+          parsed: walk,
+          isFromCache: isFromCache,
+        );
+        return null;
+      }
+      if (walk.status == 'ended') {
+        _debugWalkDrop(
+          'status=ended',
           id: doc.id,
           data: data,
           parsed: walk,
