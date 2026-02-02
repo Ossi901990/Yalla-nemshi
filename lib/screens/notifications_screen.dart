@@ -193,8 +193,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.walkHostLeft:
       case NotificationType.nearbyWalk:
       case NotificationType.suggestedWalk:
-        // TODO: Navigate to event details when we have the screen
-        // For now, just mark as read
+        // Navigate to walk details via named route using walkId
+        if (notification.walkId != null) {
+          Navigator.pushNamed(
+            context,
+            '/walk-details',
+            arguments: notification.walkId,
+          );
+        }
         break;
       case NotificationType.walkEnded:
         if (notification.walkId != null) {
@@ -239,7 +245,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationType.walkChatMessage:
       case NotificationType.hostAnnouncement:
       case NotificationType.mentioned:
-        // TODO: Navigate to walk chat when we have the screen
+        if (notification.walkId != null) {
+          Navigator.pushNamed(
+            context,
+            '/walk-chat',
+            arguments: notification.walkId,
+          );
+        }
         break;
 
       // Friend notifications → profile screen

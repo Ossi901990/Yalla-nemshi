@@ -210,7 +210,7 @@ class NotificationService {
                 try {
                   await WalkHistoryService.instance.confirmParticipation(walkId);
                   final snackbarContext = navigatorKey.currentState?.overlay?.context;
-                  if (snackbarContext != null) {
+                  if (snackbarContext != null && snackbarContext.mounted) {
                     ScaffoldMessenger.of(snackbarContext).showSnackBar(
                       const SnackBar(content: Text('✅ Confirmation sent')),
                     );
@@ -293,13 +293,13 @@ class NotificationService {
                   final walk =
                       await WalkControlService().getWalk(walkId);
                   final navContext = navigatorKey.currentState?.overlay?.context;
-                  if (walk != null && navContext != null) {
+                  if (walk != null && navContext != null && navContext.mounted) {
                     navigatorKey.currentState?.push(
                       MaterialPageRoute(
                         builder: (_) => ReviewWalkScreen(walk: walk),
                       ),
                     );
-                  } else if (navContext != null) {
+                  } else if (navContext != null && navContext.mounted) {
                     ScaffoldMessenger.of(navContext).showSnackBar(
                       const SnackBar(content: Text('Unable to load walk')),
                     );

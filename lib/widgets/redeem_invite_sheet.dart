@@ -46,9 +46,11 @@ class _RedeemInviteSheetState extends State<RedeemInviteSheet> {
           setState(() {
             _error = null;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invite link parsed successfully!')),
-          );
+          if (mounted && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Invite link parsed successfully!')),
+            );
+          }
           return;
         }
       }

@@ -87,7 +87,9 @@ class DeepLinkService {
     } catch (e, st) {
       debugPrint('❌ Error handling invite link: $e');
       debugPrint('Stack: $st');
-      _showError(context, 'Unable to open invite link.');
+      if (context.mounted) {
+        _showError(context, 'Unable to open invite link.');
+      }
     }
   }
 
