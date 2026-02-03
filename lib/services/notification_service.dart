@@ -421,6 +421,31 @@ class NotificationService {
     }
   }
 
+  /// Delete all notifications for a user in Firestore
+  Future<void> deleteAllNotifications(String uid) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('notifications')
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      debugPrint(
+        '✅ Deleted ${snapshot.docs.length} notifications for user: $uid',
+      );
+    } catch (e) {
+      debugPrint('❌ Failed to delete all notifications: $e');
+    }
+  }
+
   /// Handle notification tap - navigate to appropriate screen
   void handleNotificationTap(BuildContext context, AppNotification notification) {
     debugPrint('👆 Notification tapped: ${notification.type.name}');

@@ -854,11 +854,18 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     final map = walk.participantStates;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final joinedPhotos = <String, String>{};
+    final joinedNames = <String, String>{};
     for (var i = 0; i < walk.joinedUserUids.length; i++) {
       final userId = walk.joinedUserUids[i];
+      final name = i < walk.joinedUserNames.length
+          ? walk.joinedUserNames[i]
+          : null;
       final photo = i < walk.joinedUserPhotoUrls.length
           ? walk.joinedUserPhotoUrls[i]
           : null;
+      if (userId.isNotEmpty && name != null && name.trim().isNotEmpty) {
+        joinedNames[userId] = name;
+      }
       if (userId.isNotEmpty && photo != null) {
         joinedPhotos[userId] = photo;
       }
@@ -882,7 +889,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       tiles.add(
         _ParticipantTileData(
           userId: userId,
-          displayName: _friendlyName(userId),
+          displayName: joinedNames[userId] ?? _friendlyName(userId),
           state: state,
           photoUrl: joinedPhotos[userId],
           isCurrentUser: uid == userId,
@@ -896,7 +903,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
       tiles.add(
         _ParticipantTileData(
           userId: userId,
-          displayName: _friendlyName(userId),
+          displayName: joinedNames[userId] ?? _friendlyName(userId),
           state: 'joined',
           photoUrl: joinedPhotos[userId],
           isCurrentUser: uid == userId,

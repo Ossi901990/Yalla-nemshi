@@ -890,6 +890,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       'hostName': hostName,
       'hostPhotoUrl': hostPhotoUrl,
       'joinedUserUids': [],
+      'joinedUserNames': [],
       'joinedUserPhotoUrls': [],
       'joinedCount': 0,
 

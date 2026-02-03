@@ -145,6 +145,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (confirmed == true) {
       try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          await NotificationService.instance.deleteAllNotifications(uid);
+        }
         await NotificationStorage.clearNotifications();
         if (mounted) {
           setState(() => _notifications.clear());

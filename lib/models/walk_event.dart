@@ -146,6 +146,9 @@ class WalkEvent {
   /// List of user IDs who have joined this walk
   final List<String> joinedUserUids;
 
+  /// List of display names for users who joined (parallel to joinedUserUids)
+  final List<String> joinedUserNames;
+
   /// List of photo URLs for users who joined (parallel to joinedUserUids)
   final List<String> joinedUserPhotoUrls;
 
@@ -211,6 +214,7 @@ class WalkEvent {
     this.hostName,
     this.hostPhotoUrl,
     List<String>? joinedUserUids,
+    List<String>? joinedUserNames,
     List<String>? joinedUserPhotoUrls,
     int? joinedCount,
     List<String>? searchKeywords,
@@ -218,6 +222,7 @@ class WalkEvent {
   })  : tags = tags ?? const [],
         photoUrls = photoUrls ?? const [],
         joinedUserUids = joinedUserUids ?? const [],
+      joinedUserNames = joinedUserNames ?? const [],
         joinedUserPhotoUrls = joinedUserPhotoUrls ?? const [],
         joinedCount = joinedCount ?? (joinedUserUids?.length ?? 0),
         searchKeywords = searchKeywords ?? const [],
@@ -279,6 +284,7 @@ class WalkEvent {
     String? hostName,
     String? hostPhotoUrl,
     List<String>? joinedUserUids,
+    List<String>? joinedUserNames,
     List<String>? joinedUserPhotoUrls,
     int? joinedCount,
     List<String>? searchKeywords,
@@ -340,10 +346,11 @@ class WalkEvent {
       hostName: hostName ?? this.hostName,
       hostPhotoUrl: hostPhotoUrl ?? this.hostPhotoUrl,
       joinedUserUids: joinedUserUids ?? this.joinedUserUids,
-        joinedUserPhotoUrls: joinedUserPhotoUrls ?? this.joinedUserPhotoUrls,
-        joinedCount: joinedCount ?? this.joinedCount,
-        searchKeywords: searchKeywords ?? this.searchKeywords,
-        participantStates: participantStates ?? this.participantStates,
+      joinedUserNames: joinedUserNames ?? this.joinedUserNames,
+      joinedUserPhotoUrls: joinedUserPhotoUrls ?? this.joinedUserPhotoUrls,
+      joinedCount: joinedCount ?? this.joinedCount,
+      searchKeywords: searchKeywords ?? this.searchKeywords,
+      participantStates: participantStates ?? this.participantStates,
     );
   }
 
@@ -411,6 +418,7 @@ class WalkEvent {
       'hostName': hostName,
       'hostPhotoUrl': hostPhotoUrl,
       'joinedUserUids': joinedUserUids,
+      'joinedUserNames': joinedUserNames,
       'joinedUserPhotoUrls': joinedUserPhotoUrls,
       'joinedCount': joinedCount,
       'searchKeywords': searchKeywords,
@@ -598,6 +606,9 @@ class WalkEvent {
       hostPhotoUrl: map['hostPhotoUrl']?.toString(),
       joinedUserUids: (map['joinedUserUids'] is List)
           ? (map['joinedUserUids'] as List).whereType<String>().toList()
+          : <String>[],
+        joinedUserNames: (map['joinedUserNames'] is List)
+          ? (map['joinedUserNames'] as List).whereType<String>().toList()
           : <String>[],
       joinedUserPhotoUrls: (map['joinedUserPhotoUrls'] is List)
           ? (map['joinedUserPhotoUrls'] as List).whereType<String>().toList()

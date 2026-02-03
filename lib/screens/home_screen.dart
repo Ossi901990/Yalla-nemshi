@@ -96,6 +96,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _walksSub?.cancel();
     _walksPollingTimer?.cancel();
 
+    if (FirebaseAuth.instance.currentUser == null) {
+      debugPrint('Skipping walk polling: no authenticated user');
+      return;
+    }
+
     // Initial load
     _fetchWalks();
 
@@ -110,6 +115,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Fetch walks using a one-time query (not a real-time listener)
   Future<void> _fetchWalks() async {
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        debugPrint('Skipping walk fetch: no authenticated user');
+        _walksPollingTimer?.cancel();
+        return;
+      }
         final userCity = await AppPreferences.getUserCity();
         final userCityNormalized =
           await AppPreferences.getUserCityNormalized() ??
@@ -1322,6 +1333,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Get current user info for optimistic update
     final currentUser = FirebaseAuth.instance.currentUser;
     final userPhotoUrl = currentUser?.photoURL;
+    final rawDisplayName = currentUser?.displayName?.trim();
+    final userDisplayName =
+      (rawDisplayName != null && rawDisplayName.isNotEmpty)
+        ? rawDisplayName
+        : 'User ${uid.substring(0, 6)}';
 
     // Γ£à Optimistic UI update
     setState(() {
@@ -1334,6 +1350,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       final currentEvent = _events[index];
       final newJoinedUids = List<String>.from(currentEvent.joinedUserUids);
+      final newJoinedNames = List<String>.from(currentEvent.joinedUserNames);
       final newJoinedPhotos = List<String>.from(
         currentEvent.joinedUserPhotoUrls,
       );
@@ -1345,12 +1362,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (!newJoinedUids.contains(uid)) {
           newJoinedUids.add(uid);
         }
+        if (!newJoinedNames.contains(userDisplayName)) {
+          newJoinedNames.add(userDisplayName);
+        }
         if (userPhotoUrl != null && !newJoinedPhotos.contains(userPhotoUrl)) {
           newJoinedPhotos.add(userPhotoUrl);
         }
         newParticipantStates[uid] = 'joined';
       } else {
         newJoinedUids.remove(uid);
+        newJoinedNames.remove(userDisplayName);
         if (userPhotoUrl != null) {
           newJoinedPhotos.remove(userPhotoUrl);
         }
@@ -1360,6 +1381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _events[index] = currentEvent.copyWith(
         joined: willJoin,
         joinedUserUids: newJoinedUids,
+        joinedUserNames: newJoinedNames,
         joinedUserPhotoUrls: newJoinedPhotos,
         joinedCount: newJoinedUids.length,
         participantStates: newParticipantStates,
@@ -1370,6 +1392,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Γ£à Get current user info for participant data
       final currentUser = FirebaseAuth.instance.currentUser;
       final userPhotoUrl = currentUser?.photoURL;
+        final rawDisplayName = currentUser?.displayName?.trim();
+        final userDisplayName =
+          (rawDisplayName != null && rawDisplayName.isNotEmpty)
+            ? rawDisplayName
+            : 'User ${uid.substring(0, 6)}';
 
       // Γ£à Persist to Firestore with timeout
       final updateData = <String, dynamic>{
@@ -1379,6 +1406,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'joinedUserUids': willJoin
             ? FieldValue.arrayUnion([uid])
             : FieldValue.arrayRemove([uid]),
+        'joinedUserNames': willJoin
+          ? FieldValue.arrayUnion([userDisplayName])
+          : FieldValue.arrayRemove([userDisplayName]),
         'joinedCount': willJoin
             ? FieldValue.increment(1)
             : FieldValue.increment(-1),
