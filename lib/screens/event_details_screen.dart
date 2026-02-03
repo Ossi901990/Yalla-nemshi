@@ -637,11 +637,52 @@ class _InviteeListTile extends StatelessWidget {
 
 class _EventDetailsScreenState extends State<EventDetailsScreen> {
   bool _didConfirmParticipation = false;
+  Stream<WalkEvent?>? _walkStream;
 
   @override
   void initState() {
     super.initState();
     _didConfirmParticipation = _isCurrentUserConfirmed(widget.event);
+    _initWalkStream();
+  }
+
+  void _initWalkStream() {
+    final walkId = widget.event.firestoreId.isNotEmpty 
+        ? widget.event.firestoreId 
+        : widget.event.id;
+    
+    if (walkId.isEmpty) {
+      _walkStream = null;
+      return;
+    }
+
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+    _walkStream = FirebaseFirestore.instance
+        .collection('walks')
+        .doc(walkId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) {
+        return null;
+      }
+      try {
+        final data = Map<String, dynamic>.from(snapshot.data()!);
+        data['firestoreId'] = snapshot.id;
+        data['id'] ??= snapshot.id;
+
+        final hostUid = data['hostUid'] as String?;
+        data['isOwner'] = currentUid != null && hostUid == currentUid;
+
+        final joinedUids = (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
+        data['joined'] = currentUid != null && joinedUids.contains(currentUid);
+
+        return WalkEvent.fromMap(data);
+      } catch (e) {
+        debugPrint('Error parsing walk update: $e');
+        return null;
+      }
+    });
   }
 
   bool _isCurrentUserConfirmed(WalkEvent event) {
@@ -1244,8 +1285,54 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // If no stream available, fall back to static widget.event
+    if (_walkStream == null) {
+      return _buildContent(context, widget.event, theme, isDark);
+    }
+
+    return StreamBuilder<WalkEvent?>(
+      stream: _walkStream,
+      initialData: widget.event,
+      builder: (context, snapshot) {
+        // Use the latest data from stream, or fall back to initial event
+        final event = snapshot.data ?? widget.event;
+        
+        // If walk was deleted, show a message
+        if (snapshot.hasData && snapshot.data == null && snapshot.connectionState != ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF1ABFC4),
+            body: SafeArea(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: isDark ? Colors.white70 : Colors.white),
+                    const SizedBox(height: 16),
+                    Text(
+                      'This walk is no longer available',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: isDark ? Colors.white : Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Go Back'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return _buildContent(context, event, theme, isDark);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WalkEvent event, ThemeData theme, bool isDark) {
     // Shortcuts to avoid widget. prefix everywhere
-    final event = widget.event;
     final onToggleJoin = widget.onToggleJoin;
     final onToggleInterested = widget.onToggleInterested;
 
