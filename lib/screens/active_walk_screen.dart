@@ -12,6 +12,7 @@ import '../services/walk_control_service.dart';
 import '../services/walk_history_service.dart';
 import '../utils/error_handler.dart';
 import 'walk_summary_screen.dart';
+import 'walk_chat_screen.dart';
 
 class ActiveWalkScreen extends StatefulWidget {
   final String walkId;
@@ -368,7 +369,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   child: Column(
                     children: [
-                      _buildTopBar(context, status),
+                      _buildTopBar(context, walk, status),
                       const SizedBox(height: 16),
                       Expanded(
                         child: showCancelledFallback
@@ -394,14 +395,31 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
     );
   }
 
-  Widget _buildTopBar(BuildContext context, String status) {
+  Widget _buildTopBar(BuildContext context, WalkEvent walk, String status) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
         ),
+        const Spacer(),
+        IconButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => WalkChatScreen(
+                  walkId: walk.firestoreId.isNotEmpty
+                      ? walk.firestoreId
+                      : walk.id,
+                  walkTitle: walk.title,
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.forum_outlined, color: Colors.white),
+          tooltip: 'Open chat',
+        ),
+        const SizedBox(width: 8),
         Chip(
           label: Text(
             status.toUpperCase(),
