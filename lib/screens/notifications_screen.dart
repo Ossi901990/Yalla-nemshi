@@ -211,7 +211,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final walk =
               await WalkControlService().getWalk(notification.walkId!);
           if (!mounted) return;
-          if (walk != null) {
+          final currentUid = FirebaseAuth.instance.currentUser?.uid;
+          final isParticipant = walk != null &&
+              currentUid != null &&
+              currentUid != walk.hostUid &&
+              (walk.joinedUserUids.contains(currentUid) ||
+                  walk.participantStates.containsKey(currentUid));
+          if (isParticipant) {
             Navigator.push(
               context,
               MaterialPageRoute(

@@ -405,12 +405,19 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
         const Spacer(),
         IconButton(
           onPressed: () {
+            final resolvedId = walk.firestoreId.isNotEmpty
+                ? walk.firestoreId
+                : walk.id;
+            if (resolvedId.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Unable to open chat right now.')),
+              );
+              return;
+            }
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => WalkChatScreen(
-                  walkId: walk.firestoreId.isNotEmpty
-                      ? walk.firestoreId
-                      : walk.id,
+                  walkId: resolvedId,
                   walkTitle: walk.title,
                 ),
               ),

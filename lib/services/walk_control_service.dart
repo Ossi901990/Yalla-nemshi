@@ -250,7 +250,10 @@ class WalkControlService {
   Stream<WalkEvent?> watchWalk(String walkId) {
     return _firestore.collection('walks').doc(walkId).snapshots().map((doc) {
       if (!doc.exists) return null;
-      return WalkEvent.fromMap(doc.data() ?? {});
+      final data = doc.data() ?? {};
+      data['id'] = doc.id;
+      data['firestoreId'] = doc.id;
+      return WalkEvent.fromMap(data);
     });
   }
 

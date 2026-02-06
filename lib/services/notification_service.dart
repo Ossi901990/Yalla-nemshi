@@ -268,6 +268,19 @@ class NotificationService {
       statsMessage = 'You walked for $duration min.';
     }
 
+    final currentUid = FirebaseAuth.instance.currentUser?.uid;
+    try {
+      final walk = await WalkControlService().getWalk(walkId);
+      if (walk == null) return;
+      final isParticipant = currentUid != null &&
+          currentUid != walk.hostUid &&
+          (walk.joinedUserUids.contains(currentUid) ||
+              walk.participantStates.containsKey(currentUid));
+      if (!isParticipant) return;
+    } catch (_) {
+      return;
+    }
+
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -293,7 +306,14 @@ class NotificationService {
                   final walk =
                       await WalkControlService().getWalk(walkId);
                   final navContext = navigatorKey.currentState?.overlay?.context;
-                  if (walk != null && navContext != null && navContext.mounted) {
+                  final currentUid =
+                      FirebaseAuth.instance.currentUser?.uid;
+                  final isParticipant = walk != null &&
+                      currentUid != null &&
+                      currentUid != walk.hostUid &&
+                      (walk.joinedUserUids.contains(currentUid) ||
+                          walk.participantStates.containsKey(currentUid));
+                  if (isParticipant && navContext != null && navContext.mounted) {
                     navigatorKey.currentState?.push(
                       MaterialPageRoute(
                         builder: (_) => ReviewWalkScreen(walk: walk),
@@ -471,6 +491,12 @@ class NotificationService {
             final walk =
                 await WalkControlService().getWalk(notification.walkId!);
             if (walk == null) return;
+            final currentUid = FirebaseAuth.instance.currentUser?.uid;
+            final isParticipant = currentUid != null &&
+                currentUid != walk.hostUid &&
+                (walk.joinedUserUids.contains(currentUid) ||
+                    walk.participantStates.containsKey(currentUid));
+            if (!isParticipant) return;
             if (!context.mounted) return;
             Navigator.of(context).push(
               MaterialPageRoute(

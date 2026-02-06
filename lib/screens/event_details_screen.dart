@@ -2,22 +2,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/review.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'walk_chat_screen.dart';
-import 'review_walk_screen.dart';
 import 'walk_summary_screen.dart';
 import 'active_walk_screen.dart';
 import '../models/walk_event.dart';
 import '../services/invite_service.dart';
-import '../services/review_service.dart';
 import '../services/recurring_walk_service.dart';
 import '../services/host_rating_service.dart';
 import '../services/walk_control_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/gps_tracking_service.dart';
 import '../utils/invite_utils.dart';
-import '../widgets/review_widgets.dart';
 
 class EventDetailsScreen extends StatefulWidget {
   final WalkEvent event;
@@ -392,28 +388,6 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
   }
 
   Future<void> _regenerateShareCode() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Regenerate invite code?'),
-        content: const Text(
-          'Anyone with the old code will lose access. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep current'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Regenerate'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
     setState(() {
       _rotatingCode = true;
     });
@@ -425,9 +399,9 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
         'shareCode': newCode,
         'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
       });
-      _showSnack('New invite code generated');
-    } catch (error) {
-      _showSnack('Unable to regenerate invite right now.');
+      _showSnack('Invite code regenerated');
+    } catch (_) {
+      _showSnack('Unable to regenerate invite code.');
     } finally {
       if (mounted) {
         setState(() {
@@ -438,28 +412,7 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
   }
 
   Future<void> _revokeInvite(String userId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove invited walker?'),
-        content: const Text(
-          'They will lose access to this private walk until they redeem a new code.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep access'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
+    if (_revoking.contains(userId)) return;
     setState(() {
       _revoking.add(userId);
     });
@@ -470,8 +423,8 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
         userId: userId,
       );
       _showSnack('Invite revoked');
-    } catch (error) {
-      _showSnack('Unable to revoke invite.');
+    } catch (_) {
+      _showSnack('Unable to revoke invite right now.');
     } finally {
       if (mounted) {
         setState(() {
@@ -483,15 +436,14 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
 
   DateTime? _asDateTime(dynamic value) {
     if (value == null) return null;
-    if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
-    if (value is String) return DateTime.tryParse(value);
+    if (value is Timestamp) return value.toDate();
     return null;
   }
 
   String _expiryDescription(DateTime? expiresAt) {
     if (expiresAt == null) {
-      return 'No expiry configured yet.';
+      return 'No expiry set';
     }
 
     final now = DateTime.now().toUtc();
@@ -2104,235 +2056,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             ),
                           ],
 
-                          // ✅ Reviews Section
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(
-                              'Reviews',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Reviews stats + button to write review
-                          FutureBuilder(
-                            future: ReviewService.getWalkReviewStats(
-                              widget.event.id,
-                            ),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                  child: SizedBox(
-                                    height: 120,
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final stats = snapshot.data;
-                              final currentUser =
-                                  FirebaseAuth.instance.currentUser;
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  RatingStatsWidget(
-                                    stats:
-                                        stats ??
-                                        ReviewStats(
-                                          averageRating: 0,
-                                          totalReviews: 0,
-                                          ratingDistribution: {},
-                                        ),
-                                    onWriteReview: currentUser != null
-                                        ? () async {
-                                            final result =
-                                                await Navigator.pushNamed(
-                                                  context,
-                                                  ReviewWalkScreen.routeName,
-                                                  arguments: {
-                                                    'walk': widget.event,
-                                                    'userId': currentUser.uid,
-                                                    'userName':
-                                                        currentUser
-                                                            .displayName ??
-                                                        'Anonymous',
-                                                  },
-                                                );
-                                            // Refresh if review was added
-                                            if (result == true &&
-                                                context.mounted) {
-                                              setState(() {});
-                                            }
-                                          }
-                                        : null,
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // List of recent reviews
-                                  FutureBuilder(
-                                    future:
-                                        ReviewService.getWalkReviewsPaginated(
-                                          widget.event.id,
-                                          limit: 5,
-                                        ),
-                                    builder: (context, reviewSnapshot) {
-                                      if (reviewSnapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const SizedBox(
-                                          height: 80,
-                                          child: CircularProgressIndicator(),
-                                        );
-                                      }
-
-                                      final reviews = reviewSnapshot.data ?? [];
-
-                                      if (reviews.isEmpty) {
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Recent Reviews',
-                                            style: theme.textTheme.titleSmall
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          ...reviews.map(
-                                            (review) => Padding(
-                                              padding: const EdgeInsets.only(
-                                                bottom: 12.0,
-                                              ),
-                                              child: ReviewCard(
-                                                review: review,
-                                                onDelete:
-                                                    currentUser?.uid ==
-                                                        review.userId
-                                                    ? () async {
-                                                        final walkId =
-                                                            widget
-                                                                .event
-                                                                .firestoreId
-                                                                .isNotEmpty
-                                                            ? widget
-                                                                  .event
-                                                                  .firestoreId
-                                                            : widget.event.id;
-                                                        await ReviewService.deleteReview(
-                                                          walkId,
-                                                          review.userId,
-                                                        );
-                                                        if (context.mounted) {
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text(
-                                                                'Review deleted',
-                                                              ),
-                                                              duration:
-                                                                  Duration(
-                                                                    seconds: 2,
-                                                                  ),
-                                                            ),
-                                                          );
-                                                          setState(() {});
-                                                        }
-                                                      }
-                                                    : null,
-                                                onHelpful: () async {
-                                                  if (currentUser == null) {
-                                                    if (!context.mounted) {
-                                                      return;
-                                                    }
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Please sign in to mark helpful',
-                                                        ),
-                                                        duration: Duration(
-                                                          seconds: 2,
-                                                        ),
-                                                      ),
-                                                    );
-                                                    return;
-                                                  }
-                                                  final walkId =
-                                                      widget
-                                                          .event
-                                                          .firestoreId
-                                                          .isNotEmpty
-                                                      ? widget.event.firestoreId
-                                                      : widget.event.id;
-                                                  await ReviewService.markHelpful(
-                                                    walkId,
-                                                    review.userId,
-                                                    currentUser.uid,
-                                                  );
-                                                  if (!context.mounted) return;
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Marked helpful',
-                                                      ),
-                                                      duration: Duration(
-                                                        seconds: 2,
-                                                      ),
-                                                    ),
-                                                  );
-                                                  setState(() {});
-                                                },
-                                              ),
-                                            ),
-                                          ),
-                                          if (reviews.length >= 5)
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 8.0,
-                                              ),
-                                              child: TextButton(
-                                                onPressed: () {
-                                                  // Could navigate to full reviews screen
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'See all reviews feature coming soon',
-                                                      ),
-                                                      duration: Duration(
-                                                        seconds: 2,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                child: const Text(
-                                                  'Load more reviews',
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
                           const SizedBox(height: 24),
 
                           // Host-only cancel button(s)

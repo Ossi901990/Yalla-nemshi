@@ -96,6 +96,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
     if (_reviewSheetAutoPrompted) return;
     final summary = _summary;
     if (summary == null) return;
+    if (summary.isHost) return;
     if (summary.reviewSubmitted) return;
     _reviewSheetAutoPrompted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -172,6 +173,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
   Future<void> _openReviewSheet() async {
     final summary = _summary;
     if (summary == null) return;
+    if (summary.isHost) return;
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -234,7 +236,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
               _buildLeftEarlyBanner(theme),
             ],
             const SizedBox(height: 16),
-            _buildReviewSection(theme),
+            if (!_summary!.isHost) _buildReviewSection(theme),
             const SizedBox(height: 32),
             FilledButton.icon(
               onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
@@ -250,7 +252,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
       appBar: AppBar(
         title: const Text('Walk summary'),
         actions: [
-          if (_summary != null)
+          if (_summary != null && !_summary!.isHost)
             IconButton(
               tooltip: 'Leave review',
               onPressed: _openReviewSheet,
@@ -456,6 +458,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
 
   Widget _buildReviewSection(ThemeData theme) {
     final summary = _summary!;
+    if (summary.isHost) {
+      return const SizedBox.shrink();
+    }
     final review = summary.existingReview;
     if (review == null) {
       return Card(
