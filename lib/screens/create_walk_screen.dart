@@ -89,6 +89,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   final TextEditingController _loopDistanceCtrl = TextEditingController();
 
   bool _syncingLoop = false;
+  Timer? _loopSyncDebounce;
 
   // Simple pace assumption: 12 minutes per km (≈ 5 km/h)
   static const double _minutesPerKm = 12.0;
@@ -154,37 +155,43 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     _loopMinutesCtrl.text = _loopMinutes.toString();
     _loopDistanceCtrl.text = _loopDistanceKm.toStringAsFixed(1);
 
-    // Sync logic (two-way)
+    // Sync logic (two-way) with debouncing
     _loopMinutesCtrl.addListener(() {
       if (_syncingLoop) return;
       if (_walkTypeIndex != 1) return; // only react while on Loop tab
 
-      final raw = _loopMinutesCtrl.text.trim();
-      final mins = int.tryParse(raw);
-      if (mins == null || mins <= 0) return;
+      _loopSyncDebounce?.cancel();
+      _loopSyncDebounce = Timer(const Duration(milliseconds: 300), () {
+        final raw = _loopMinutesCtrl.text.trim();
+        final mins = int.tryParse(raw);
+        if (mins == null || mins <= 0) return;
 
-      final km = mins / _minutesPerKm;
+        final km = mins / _minutesPerKm;
 
-      _syncingLoop = true;
-      _loopDistanceKm = km;
-      _loopDistanceCtrl.text = km.toStringAsFixed(1);
-      _syncingLoop = false;
+        _syncingLoop = true;
+        _loopDistanceKm = km;
+        _loopDistanceCtrl.text = km.toStringAsFixed(1);
+        _syncingLoop = false;
+      });
     });
 
     _loopDistanceCtrl.addListener(() {
       if (_syncingLoop) return;
       if (_walkTypeIndex != 1) return; // only react while on Loop tab
 
-      final raw = _loopDistanceCtrl.text.trim();
-      final km = double.tryParse(raw);
-      if (km == null || km <= 0) return;
+      _loopSyncDebounce?.cancel();
+      _loopSyncDebounce = Timer(const Duration(milliseconds: 300), () {
+        final raw = _loopDistanceCtrl.text.trim();
+        final km = double.tryParse(raw);
+        if (km == null || km <= 0) return;
 
-      final mins = (km * _minutesPerKm).round();
+        final mins = (km * _minutesPerKm).round();
 
-      _syncingLoop = true;
-      _loopMinutes = mins;
-      _loopMinutesCtrl.text = mins.toString();
-      _syncingLoop = false;
+        _syncingLoop = true;
+        _loopMinutes = mins;
+        _loopMinutesCtrl.text = mins.toString();
+        _syncingLoop = false;
+      });
     });
 
     _loadDefaultsFromPrefs();
@@ -192,6 +199,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
   @override
   void dispose() {
+    _loopSyncDebounce?.cancel();
     _loopMinutesCtrl.dispose();
     _loopDistanceCtrl.dispose();
     super.dispose();
@@ -815,8 +823,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final walkType = _walkTypeIndex == 0 ? 'point_to_point' : 'loop';
     final bool isPrivatePointToPoint =
         walkType == 'point_to_point' && _isPrivatePointToPoint;
-    final bool isPrivateLoop =
-        walkType == 'loop' && _isPrivateLoop;
+    final bool isPrivateLoop = walkType == 'loop' && _isPrivateLoop;
     final bool isPrivate = isPrivatePointToPoint || isPrivateLoop;
 
     if (isPrivate) {
@@ -873,8 +880,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       pace: _pace,
     );
 
-    final String? cityNormalized =
-      cityForWalk != null ? AppPreferences.normalizeCity(cityForWalk) : null;
+    final String? cityNormalized = cityForWalk != null
+        ? AppPreferences.normalizeCity(cityForWalk)
+        : null;
 
     final payload = <String, dynamic>{
       'walkType': walkType,
@@ -1193,7 +1201,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                 children: [
                   Row(
                     children: [
-                      _HeaderLogo(),
+                      const _HeaderLogo(),
                       const SizedBox(width: 8),
                       Text(
                         'Yalla Nemshi',
@@ -1741,12 +1749,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               Expanded(
                                                 child: ChoiceChip(
                                                   label: const Text('Open'),
-                                                  selected:
-                                                      !_isPrivateLoop,
+                                                  selected: !_isPrivateLoop,
                                                   onSelected: (_) {
                                                     setState(() {
-                                                      _isPrivateLoop =
-                                                          false;
+                                                      _isPrivateLoop = false;
                                                       _resetPrivateInviteState();
                                                     });
                                                   },
@@ -1756,12 +1762,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                               Expanded(
                                                 child: ChoiceChip(
                                                   label: const Text('Private'),
-                                                  selected:
-                                                      _isPrivateLoop,
+                                                  selected: _isPrivateLoop,
                                                   onSelected: (_) {
                                                     setState(() {
-                                                      _isPrivateLoop =
-                                                          true;
+                                                      _isPrivateLoop = true;
                                                       _preparePrivateInviteState();
                                                     });
                                                   },
