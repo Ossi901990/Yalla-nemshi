@@ -281,8 +281,14 @@ class NotificationService {
       return;
     }
 
+    final dialogContext = navigatorKey.currentState?.overlay?.context;
+    if (dialogContext == null || !dialogContext.mounted) {
+      _walkEndDialogOpen = false;
+      return;
+    }
+
     await showDialog<void>(
-      context: context,
+      context: dialogContext,
       barrierDismissible: true,
       builder: (dialogContext) {
         return AlertDialog(

@@ -591,6 +591,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   bool _didConfirmParticipation = false;
   Stream<WalkEvent?>? _walkStream;
 
+  static const double _photoThumbSize = 78;
+  static const double _photoThumbPadding = 6;
+
   @override
   void initState() {
     super.initState();
@@ -650,6 +653,206 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     final hh = dt.hour.toString().padLeft(2, '0');
     final min = dt.minute.toString().padLeft(2, '0');
     return '$dd/$mm/$yyyy • $hh:$min';
+  }
+
+  void _openPhotoViewer(List<String> urls, int initialIndex) {
+    if (urls.isEmpty) return;
+
+    final pageController = PageController(initialPage: initialIndex);
+    final currentIndex = ValueNotifier<int>(initialIndex);
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: Scaffold(
+            backgroundColor: Colors.black54,
+            body: SafeArea(
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {},
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final maxWidth = constraints.maxWidth * 0.85;
+                      final maxHeight = constraints.maxHeight * 0.7;
+
+                      return SizedBox(
+                        width: maxWidth,
+                        height: maxHeight,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: Stack(
+                            children: [
+                              PageView.builder(
+                                controller: pageController,
+                                onPageChanged: (index) {
+                                  currentIndex.value = index;
+                                },
+                                itemCount: urls.length,
+                                itemBuilder: (context, index) {
+                                  final url = urls[index];
+
+                                  return Container(
+                                    color: Colors.black,
+                                    child: Center(
+                                      child: Image.network(
+                                        url,
+                                        fit: BoxFit.contain,
+                                        loadingBuilder:
+                                            (context, child, loadingProgress) {
+                                          if (loadingProgress == null) {
+                                            return child;
+                                          }
+                                          return const SizedBox(
+                                            height: 40,
+                                            width: 40,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 3,
+                                              color: Colors.white,
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return const Icon(
+                                            Icons.broken_image_outlined,
+                                            size: 48,
+                                            color: Colors.white70,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (urls.length > 1)
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: ValueListenableBuilder<int>(
+                                      valueListenable: currentIndex,
+                                      builder: (context, value, _) {
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: List.generate(urls.length, (
+                                            index,
+                                          ) {
+                                            final isActive = index == value;
+                                            return AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 180,
+                                              ),
+                                              margin: const EdgeInsets.symmetric(
+                                                horizontal: 3,
+                                              ),
+                                              width: isActive ? 8 : 6,
+                                              height: isActive ? 8 : 6,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: isActive
+                                                    ? Colors.white70
+                                                    : Colors.white38,
+                                              ),
+                                            );
+                                          }),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWalkPhotoGallery(
+    WalkEvent event,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    if (event.photoUrls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Walk photos',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF111827),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: _photoThumbSize + _photoThumbPadding * 2,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: event.photoUrls.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final url = event.photoUrls[index];
+
+              return InkWell(
+                onTap: () => _openPhotoViewer(event.photoUrls, index),
+                borderRadius: BorderRadius.circular(14),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: _photoThumbSize,
+                    height: _photoThumbSize,
+                    color: isDark
+                        ? Colors.white.withAlpha((0.08 * 255).round())
+                        : Colors.black.withAlpha((0.04 * 255).round()),
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      cacheWidth: 240,
+                      cacheHeight: 240,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: 24,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   // ✅ Match Nearby/Home “pill” style
@@ -1917,6 +2120,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                           ),
 
                           const SizedBox(height: 16),
+
+                            _buildWalkPhotoGallery(event, theme, isDark),
 
                           // Description
                           if (event.description != null &&
