@@ -1364,7 +1364,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                             const SizedBox(height: 20),
 
                             DefaultTabController(
-                              length: 3,
+                              length: 2,
                               initialIndex: 0,
                               child: Builder(
                                 builder: (context) {
