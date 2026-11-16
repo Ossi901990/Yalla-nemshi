@@ -1,0 +1,12 @@
+{
+  "name": "yalla-nemshi-rules-tests",
+  "private": true,
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,storage --project demo-yalla-nemshi --config ../firebase.json 'node --test --test-concurrency=1 test/firestore.test.js test/storage.test.js'"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-tools": "^14.0.0"
+  }
+}

@@ -905,8 +905,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
       // ===== Visibility & join rules =====
       'visibility': isPrivate ? 'private' : 'open',
       'joinPolicy': 'request',
-      'shareCode': isPrivate ? _privateShareCode : null,
-      'shareCodeExpiresAt': shareCodeExpiresAt,
+      // shareCode is stored separately in walks/{id}/private/invite.
 
       // Loop fields
       'loopMinutes': walkType == 'loop' ? _loopMinutes : null,
@@ -1034,6 +1033,16 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                     );
                   }
                   transaction.set(docRef, payload);
+                  // Host-only invite doc; never stored on the walk itself.
+                  transaction.set(
+                    docRef.collection('private').doc('invite'),
+                    {
+                      'walkId': docRef.id,
+                      'hostUid': uid,
+                      'shareCode': _privateShareCode,
+                      'shareCodeExpiresAt': shareCodeExpiresAt,
+                    },
+                  );
                 })
                 .timeout(const Duration(seconds: 30));
           } else {

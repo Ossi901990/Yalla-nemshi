@@ -45,6 +45,9 @@ class _PrivateInviteManagement extends StatefulWidget {
 
 class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
   late final DocumentReference<Map<String, dynamic>> _walkRef;
+
+  /// Host-only doc holding the private walk's invite code and expiry.
+  late final DocumentReference<Map<String, dynamic>> _inviteRef;
   final InviteService _inviteService = InviteService();
   bool _rotatingCode = false;
   bool _extendingExpiry = false;
@@ -56,6 +59,7 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
     _walkRef = FirebaseFirestore.instance
         .collection('walks')
         .doc(widget.event.firestoreId);
+    _inviteRef = _walkRef.collection('private').doc('invite');
   }
 
   @override
@@ -116,7 +120,7 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
             ),
             const SizedBox(height: 12),
             StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: _walkRef.snapshots(),
+              stream: _inviteRef.snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     !snapshot.hasData) {
@@ -372,9 +376,9 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
 
     try {
       final newExpiry = InviteUtils.nextExpiry();
-      await _walkRef.update({
+      await _inviteRef.set({
         'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
-      });
+      }, SetOptions(merge: true));
       _showSnack('Invite extended to ${_formatAbsolute(newExpiry)}');
     } catch (error) {
       _showSnack('Unable to extend invite right now.');
@@ -395,10 +399,12 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
     try {
       final newCode = InviteUtils.generateShareCode();
       final newExpiry = InviteUtils.nextExpiry();
-      await _walkRef.update({
+      await _inviteRef.set({
+        'walkId': _walkRef.id,
+        'hostUid': widget.event.hostUid,
         'shareCode': newCode,
         'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
-      });
+      }, SetOptions(merge: true));
       _showSnack('Invite code regenerated');
     } catch (_) {
       _showSnack('Unable to regenerate invite code.');

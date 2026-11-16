@@ -382,11 +382,16 @@ class WalkEvent {
       'endLng': endLng,
       'description': description,
       'cancelled': cancelled,
-      'shareCode': shareCode,
-      'shareCodeExpiresAt': _serializeTimestamp(
-        shareCodeExpiresAt,
-        forCache: forCache,
-      ),
+      'visibility': visibility,
+      // Invite codes live in walks/{id}/private/invite (host-only) and must
+      // never be written to the publicly listable walk document. They are
+      // kept only in the local cache so the host's UI can show them offline.
+      if (forCache) 'shareCode': shareCode,
+      if (forCache)
+        'shareCodeExpiresAt': _serializeTimestamp(
+          shareCodeExpiresAt,
+          forCache: forCache,
+        ),
       'actualDistanceKm': actualDistanceKm,
       'averageSpeed': averageSpeed,
       'maxSpeed': maxSpeed,

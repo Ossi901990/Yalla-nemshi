@@ -5,22 +5,38 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isImageUpload() {
+      return request.resource != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     function walkData(walkId) {
       return firestore.get(/databases/(default)/documents/walks/$(walkId)).data;
     }
 
-    function isWalkMember(walkId) {
+    function isWalkHost(walkId) {
       let walk = walkData(walkId);
-      let participantStates = walk == null ? null : walk.participantStates;
-      let participantState = participantStates == null ? null : participantStates[request.auth.uid];
+      return signedIn() && walk != null && walk.hostUid == request.auth.uid;
+    }
+
+    // Host or joined participant (chat access).
+    function isWalkParticipant(walkId) {
+      let walk = walkData(walkId);
       return signedIn()
         && walk != null
         && (
           walk.hostUid == request.auth.uid
-          || (participantState != null && participantState != 'declined')
-          || (walk.joinedUserUids != null && request.auth.uid in walk.joinedUserUids)
-          || (walk.joinedUids != null && request.auth.uid in walk.joinedUids)
+          || request.auth.uid in walk.get('joinedUserUids', [])
+          || request.auth.uid in walk.get('joinedUids', [])
         );
+    }
+
+    // Participant, or anyone with a non-declined participant state (e.g. left early).
+    function isWalkMember(walkId) {
+      let walk = walkData(walkId);
+      let state = walk == null ? null : walk.get('participantStates', {}).get(request.auth.uid, null);
+      return isWalkParticipant(walkId) || (state != null && state != 'declined');
     }
 
     function dmThread(threadId) {
@@ -28,43 +44,51 @@ service firebase.storage {
     }
 
     function isDmParticipant(threadId) {
+      let thread = dmThread(threadId);
       return signedIn()
-        && dmThread(threadId) != null
+        && thread != null
         && (
-          (dmThread(threadId).participants != null
-            && request.auth.uid in dmThread(threadId).participants)
-          || (dmThread(threadId).memberIds != null
-            && request.auth.uid in dmThread(threadId).memberIds)
+          request.auth.uid in thread.get('participants', [])
+          || request.auth.uid in thread.get('memberIds', [])
         );
     }
 
-    // Walk photos: anyone authenticated can read, only authenticated users can write
+    // Walk cover photos: uploaded by the host when creating/editing the walk.
+    // Readable by any signed-in user (open walks show them in listings).
     match /walks/{walkId}/{allPaths=**} {
       allow read: if signedIn();
-      allow write: if signedIn();
-      allow delete: if signedIn();
+      allow create, update: if isWalkHost(walkId) && isImageUpload();
+      allow delete: if isWalkHost(walkId);
+    }
+
+    // Walk chat images: participants only; uploader file name ends with _<uid>.jpg.
+    match /walk_chats/{walkId}/images/{fileName} {
+      allow read: if isWalkParticipant(walkId);
+      allow create: if isWalkParticipant(walkId)
+        && fileName.matches('.*_' + request.auth.uid + '\\.jpg')
+        && isImageUpload();
+      allow update, delete: if false;
     }
 
     // Direct message media uploads
     match /dm_media/{threadId}/{fileName} {
       allow read: if isDmParticipant(threadId);
       allow delete: if isDmParticipant(threadId);
-      allow write: if isDmParticipant(threadId)
-        && request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+      allow create, update: if isDmParticipant(threadId) && isImageUpload();
     }
 
-    // Walk review photos: only participants/hosts can upload to their folder
+    // Walk review photos: only members can upload to their own folder
     match /walk_reviews/{walkId}/{userId}/{fileName} {
-      allow read: if signedIn() && isWalkMember(walkId);
-      allow delete: if signedIn() && request.auth.uid == userId && isWalkMember(walkId);
-      allow write: if signedIn()
+      allow read: if isWalkMember(walkId);
+      allow delete: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn()
         && request.auth.uid == userId
         && isWalkMember(walkId)
-        && request.resource != null
-        && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && isImageUpload();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

@@ -130,9 +130,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final nowTimestamp = Timestamp.fromDate(DateTime.now());
 
       // Build query: filter by city if user has one set
-      Query<Map<String, dynamic>> query = FirebaseFirestore.instance.collection(
-        'walks',
-      );
+      // Only open walks are discoverable; private walks the user hosts or
+      // joined are fetched separately below (security rules enforce this).
+      Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+          .collection('walks')
+          .where('visibility', isEqualTo: 'open');
 
       if ((userCityNormalized != null && userCityNormalized.isNotEmpty) ||
           (userCity != null && userCity.isNotEmpty)) {
@@ -292,6 +294,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       Query<Map<String, dynamic>> baseQuery = FirebaseFirestore.instance
           .collection('walks')
+          .where('visibility', isEqualTo: 'open')
           .where('cancelled', isEqualTo: false);
 
       if ((userCityNormalized != null && userCityNormalized.isNotEmpty) ||

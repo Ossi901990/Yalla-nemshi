@@ -31,10 +31,8 @@ class StorageService {
 
       debugPrint('📸 Uploading photo to: $storagePath');
 
-      // Upload file or bytes
-      final metadata = contentType != null
-          ? SettableMetadata(contentType: contentType)
-          : null;
+      // Upload file or bytes. Storage rules require an image content type.
+      final metadata = SettableMetadata(contentType: contentType ?? 'image/jpeg');
       UploadTask uploadTask;
       if (photoFile != null) {
         uploadTask = ref.putFile(photoFile, metadata);
@@ -78,9 +76,7 @@ class StorageService {
       final storagePath =
           '$_walkReviewPhotosPath/$walkId/$userId/$fileName.jpg';
       final ref = _storage.ref(storagePath);
-      final metadata = contentType != null
-          ? SettableMetadata(contentType: contentType)
-          : null;
+      final metadata = SettableMetadata(contentType: contentType ?? 'image/jpeg');
 
       UploadTask uploadTask;
       if (photoFile != null) {

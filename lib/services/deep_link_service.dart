@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/walk_event.dart';
 import '../screens/event_details_screen.dart';
+import 'invite_service.dart';
 
 /// Service to handle deep links for walk invitations
 class DeepLinkService {
@@ -31,11 +32,35 @@ class DeepLinkService {
 
       debugPrint('📬 Processing invite link: walkId=$walkId, code=$code');
 
-      // Fetch the walk
-      final doc = await FirebaseFirestore.instance
-          .collection('walks')
-          .doc(walkId)
-          .get();
+      // Private walks can only be read after the invite is redeemed, which
+      // the backend verifies against the host-only invite doc.
+      if (code != null && code.isNotEmpty) {
+        try {
+          await InviteService().redeemInvite(walkId: walkId, shareCode: code);
+        } on InviteException catch (e) {
+          // An open walk can't be "redeemed"; just continue and load it.
+          if (e.code != InviteErrorCode.notPrivate) {
+            if (context.mounted) _showError(context, e.message);
+            return;
+          }
+        }
+      }
+
+      DocumentSnapshot<Map<String, dynamic>> doc;
+      try {
+        doc = await FirebaseFirestore.instance
+            .collection('walks')
+            .doc(walkId)
+            .get();
+      } on FirebaseException catch (e) {
+        if (e.code == 'permission-denied') {
+          if (context.mounted) {
+            _showError(context, 'This is a private walk. Code required.');
+          }
+          return;
+        }
+        rethrow;
+      }
 
       if (!doc.exists) {
         if (context.mounted) {
@@ -44,24 +69,11 @@ class DeepLinkService {
         return;
       }
 
-      final walk = WalkEvent.fromMap(doc.data() ?? {});
-
-      // If it's a private walk, validate the code
-      if (walk.visibility == 'private') {
-        if (code == null || code.isEmpty) {
-          if (context.mounted) {
-            _showError(context, 'This is a private walk. Code required.');
-          }
-          return;
-        }
-
-        if (walk.shareCode != code) {
-          if (context.mounted) {
-            _showError(context, 'Invalid invite code for this walk.');
-          }
-          return;
-        }
-      }
+      final walk = WalkEvent.fromMap({
+        ...?doc.data(),
+        'firestoreId': doc.id,
+        'id': doc.data()?['id'] ?? doc.id,
+      });
 
       // Check if walk has ended
       if (walk.dateTime.isBefore(DateTime.now())) {

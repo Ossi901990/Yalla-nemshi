@@ -27,14 +27,18 @@ class InviteService {
 
   final FirebaseFunctions _functions;
 
-  Future<void> redeemInvite({
-    required String walkId,
+  /// Redeems a private walk invite and returns the walk id.
+  ///
+  /// [walkId] is optional: when omitted the backend looks the walk up by
+  /// [shareCode] alone (used by "enter invite code" search).
+  Future<String> redeemInvite({
+    String? walkId,
     required String shareCode,
   }) async {
-    final trimmedWalkId = walkId.trim();
+    final trimmedWalkId = (walkId ?? '').trim();
     final trimmedCode = shareCode.trim().toUpperCase();
 
-    if (trimmedWalkId.isEmpty || trimmedCode.isEmpty) {
+    if (trimmedCode.isEmpty || (walkId != null && trimmedWalkId.isEmpty)) {
       throw InviteException(
         InviteErrorCode.invalidInput,
         'Enter both the walk ID and invite code.',
@@ -42,10 +46,15 @@ class InviteService {
     }
 
     try {
-      await _functions.httpsCallable('redeemInviteCode').call({
-        'walkId': trimmedWalkId,
+      final result = await _functions.httpsCallable('redeemInviteCode').call({
+        if (trimmedWalkId.isNotEmpty) 'walkId': trimmedWalkId,
         'shareCode': trimmedCode,
       });
+      final data = result.data;
+      final returnedId = data is Map ? data['walkId']?.toString() : null;
+      return (returnedId != null && returnedId.isNotEmpty)
+          ? returnedId
+          : trimmedWalkId;
     } on FirebaseFunctionsException catch (error) {
       throw _mapException(error);
     } catch (_) {

@@ -298,6 +298,7 @@ class FirestoreUserService {
         final snapshot = await _firestore
             .collection(_usersCollection)
             .where('uid', whereIn: batch)
+            .limit(batch.length)
             .get()
             .timeout(const Duration(seconds: 10));
 

@@ -68,6 +68,7 @@ class TagRecommendationService {
       final recommendations = await _firestore
           .collection('walks')
           .where('cancelled', isEqualTo: false)
+          .where('visibility', isEqualTo: 'open')
           .where('tags', arrayContainsAny: topTags)
           .limit(limit * 2) // Fetch extra to filter joined ones
           .get();

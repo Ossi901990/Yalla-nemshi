@@ -109,17 +109,31 @@ exports.redeemInviteCode = onCall(async (request) => {
   }
 
   const uid = request.auth.uid;
-  const walkId = (request.data?.walkId || "").toString().trim();
+  let walkId = (request.data?.walkId || "").toString().trim();
   const shareCode = (request.data?.shareCode || "").toString().trim().toUpperCase();
 
-  if (!walkId) {
-    throw new HttpsError("invalid-argument", "walkId is required.");
-  }
   if (!shareCode) {
     throw new HttpsError("invalid-argument", "shareCode is required.");
   }
 
   const db = admin.firestore();
+
+  // Invite codes live in walks/{walkId}/private/invite (host-only). When no
+  // walkId is given (user typed a code), look the walk up by code.
+  let inviteData = null;
+  if (!walkId) {
+    const matches = await db
+      .collectionGroup("private")
+      .where("shareCode", "==", shareCode)
+      .limit(1)
+      .get();
+    if (matches.empty) {
+      throw new HttpsError("not-found", "No walk found for that code.");
+    }
+    inviteData = matches.docs[0].data();
+    walkId = matches.docs[0].ref.parent.parent.id;
+  }
+
   const walkRef = db.collection("walks").doc(walkId);
   const walkSnap = await walkRef.get();
 
@@ -134,13 +148,20 @@ exports.redeemInviteCode = onCall(async (request) => {
     throw new HttpsError("failed-precondition", "This walk is not private.");
   }
 
+  if (!inviteData) {
+    const inviteSnap = await walkRef.collection("private").doc("invite").get();
+    // Fall back to the legacy on-document fields for walks created before the
+    // invite code moved to the private subcollection.
+    inviteData = inviteSnap.exists ? inviteSnap.data() : walk;
+  }
+
   // ✅ Verify code
-  const stored = (walk.shareCode || "").toString().trim().toUpperCase();
+  const stored = (inviteData.shareCode || "").toString().trim().toUpperCase();
   if (!stored || stored !== shareCode) {
     throw new HttpsError("permission-denied", "Invalid invite code.");
   }
 
-  const rawExpiry = walk.shareCodeExpiresAt;
+  const rawExpiry = inviteData.shareCodeExpiresAt;
   if (rawExpiry) {
     const expiresAt = typeof rawExpiry.toDate === "function"
       ? rawExpiry.toDate()
@@ -166,7 +187,7 @@ exports.redeemInviteCode = onCall(async (request) => {
     { merge: true }
   );
 
-  return { ok: true };
+  return { ok: true, walkId };
 });
 
 // Temporary alias to avoid breaking older clients while the app rolls out the new callable name
@@ -1184,11 +1205,11 @@ exports.onDmMessageCreated = onDocumentCreated(
  * Action: Notify all chat participants except the sender
  * 
  * Note: This assumes you have a chat messages collection structure like:
- * /walks/{walkId}/messages/{messageId}
+ * /walk_chats/{walkId}/messages/{messageId}  (the path the app writes to)
  * 
  * If your chat structure is different, adjust accordingly.
  */
-exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}", async (event) => {
+exports.onChatMessage = onDocumentWritten("walk_chats/{walkId}/messages/{messageId}", async (event) => {
   const message = event.data?.after?.data();
   
   // Only trigger on new messages
@@ -1232,7 +1253,7 @@ exports.onChatMessage = onDocumentWritten("walks/{walkId}/messages/{messageId}",
     const senderName = sender.displayName || "Someone";
     
     // Get message text (truncate if too long)
-    const messageText = (message.text || message.content || "sent a message").substring(0, 100);
+    const messageText = (message.text || message.content || (message.imageUrl ? "📷 sent a photo" : "sent a message")).substring(0, 100);
     
     // Send notifications in parallel
     const expiresAt = new Date();
@@ -1390,3 +1411,7 @@ exports.onWalkStarted = cp4Functions.onWalkStarted;
 exports.onWalkEnded = cp4Functions.onWalkEnded;
 exports.onUserLeftWalkEarly = cp4Functions.onUserLeftWalkEarly;
 exports.onWalkAutoComplete = cp4Functions.onWalkAutoComplete;
+
+// Host ratings derived from walk reviews (server-side only)
+const hostRating = require("./host_rating")(admin);
+exports.onWalkReviewWritten = hostRating.onWalkReviewWritten;

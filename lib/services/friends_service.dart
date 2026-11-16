@@ -78,36 +78,49 @@ class FriendsService {
     String friendId,
     String requestId,
   ) async {
-    final friendData = {
-      'friendId': friendId,
-      'since': FieldValue.serverTimestamp(),
-    };
-    // Add each user to the other's friends list
-    await _firestore
-        .collection('friends')
-        .doc(userId)
-        .collection('friendsList')
-        .doc(friendId)
-        .set(friendData);
-    await _firestore
-        .collection('friends')
-        .doc(friendId)
-        .collection('friendsList')
-        .doc(userId)
-        .set({'friendId': userId, 'since': FieldValue.serverTimestamp()});
-    // Delete the friend request
-    await _firestore
-        .collection('friend_requests')
-        .doc(userId)
-        .collection('received')
-        .doc(requestId)
-        .delete();
-    await _firestore
-        .collection('friend_requests')
-        .doc(friendId)
-        .collection('sent')
-        .doc(requestId)
-        .delete();
+    // One atomic batch. Security rules verify each friendship edge against
+    // the pending request named by requestId, so it must be written before the
+    // request is deleted (batched rules see the pre-batch state).
+    final batch = _firestore.batch();
+    batch.set(
+      _firestore
+          .collection('friends')
+          .doc(userId)
+          .collection('friendsList')
+          .doc(friendId),
+      {
+        'friendId': friendId,
+        'since': FieldValue.serverTimestamp(),
+        'requestId': requestId,
+      },
+    );
+    batch.set(
+      _firestore
+          .collection('friends')
+          .doc(friendId)
+          .collection('friendsList')
+          .doc(userId),
+      {
+        'friendId': userId,
+        'since': FieldValue.serverTimestamp(),
+        'requestId': requestId,
+      },
+    );
+    batch.delete(
+      _firestore
+          .collection('friend_requests')
+          .doc(userId)
+          .collection('received')
+          .doc(requestId),
+    );
+    batch.delete(
+      _firestore
+          .collection('friend_requests')
+          .doc(friendId)
+          .collection('sent')
+          .doc(requestId),
+    );
+    await batch.commit();
   }
 
   // Decline a friend request

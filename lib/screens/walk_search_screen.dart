@@ -9,6 +9,7 @@ import '../design_tokens.dart';
 import '../models/walk_event.dart';
 import '../models/walk_search_filters.dart';
 import '../screens/event_details_screen.dart';
+import '../services/invite_service.dart';
 import '../services/app_preferences.dart';
 import '../services/gps_tracking_service.dart';
 import '../services/offline_service.dart';
@@ -434,18 +435,35 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
     );
 
     try {
-      // Query for walk with matching shareCode
-      // SECURITY: This only finds the walk if the code matches exactly
-      final snapshot = await FirebaseFirestore.instance
+      // Invite codes are verified server-side; redeeming grants read access
+      // to the private walk, after which we can load it directly.
+      final String walkId;
+      try {
+        walkId = await InviteService().redeemInvite(shareCode: code);
+      } on InviteException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.code == InviteErrorCode.notFound ||
+                      e.code == InviteErrorCode.invalidCode
+                  ? 'No walk found with that code. Check the code and try again.'
+                  : e.message,
+            ),
+            backgroundColor: const Color(0xFFD97706),
+          ),
+        );
+        return;
+      }
+
+      final doc = await FirebaseFirestore.instance
           .collection('walks')
-          .where('shareCode', isEqualTo: code)
-          .where('cancelled', isEqualTo: false)
-          .limit(1)
+          .doc(walkId)
           .get();
 
       if (!mounted) return;
 
-      if (snapshot.docs.isEmpty) {
+      if (!doc.exists || doc.data()?['cancelled'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -457,8 +475,7 @@ class _WalkSearchScreenState extends State<WalkSearchScreen> {
         return;
       }
 
-      final doc = snapshot.docs.first;
-      final data = doc.data();
+      final data = doc.data()!;
       
       // Add document ID to the data map
       data['firestoreId'] = doc.id;

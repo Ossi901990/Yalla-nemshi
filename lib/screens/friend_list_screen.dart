@@ -1307,6 +1307,7 @@ class _InviteFriendSheetState extends State<_InviteFriendSheet> {
       final snapshot = await FirebaseFirestore.instance
           .collection('walks')
           .where('hostUid', isEqualTo: widget.hostUid)
+          .where('visibility', isEqualTo: 'open')
           .where('cancelled', isEqualTo: false)
           .where('dateTime', isGreaterThan: Timestamp.fromDate(now))
           .orderBy('dateTime')

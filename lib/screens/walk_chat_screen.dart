@@ -233,7 +233,10 @@ class _MessageComposerState extends State<_MessageComposer> {
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('walk_chats/${widget.walkId}/images/${DateTime.now().millisecondsSinceEpoch}_$uid.jpg');
-      await storageRef.putData(await file.readAsBytes());
+      await storageRef.putData(
+        await file.readAsBytes(),
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
       final imageUrl = await storageRef.getDownloadURL();
 
       final chatRef = FirebaseFirestore.instance

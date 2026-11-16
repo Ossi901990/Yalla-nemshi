@@ -8,7 +8,8 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "backfill:displayNameLower": "node scripts/backfill_display_name_lower.js",
-    "backfill:friendProfiles": "node scripts/backfill_friend_profiles.js"
+    "backfill:friendProfiles": "node scripts/backfill_friend_profiles.js",
+    "migrate:privateInvites": "node scripts/migrate_private_invites.js"
   },
   "engines": {
     "node": "24"

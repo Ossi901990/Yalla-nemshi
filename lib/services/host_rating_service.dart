@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'crash_service.dart';
 
 /// Service for calculating and managing host ratings
-/// Host ratings are calculated from reviews and stored at: /users/{userId}/hostRating (single document)
+/// Host ratings are computed server-side (Cloud Function onWalkReviewWritten)
+/// from walk reviews and stored at /users/{userId}/stats/hostRating.
+/// This service is read-only on the client.
 class HostRatingService {
   static final HostRatingService _instance = HostRatingService._internal();
 
@@ -94,49 +96,6 @@ class HostRatingService {
     });
   }
 
-  /// Add a review and recalculate host rating
-  /// Call this when a user submits a review for a walk
-  Future<void> addReview(String hostId, double rating) async {
-    try {
-      final ratingRef = _firestore
-          .collection('users')
-          .doc(hostId)
-          .collection('stats')
-          .doc('hostRating');
-
-      // Get current rating document
-      final doc = await ratingRef.get();
-      final currentData = doc.exists
-          ? (doc.data() ?? {})
-          : {};
-
-      final currentCount = (currentData['reviewCount'] ?? 0) as int;
-      final currentTotal =
-          (currentData['totalRatingPoints'] ?? 0.0).toDouble();
-
-      // Calculate new average
-      final newTotal = currentTotal + rating;
-      final newCount = currentCount + 1;
-      final newAverage = newTotal / newCount;
-
-      // Update rating document
-      await ratingRef.set({
-        'rating': newAverage,
-        'reviewCount': newCount,
-        'totalRatingPoints': newTotal,
-        'lastReviewAt': Timestamp.now(),
-        'userId': hostId,
-      }, SetOptions(merge: true));
-    } catch (e) {
-      CrashService.recordError(
-        e,
-        StackTrace.current,
-        reason: 'HostRatingService.addReview error',
-      );
-      rethrow;
-    }
-  }
-
   /// Get all reviews for a host
   Future<List<Map<String, dynamic>>> getHostReviews(
     String hostId, {
@@ -145,7 +104,7 @@ class HostRatingService {
     try {
       final docs = await _firestore
           .collectionGroup('reviews')
-          .where('hostId', isEqualTo: hostId)
+          .where('hostUid', isEqualTo: hostId)
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .get();
@@ -174,7 +133,7 @@ class HostRatingService {
     try {
       final snapshot = await _firestore
           .collectionGroup('reviews')
-          .where('hostId', isEqualTo: hostId)
+          .where('hostUid', isEqualTo: hostId)
           .count()
           .get();
 
@@ -216,41 +175,4 @@ class HostRatingService {
     return '#A9A9A9'; // Dark gray
   }
 
-  /// Remove a review and recalculate rating (admin/host only)
-  Future<void> removeReview(String hostId, double rating) async {
-    try {
-      final ratingRef = _firestore
-          .collection('users')
-          .doc(hostId)
-          .collection('stats')
-          .doc('hostRating');
-
-      final doc = await ratingRef.get();
-      if (!doc.exists) return;
-
-      final currentData = doc.data() as Map<String, dynamic>;
-      final currentCount = (currentData['reviewCount'] ?? 0) as int;
-      final currentTotal =
-          (currentData['totalRatingPoints'] ?? 0.0).toDouble();
-
-      if (currentCount <= 0) return;
-
-      final newTotal = (currentTotal - rating).clamp(0.0, double.infinity);
-      final newCount = currentCount - 1;
-      final newAverage = newCount > 0 ? newTotal / newCount : defaultRating;
-
-      await ratingRef.update({
-        'rating': newAverage,
-        'reviewCount': newCount,
-        'totalRatingPoints': newTotal,
-      });
-    } catch (e) {
-      CrashService.recordError(
-        e,
-        StackTrace.current,
-        reason: 'HostRatingService.removeReview error',
-      );
-      rethrow;
-    }
-  }
 }
