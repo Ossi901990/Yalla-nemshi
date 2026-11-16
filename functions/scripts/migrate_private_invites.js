@@ -3,7 +3,7 @@
  *
  * For every walk document:
  *  - moves shareCode / shareCodeExpiresAt into walks/{id}/private/invite
- *    (host-only) and deletes them from the publicly listable walk doc
+ *    (host-only) + invite_codes/{CODE}, and deletes them from the walk doc
  *  - sets visibility to 'open' when it is missing (listing queries now
  *    filter on visibility == 'open', so walks without it would disappear)
  *
@@ -18,7 +18,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const db = admin.firestore();
-const BATCH_SIZE = 200; // up to 2 writes per walk
+const BATCH_SIZE = 150; // up to 3 writes per walk
 
 async function migrate() {
   console.log('⏳ Migrating walk invite codes and visibility...');
@@ -57,7 +57,15 @@ async function migrate() {
             },
             { merge: true },
           );
-          writes += 1;
+          batch.set(
+            db.collection('invite_codes').doc(String(data.shareCode).toUpperCase()),
+            {
+              walkId: doc.id,
+              hostUid: data.hostUid || null,
+              expiresAt: data.shareCodeExpiresAt || null,
+            },
+          );
+          writes += 2;
           movedCodes += 1;
         }
         walkUpdate.shareCode = admin.firestore.FieldValue.delete();

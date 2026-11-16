@@ -13,6 +13,7 @@ import 'package:image/image.dart' as img;
 import '../models/walk_event.dart';
 import '../models/recurrence_rule.dart';
 import 'map_pick_screen.dart';
+import '../services/invite_service.dart';
 import '../services/app_preferences.dart';
 import '../services/geocoding_service.dart';
 import '../services/crash_service.dart';
@@ -1032,6 +1033,16 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                       'Walk ID already exists. Please regenerate your invite code and try again.',
                     );
                   }
+                  final codeRef = InviteService.codeRef(
+                    FirebaseFirestore.instance,
+                    _privateShareCode!,
+                  );
+                  final codeSnap = await transaction.get(codeRef);
+                  if (codeSnap.exists) {
+                    throw Exception(
+                      'That invite code is already in use. Please regenerate your invite code and try again.',
+                    );
+                  }
                   transaction.set(docRef, payload);
                   // Host-only invite doc; never stored on the walk itself.
                   transaction.set(
@@ -1043,6 +1054,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                       'shareCodeExpiresAt': shareCodeExpiresAt,
                     },
                   );
+                  // Public lookup by code (get-only; rules verify redemption).
+                  transaction.set(codeRef, {
+                    'walkId': docRef.id,
+                    'hostUid': uid,
+                    'expiresAt': shareCodeExpiresAt,
+                  });
                 })
                 .timeout(const Duration(seconds: 30));
           } else {

@@ -38,8 +38,9 @@ class DeepLinkService {
         try {
           await InviteService().redeemInvite(walkId: walkId, shareCode: code);
         } on InviteException catch (e) {
-          // An open walk can't be "redeemed"; just continue and load it.
-          if (e.code != InviteErrorCode.notPrivate) {
+          // Expired: tell the user. Otherwise keep going: open walks load
+          // fine, and private walks fail below with a clear message.
+          if (e.code == InviteErrorCode.expired) {
             if (context.mounted) _showError(context, e.message);
             return;
           }
@@ -55,7 +56,7 @@ class DeepLinkService {
       } on FirebaseException catch (e) {
         if (e.code == 'permission-denied') {
           if (context.mounted) {
-            _showError(context, 'This is a private walk. Code required.');
+            _showError(context, 'This is a private walk. A valid invite code is required.');
           }
           return;
         }

@@ -2,9 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'crash_service.dart';
 
 /// Service for calculating and managing host ratings
-/// Host ratings are computed server-side (Cloud Function onWalkReviewWritten)
-/// from walk reviews and stored at /users/{userId}/stats/hostRating.
-/// This service is read-only on the client.
+/// Host ratings are computed on read from walk reviews
+/// (walks/{walkId}/reviews/{reviewerId}). Read-only on the client.
 class HostRatingService {
   static final HostRatingService _instance = HostRatingService._internal();
 
@@ -20,18 +19,20 @@ class HostRatingService {
   static const double defaultRating = 5.0;
   static const int defaultReviewCount = 0;
 
-  /// Get current host rating for a user
-  /// Returns map with 'rating' and 'reviewCount'
+  /// Host rating computed from the host's reviews with a server-side
+  /// aggregation (average + count), so no Cloud Function is needed and hosts
+  /// cannot inflate their own rating.
   Future<Map<String, dynamic>> getHostRating(String userId) async {
     try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('stats')
-          .doc('hostRating')
+      final snapshot = await _firestore
+          .collectionGroup('reviews')
+          .where('hostUid', isEqualTo: userId)
+          .where('hostRating', isGreaterThanOrEqualTo: 1)
+          .aggregate(average('hostRating'), sum('hostRating'), count())
           .get();
 
-      if (!doc.exists) {
+      final reviewCount = snapshot.count ?? 0;
+      if (reviewCount == 0) {
         return {
           'rating': defaultRating,
           'reviewCount': defaultReviewCount,
@@ -39,11 +40,10 @@ class HostRatingService {
         };
       }
 
-      final data = doc.data() as Map<String, dynamic>;
       return {
-        'rating': (data['rating'] ?? defaultRating).toDouble(),
-        'reviewCount': data['reviewCount'] ?? 0,
-        'totalRatingPoints': (data['totalRatingPoints'] ?? 0.0).toDouble(),
+        'rating': snapshot.getAverage('hostRating') ?? defaultRating,
+        'reviewCount': reviewCount,
+        'totalRatingPoints': snapshot.getSum('hostRating')?.toDouble() ?? 0.0,
       };
     } catch (e) {
       CrashService.recordError(
@@ -57,43 +57,6 @@ class HostRatingService {
         'totalRatingPoints': 0.0,
       };
     }
-  }
-
-  /// Watch host rating in real-time
-  Stream<Map<String, dynamic>> watchHostRating(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('stats')
-        .doc('hostRating')
-        .snapshots()
-        .map((doc) {
-      if (!doc.exists) {
-        return {
-          'rating': defaultRating,
-          'reviewCount': defaultReviewCount,
-          'totalRatingPoints': 0.0,
-        };
-      }
-
-      final data = doc.data() as Map<String, dynamic>;
-      return {
-        'rating': (data['rating'] ?? defaultRating).toDouble(),
-        'reviewCount': data['reviewCount'] ?? 0,
-        'totalRatingPoints': (data['totalRatingPoints'] ?? 0.0).toDouble(),
-      };
-    }).handleError((e) {
-      CrashService.recordError(
-        e,
-        StackTrace.current,
-        reason: 'HostRatingService.watchHostRating error',
-      );
-      return {
-        'rating': defaultRating,
-        'reviewCount': defaultReviewCount,
-        'totalRatingPoints': 0.0,
-      };
-    });
   }
 
   /// Get all reviews for a host

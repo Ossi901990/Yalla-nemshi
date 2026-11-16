@@ -371,3 +371,81 @@ describe("blocks, reports, DMs", () => {
     await assertSucceeds(getDocs(query(collection(db(MALLORY), "users"), limit(20))));
   });
 });
+
+// ---------------------------------------------------------------------------
+describe("invite codes (no Cloud Functions)", () => {
+  const future = () => Timestamp.fromDate(new Date(Date.now() + 86400000));
+  const past = () => Timestamp.fromDate(new Date(Date.now() - 86400000));
+
+  beforeEach(async () => {
+    await seed(async (f) => {
+      await setDoc(doc(f, "invite_codes/ABC123"), { walkId: "priv1", hostUid: HOST, expiresAt: future() });
+      await setDoc(doc(f, "invite_codes/OLD999"), { walkId: "priv1", hostUid: HOST, expiresAt: past() });
+      await setDoc(doc(f, "walks/priv2"), walk({ visibility: "private" }));
+      await setDoc(doc(f, "invite_codes/OTHER1"), { walkId: "priv2", hostUid: HOST, expiresAt: future() });
+    });
+  });
+
+  const redeem = (uid, walkId, code) => setDoc(doc(db(uid), `walks/${walkId}/allowed/${uid}`),
+    { uid, walkId, code, redeemedAt: serverTimestamp() });
+
+  it("a code can be looked up by exact id but codes can't be listed", async () => {
+    await assertSucceeds(getDoc(doc(db(ALICE), "invite_codes/ABC123")));
+    await assertFails(getDocs(collection(db(ALICE), "invite_codes")));
+  });
+
+  it("redeeming a valid code grants access to the private walk", async () => {
+    await assertSucceeds(redeem(ALICE, "priv1", "ABC123"));
+    await assertSucceeds(getDoc(doc(db(ALICE), "walks/priv1")));
+  });
+
+  it("wrong, foreign, or expired codes are rejected", async () => {
+    await assertFails(redeem(MALLORY, "priv1", "NOPE00"));
+    await assertFails(redeem(MALLORY, "priv1", "OTHER1"));
+    await assertFails(redeem(MALLORY, "priv1", "OLD999"));
+  });
+
+  it("cannot redeem on behalf of someone else", async () => {
+    await assertFails(setDoc(doc(db(MALLORY), "walks/priv1/allowed/bob"),
+      { uid: BOB, walkId: "priv1", code: "ABC123", redeemedAt: serverTimestamp() }));
+  });
+
+  it("only the host can create, rotate, and delete codes", async () => {
+    await assertFails(setDoc(doc(db(MALLORY), "invite_codes/EVIL01"),
+      { walkId: "priv1", hostUid: MALLORY, expiresAt: future() }));
+    await assertSucceeds(setDoc(doc(db(HOST), "invite_codes/NEW123"),
+      { walkId: "priv1", hostUid: HOST, expiresAt: future() }));
+    await assertFails(deleteDoc(doc(db(MALLORY), "invite_codes/ABC123")));
+    await assertSucceeds(deleteDoc(doc(db(HOST), "invite_codes/ABC123")));
+  });
+
+  it("host can revoke a redeemed invite; the user cannot remove others", async () => {
+    await seed((f) => setDoc(doc(f, "walks/priv1/allowed/alice"), { uid: ALICE }));
+    await assertFails(deleteDoc(doc(db(MALLORY), "walks/priv1/allowed/alice")));
+    await assertSucceeds(deleteDoc(doc(db(HOST), "walks/priv1/allowed/alice")));
+  });
+
+  it("host can create walk + private invite + code in one transaction", async () => {
+    const f = db(HOST);
+    await assertSucceeds(runTransaction(f, async (tx) => {
+      const ref = doc(f, "walks/p3");
+      const codeRef = doc(f, "invite_codes/P3CODE");
+      await tx.get(ref);
+      await tx.get(codeRef);
+      tx.set(ref, walk({ visibility: "private" }));
+      tx.set(doc(f, "walks/p3/private/invite"), { hostUid: HOST, walkId: "p3", shareCode: "P3CODE" });
+      tx.set(codeRef, { walkId: "p3", hostUid: HOST, expiresAt: future() });
+    }));
+  });
+});
+
+describe("host rating aggregation", () => {
+  it("anyone signed in can aggregate a host's reviews", async () => {
+    const { getAggregateFromServer, average, count } = require("firebase/firestore");
+    const { collectionGroup } = require("firebase/firestore");
+    await seed((f) => setDoc(doc(f, "walks/open1/reviews/alice"), { hostUid: HOST, hostRating: 4 }));
+    const q = query(collectionGroup(db(BOB), "reviews"),
+      where("hostUid", "==", HOST), where("hostRating", ">=", 1));
+    await assertSucceeds(getAggregateFromServer(q, { avg: average("hostRating"), n: count() }));
+  });
+});

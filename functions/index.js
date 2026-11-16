@@ -1,7 +1,6 @@
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten, onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
@@ -102,143 +101,9 @@ async function sendNotificationToUser(userId, notification, data = {}, context =
 // Export sendNotificationToUser for use in other modules
 module.exports.sendNotificationToUser = sendNotificationToUser;
 
-exports.redeemInviteCode = onCall(async (request) => {
-  // ✅ Must be signed in
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "You must be logged in.");
-  }
-
-  const uid = request.auth.uid;
-  let walkId = (request.data?.walkId || "").toString().trim();
-  const shareCode = (request.data?.shareCode || "").toString().trim().toUpperCase();
-
-  if (!shareCode) {
-    throw new HttpsError("invalid-argument", "shareCode is required.");
-  }
-
-  const db = admin.firestore();
-
-  // Invite codes live in walks/{walkId}/private/invite (host-only). When no
-  // walkId is given (user typed a code), look the walk up by code.
-  let inviteData = null;
-  if (!walkId) {
-    const matches = await db
-      .collectionGroup("private")
-      .where("shareCode", "==", shareCode)
-      .limit(1)
-      .get();
-    if (matches.empty) {
-      throw new HttpsError("not-found", "No walk found for that code.");
-    }
-    inviteData = matches.docs[0].data();
-    walkId = matches.docs[0].ref.parent.parent.id;
-  }
-
-  const walkRef = db.collection("walks").doc(walkId);
-  const walkSnap = await walkRef.get();
-
-  if (!walkSnap.exists) {
-    throw new HttpsError("not-found", "Walk not found.");
-  }
-
-  const walk = walkSnap.data() || {};
-
-  // ✅ Only private walks should be redeemable
-  if (walk.visibility !== "private") {
-    throw new HttpsError("failed-precondition", "This walk is not private.");
-  }
-
-  if (!inviteData) {
-    const inviteSnap = await walkRef.collection("private").doc("invite").get();
-    // Fall back to the legacy on-document fields for walks created before the
-    // invite code moved to the private subcollection.
-    inviteData = inviteSnap.exists ? inviteSnap.data() : walk;
-  }
-
-  // ✅ Verify code
-  const stored = (inviteData.shareCode || "").toString().trim().toUpperCase();
-  if (!stored || stored !== shareCode) {
-    throw new HttpsError("permission-denied", "Invalid invite code.");
-  }
-
-  const rawExpiry = inviteData.shareCodeExpiresAt;
-  if (rawExpiry) {
-    const expiresAt = typeof rawExpiry.toDate === "function"
-      ? rawExpiry.toDate()
-      : new Date(rawExpiry);
-
-    if (Number.isNaN(expiresAt.getTime())) {
-      console.warn(
-        `⚠️ shareCodeExpiresAt malformed for walk ${walkId}:`,
-        rawExpiry,
-      );
-    } else if (expiresAt.getTime() < Date.now()) {
-      throw new HttpsError("failed-precondition", "This invite has expired.");
-    }
-  }
-
-  // ✅ Mark this user as allowed (rules allow them to read the walk)
-  await walkRef.collection("allowed").doc(uid).set(
-    {
-      uid,
-      walkId,
-      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
-
-  return { ok: true, walkId };
-});
-
-// Temporary alias to avoid breaking older clients while the app rolls out the new callable name
-exports.redeemWalkInvite = exports.redeemInviteCode;
-
-exports.revokeWalkInvite = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be logged in.');
-  }
-
-  const hostUid = request.auth.uid;
-  const walkId = (request.data?.walkId || '').toString().trim();
-  const targetUid = (request.data?.userId || '').toString().trim();
-
-  if (!walkId) {
-    throw new HttpsError('invalid-argument', 'walkId is required.');
-  }
-  if (!targetUid) {
-    throw new HttpsError('invalid-argument', 'userId is required.');
-  }
-
-  const db = admin.firestore();
-  const walkRef = db.collection('walks').doc(walkId);
-  const walkSnap = await walkRef.get();
-
-  if (!walkSnap.exists) {
-    throw new HttpsError('not-found', 'Walk not found.');
-  }
-
-  const walk = walkSnap.data() || {};
-  if (walk.hostUid !== hostUid) {
-    throw new HttpsError(
-      'permission-denied',
-      'Only the host can revoke invites for this walk.',
-    );
-  }
-
-  const inviteRef = walkRef.collection('allowed').doc(targetUid);
-  const inviteSnap = await inviteRef.get();
-
-  if (!inviteSnap.exists) {
-    throw new HttpsError('not-found', 'Invite not found.');
-  }
-
-  await inviteRef.delete();
-  console.log(
-    `🔐 Host ${hostUid} revoked invite for ${targetUid} on walk ${walkId}`,
-  );
-
-  return { ok: true };
-});
+// Private-walk invites (redeem / revoke) are handled entirely by Firestore
+// security rules + the client (see lib/services/invite_service.dart), so they
+// work on the free Spark plan without Cloud Functions.
 
 // ===== FRIEND PROFILE SNAPSHOTS =====
 
@@ -1411,7 +1276,3 @@ exports.onWalkStarted = cp4Functions.onWalkStarted;
 exports.onWalkEnded = cp4Functions.onWalkEnded;
 exports.onUserLeftWalkEarly = cp4Functions.onUserLeftWalkEarly;
 exports.onWalkAutoComplete = cp4Functions.onWalkAutoComplete;
-
-// Host ratings derived from walk reviews (server-side only)
-const hostRating = require("./host_rating")(admin);
-exports.onWalkReviewWritten = hostRating.onWalkReviewWritten;

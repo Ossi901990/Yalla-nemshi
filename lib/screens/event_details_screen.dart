@@ -376,9 +376,21 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
 
     try {
       final newExpiry = InviteUtils.nextExpiry();
-      await _inviteRef.set({
-        'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
-      }, SetOptions(merge: true));
+      final db = FirebaseFirestore.instance;
+      await db.runTransaction((tx) async {
+        final invite = await tx.get(_inviteRef);
+        final code = invite.data()?['shareCode']?.toString();
+        tx.set(_inviteRef, {
+          'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
+        }, SetOptions(merge: true));
+        if (code != null && code.isNotEmpty) {
+          tx.set(InviteService.codeRef(db, code), {
+            'walkId': _walkRef.id,
+            'hostUid': widget.event.hostUid,
+            'expiresAt': Timestamp.fromDate(newExpiry),
+          });
+        }
+      });
       _showSnack('Invite extended to ${_formatAbsolute(newExpiry)}');
     } catch (error) {
       _showSnack('Unable to extend invite right now.');
@@ -399,12 +411,31 @@ class _PrivateInviteManagementState extends State<_PrivateInviteManagement> {
     try {
       final newCode = InviteUtils.generateShareCode();
       final newExpiry = InviteUtils.nextExpiry();
-      await _inviteRef.set({
-        'walkId': _walkRef.id,
-        'hostUid': widget.event.hostUid,
-        'shareCode': newCode,
-        'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
-      }, SetOptions(merge: true));
+      final db = FirebaseFirestore.instance;
+      final newCodeRef = InviteService.codeRef(db, newCode);
+      await db.runTransaction((tx) async {
+        final invite = await tx.get(_inviteRef);
+        final clash = await tx.get(newCodeRef);
+        if (clash.exists) {
+          throw StateError('Invite code collision, try again');
+        }
+        final oldCode = invite.data()?['shareCode']?.toString();
+        // Retire the old code so it can no longer be redeemed.
+        if (oldCode != null && oldCode.isNotEmpty && oldCode != newCode) {
+          tx.delete(InviteService.codeRef(db, oldCode));
+        }
+        tx.set(newCodeRef, {
+          'walkId': _walkRef.id,
+          'hostUid': widget.event.hostUid,
+          'expiresAt': Timestamp.fromDate(newExpiry),
+        });
+        tx.set(_inviteRef, {
+          'walkId': _walkRef.id,
+          'hostUid': widget.event.hostUid,
+          'shareCode': newCode,
+          'shareCodeExpiresAt': Timestamp.fromDate(newExpiry),
+        }, SetOptions(merge: true));
+      });
       _showSnack('Invite code regenerated');
     } catch (_) {
       _showSnack('Unable to regenerate invite code.');

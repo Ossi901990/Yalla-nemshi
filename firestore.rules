@@ -29,7 +29,7 @@ service cloud.firestore {
         || request.auth.uid in walk.get('joinedUids', []);
     }
 
-    // Allowed = user has redeemed invite (written by Cloud Function using Admin SDK)
+    // Allowed = user redeemed a valid invite code (see invite_codes below)
     function isAllowedViewer(walkId) {
       return signedIn()
         && exists(/databases/$(database)/documents/walks/$(walkId)/allowed/$(request.auth.uid));
@@ -106,8 +106,8 @@ service cloud.firestore {
 
       allow delete: if false; // Never allow user self-deletion (use admin)
 
-      // User stats. hostRating is computed by a Cloud Function from reviews so
-      // hosts cannot set their own rating.
+      // User stats. hostRating is reserved: ratings are computed from reviews
+      // so hosts cannot set their own.
       match /stats/{statId} {
         allow read: if signedIn();
         allow create, update: if isAuth(userId) && statId != 'hostRating';
@@ -240,8 +240,7 @@ service cloud.firestore {
       allow delete: if signedIn()
         && resource.data.hostUid == request.auth.uid;
 
-      // Host-only invite code for private walks. Cloud Functions (Admin SDK)
-      // verify codes; clients other than the host can never read them.
+      // Host-only copy of the private walk's invite code (for the host's UI).
       match /private/{docId} {
         allow read: if signedIn()
           && get(walkPath(walkId)).data.hostUid == request.auth.uid;
@@ -252,7 +251,8 @@ service cloud.firestore {
           && request.resource.data.get('hostUid', request.auth.uid) == request.auth.uid;
       }
 
-      // Allowed viewers (invite redeemed). Written by Cloud Functions.
+      // Allowed viewers (invite redeemed). A user adds themselves by naming a
+      // valid, unexpired invite code for THIS walk; the host can manage all.
       match /allowed/{uid} {
         allow get: if signedIn()
           && (get(walkPath(walkId)).data.hostUid == request.auth.uid
@@ -261,7 +261,19 @@ service cloud.firestore {
         allow list: if signedIn()
           && get(walkPath(walkId)).data.hostUid == request.auth.uid;
 
-        allow create, update, delete: if signedIn()
+        allow create, update: if signedIn() && (
+          get(walkPath(walkId)).data.hostUid == request.auth.uid
+          || (
+            request.auth.uid == uid
+            && request.resource.data.keys().hasOnly(['uid', 'walkId', 'code', 'redeemedAt'])
+            && request.resource.data.uid == uid
+            && request.resource.data.walkId == walkId
+            && request.resource.data.code is string
+            && isValidInviteCode(request.resource.data.code, walkId)
+          )
+        );
+
+        allow delete: if signedIn()
           && get(walkPath(walkId)).data.hostUid == request.auth.uid;
       }
 
@@ -319,6 +331,35 @@ service cloud.firestore {
         allow write: if signedIn()
           && get(walkPath(walkId)).data.hostUid == request.auth.uid;
       }
+    }
+
+    // ===== INVITE CODES =====
+    // Doc id = the code. Readable only by exact id (knowing the code is the
+    // secret); never listable. Only the walk's host can create/rotate them.
+    function isValidInviteCode(code, walkId) {
+      let inv = get(/databases/$(database)/documents/invite_codes/$(code)).data;
+      return inv.walkId == walkId
+        && (inv.get('expiresAt', null) == null || inv.expiresAt > request.time);
+    }
+
+    match /invite_codes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && code.matches('^[A-Z0-9]{4,12}$')
+        && request.resource.data.keys().hasOnly(['walkId', 'hostUid', 'expiresAt'])
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.walkId is string
+        && getAfter(walkPath(request.resource.data.walkId)).data.hostUid == request.auth.uid;
+
+      allow update: if signedIn()
+        && resource.data.hostUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['walkId', 'hostUid', 'expiresAt'])
+        && request.resource.data.walkId == resource.data.walkId
+        && request.resource.data.hostUid == resource.data.hostUid;
+
+      allow delete: if signedIn() && resource.data.hostUid == request.auth.uid;
     }
 
     // Collection-group reads of reviews (host review lists).
