@@ -180,7 +180,7 @@ class WalkExportService {
       if (dataset.rows.isEmpty) {
         doc.addEmptyState('No walks recorded yet. Join a walk to see it here.');
         doc.addSummary(totalWalks: 0, totalDistanceKm: 0, totalDurationMinutes: 0);
-        return doc.build();
+        return await doc.build();
       }
 
       doc.addSummary(
@@ -200,7 +200,7 @@ class WalkExportService {
         doc.addRouteSnapshot(snapshot.coordinates);
       }
 
-      return doc.build();
+      return await doc.build();
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'WalkExportService.generateWalkSummaryPdf');
       rethrow;

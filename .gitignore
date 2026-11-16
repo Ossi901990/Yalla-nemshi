@@ -54,3 +54,6 @@ app.*.map.json
 google-services.json
 *-firebase-key.json
 secrets/
+# Stray archives / backups
+*.zip
+*.bak

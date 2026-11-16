@@ -6,6 +6,7 @@ import 'package:yalla_nemshi/services/notification_storage.dart';
 void main() {
   group('NotificationStorage', () {
     setUp(() async {
+      NotificationStorage.currentUid = () => 'test-user';
       SharedPreferences.setMockInitialValues({});
     });
 

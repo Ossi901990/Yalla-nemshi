@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_notification.dart';
@@ -9,8 +10,14 @@ import '../models/app_notification.dart';
 class NotificationStorage {
   static String _keyForUser(String uid) => 'app_notifications_$uid';
 
+  /// Resolves the signed-in user's id. Overridable so tests can run without
+  /// initializing Firebase.
+  @visibleForTesting
+  static String? Function() currentUid =
+      () => FirebaseAuth.instance.currentUser?.uid;
+
   static Future<List<AppNotification>> getNotifications() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = currentUid();
     if (uid == null) return [];
     
     final prefs = await SharedPreferences.getInstance();
@@ -33,7 +40,7 @@ class NotificationStorage {
   }
 
   static Future<void> _save(List<AppNotification> list) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = currentUid();
     if (uid == null) return;
     
     final prefs = await SharedPreferences.getInstance();
@@ -53,7 +60,7 @@ class NotificationStorage {
   }
 
   static Future<void> clearNotifications() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = currentUid();
     if (uid == null) return;
     
     final prefs = await SharedPreferences.getInstance();

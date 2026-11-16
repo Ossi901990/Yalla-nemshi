@@ -25,7 +25,7 @@ class BadgeService {
 
     try {
       final stats = await UserStatsService.instance.getUserStats(uid);
-      return _evaluateAndPersist(uid: uid, stats: stats);
+      return await _evaluateAndPersist(uid: uid, stats: stats);
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'BadgeService.checkAndAward');
       return [];
