@@ -132,7 +132,9 @@ bundled JDK 21 for that shell:
 
 ## Docs
 
-Only these are kept up to date: this file, [`SECURITY_RULES.md`](SECURITY_RULES.md),
+Only these are kept up to date: this file, [`ESRA.md`](ESRA.md) (a short, plain-English
+version of this file for the owner's partner; **update it whenever this file changes**),
+[`SECURITY_RULES.md`](SECURITY_RULES.md),
 [`GOOGLE_SIGNIN_MOBILE_SETUP.md`](GOOGLE_SIGNIN_MOBILE_SETUP.md) (needed when building
 for Android/iOS), and the root [`README.md`](../README.md). Older docs were removed on
 2026-11-22 because they were out of date; they're still in git history before that
