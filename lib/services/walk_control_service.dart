@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/walk_event.dart';
 import 'crash_service.dart';
+import 'dart:async';
+import 'notification_sender.dart';
 
 /// Service for controlling walk state (start/end walks)
 /// For CP-4 walk completion and participant confirmation flow
@@ -65,6 +67,14 @@ class WalkControlService {
         'cancelled': false,
         'participantStates.$uid': 'confirmed',
       });
+
+      unawaited(
+        NotificationSender.walkStarting(
+          walkId: walkId,
+          walkTitle: _titleOf(walk),
+          participantUids: _joinedUidsOf(walk),
+        ),
+      );
 
       CrashService.log('Walk $walkId activated by $uid');
     } catch (e) {
@@ -216,6 +226,14 @@ class WalkControlService {
         'status': 'cancelled',
       });
 
+      unawaited(
+        NotificationSender.walkCancelled(
+          walkId: walkId,
+          walkTitle: _titleOf(walk),
+          participantUids: _joinedUidsOf(walk),
+        ),
+      );
+
       CrashService.log('Walk $walkId cancelled by $uid: $reason');
     } catch (e) {
       CrashService.recordError(
@@ -226,6 +244,16 @@ class WalkControlService {
       rethrow;
     }
   }
+
+  static String _titleOf(Map<String, dynamic> walk) {
+    final title = (walk['title'] as String?)?.trim();
+    return (title == null || title.isEmpty) ? 'your walk' : title;
+  }
+
+  static List<String> _joinedUidsOf(Map<String, dynamic> walk) =>
+      ((walk['joinedUserUids'] as List?) ?? const [])
+          .whereType<String>()
+          .toList();
 
   /// Get walk details
   Future<WalkEvent?> getWalk(String walkId) async {

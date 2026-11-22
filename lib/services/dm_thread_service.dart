@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:async';
+import 'notification_sender.dart';
 
 class DmThreadService {
   DmThreadService._();
@@ -90,6 +92,7 @@ class DmThreadService {
 
     final threadRef = _threadRef(threadId);
     final messageRef = threadRef.collection('messages').doc();
+    var notificationPreview = trimmed;
 
     await _firestore.runTransaction((tx) async {
       final normalizedType = (type.isNotEmpty ? type : (mediaUrl != null ? 'image' : 'text')).toLowerCase();
@@ -114,6 +117,7 @@ class DmThreadService {
         final preview = trimmed.isNotEmpty
           ? trimmed
           : (normalizedType == 'image' ? '📷 Photo' : 'Attachment');
+      notificationPreview = preview;
 
       tx.set(
         threadRef,
@@ -125,6 +129,13 @@ class DmThreadService {
         SetOptions(merge: true),
       );
     });
+
+    unawaited(
+      NotificationSender.dmMessage(
+        threadId: threadId,
+        preview: notificationPreview,
+      ),
+    );
   }
 
   static Future<void> sendImageMessage({

@@ -43,6 +43,7 @@ import 'package:flutter/services.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/notification_sender.dart';
 
 // ===== Dark Theme (Neo/Night Forest) palette =====
 const kDarkBg = Color(0xFF071B26); // primary background
@@ -387,7 +388,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       OfflineService.instance.cacheWalks(_events);
 
       debugPrint(
-        '≡ƒôä Loaded ${uniqueWalks.length} more walks. Total: ${_events.length}',
+        '📄 Loaded ${uniqueWalks.length} more walks. Total: ${_events.length}',
       );
     } on TimeoutException catch (e, st) {
       if (mounted) {
@@ -986,8 +987,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             borderRadius: BorderRadius.circular(kRadiusPill),
 
             // ✅ Walk day indicator
-            // - if it has an upcoming walk and it's not selected ΓåÆ show a subtle border
-            // - if it's selected ΓåÆ keep selected clean (no extra border needed)
+            // - if it has an upcoming walk and it's not selected → show a subtle border
+            // - if it's selected → keep selected clean (no extra border needed)
             border: (hasWalk && !isSelected)
                 ? Border.all(
                     color: isDark
@@ -1077,7 +1078,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _loadRecommendations(); // ✅ Load tag-based recommendations
     _listenToWalks();
 
-    // ≡ƒö╣ Sync user profile to Firestore (if missing)
+    // 🔹 Sync user profile to Firestore (if missing)
     FirestoreSyncService.syncCurrentUser();
   }
 
@@ -1240,7 +1241,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     _refreshHostedCountdown();
 
-    // ≡ƒöö Schedule reminder for the walk you just created (host)
+    // 🔔 Schedule reminder for the walk you just created (host)
     NotificationService.instance.scheduleWalkReminder(newEvent);
   }
 
@@ -1447,7 +1448,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       }
 
-      // ≡ƒöö Notifications
+      // 🔔 Tell the host (in-app; Spark has no Cloud Functions)
+      if (!_isOffline && event.hostUid.isNotEmpty && event.hostUid != uid) {
+        unawaited(
+          willJoin
+              ? NotificationSender.walkJoined(
+                  walkId: walkId,
+                  hostUid: event.hostUid,
+                  walkTitle: event.title,
+                )
+              : NotificationSender.walkLeft(
+                  walkId: walkId,
+                  hostUid: event.hostUid,
+                  walkTitle: event.title,
+                ),
+        );
+      }
+
+      // 🔔 Local reminders
       final updated = event.copyWith(joined: willJoin);
       if (willJoin) {
         NotificationService.instance.scheduleWalkReminder(updated);
@@ -1554,7 +1572,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final updated = current.copyWith(cancelled: true);
       _events[index] = updated;
 
-      // ≡ƒöò Cancel any reminder for this event
+      // 🔕 Cancel any reminder for this event
       NotificationService.instance.cancelWalkReminder(updated);
     });
   }
@@ -3455,7 +3473,7 @@ class _GradientRingPainter extends CustomPainter {
 
     // Gradient on the progress arc
     final gradient = SweepGradient(
-      // ✅ end with startColor again ΓåÆ seam becomes light (no dark tick at top)
+      // ✅ end with startColor again → seam becomes light (no dark tick at top)
       colors: [startColor, endColor, startColor],
       stops: const [0.0, 0.85, 1.0],
       transform: const GradientRotation(-math.pi / 2),

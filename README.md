@@ -30,10 +30,13 @@ See [`docs/SECURITY_RULES.md`](docs/SECURITY_RULES.md) for the details.
 
 ## Firebase plan
 
-The project runs on the free **Spark** plan. These features need Cloud Functions
-or Storage (Blaze plan) and don't work yet: photo uploads, push notifications,
-in-app notifications, and automatic walk completion. The function code is kept in
-[`functions/`](functions/) for later.
+The project runs on the free **Spark** plan. In-app notifications (joins, leaves,
+cancellations, walk start, chat and DMs) are written by the sender's app and
+checked by the security rules. These features need Cloud Functions or Storage
+(Blaze plan) and don't work yet: photo uploads, phone push notifications, and
+automatic walk completion. The function code is kept in [`functions/`](functions/);
+see "When upgrading to the paid Blaze plan" in [`docs/HANDOFF.md`](docs/HANDOFF.md)
+before deploying it.
 
 ## Development
 

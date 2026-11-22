@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:async';
+import '../services/notification_sender.dart';
 
 class WalkChatScreen extends StatelessWidget {
   final String walkId;
@@ -217,6 +219,9 @@ class _MessageComposerState extends State<_MessageComposer> {
           'lastMessageAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       });
+      unawaited(
+        NotificationSender.walkChatMessage(walkId: widget.walkId, text: text),
+      );
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -264,6 +269,12 @@ class _MessageComposerState extends State<_MessageComposer> {
           'photoUrls': FieldValue.arrayUnion([imageUrl]),
         }, SetOptions(merge: true));
       });
+      unawaited(
+        NotificationSender.walkChatMessage(
+          walkId: widget.walkId,
+          text: '📷 Photo',
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

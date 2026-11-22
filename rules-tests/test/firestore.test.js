@@ -405,6 +405,93 @@ describe("blocks, reports, DMs", () => {
 });
 
 // ---------------------------------------------------------------------------
+describe("peer notifications (no Cloud Functions)", () => {
+  const inDays = (d) => Timestamp.fromDate(new Date(Date.now() + d * 86400000));
+  const notif = (from, extra = {}) => ({
+    type: "walkJoined",
+    title: "New walker joined! 🎉",
+    message: "Alice joined your walk",
+    timestamp: serverTimestamp(),
+    isRead: false,
+    walkId: "open1",
+    userId: from,
+    expiresAt: inDays(30),
+    ...extra,
+  });
+  const add = (from, to, data) =>
+    setDoc(doc(db(from), `users/${to}/notifications/n_${from}_${Date.now()}`), data);
+
+  beforeEach(async () => {
+    await seed(async (f) => {
+      // alice joined open1; bob left it; mallory never joined.
+      await setDoc(doc(f, "walks/open1"), walk({
+        joinedUserUids: [ALICE], joinedUids: [ALICE], joinedCount: 1,
+        participantStates: { alice: "joined", bob: "left" },
+      }));
+      await setDoc(doc(f, "dm_threads/alice_bob"), { participants: [ALICE, BOB] });
+    });
+  });
+
+  it("a joiner (or leaver) can notify the host", async () => {
+    await assertSucceeds(add(ALICE, HOST, notif(ALICE)));
+    await assertSucceeds(add(BOB, HOST, notif(BOB, { type: "walkLeft" })));
+  });
+
+  it("strangers cannot notify the host about a walk they never joined", async () => {
+    await assertFails(add(MALLORY, HOST, notif(MALLORY)));
+  });
+
+  it("join notifications only go to the host", async () => {
+    await assertFails(add(ALICE, BOB, notif(ALICE)));
+  });
+
+  it("the host can notify joined walkers about cancel/start", async () => {
+    await assertSucceeds(add(HOST, ALICE, notif(HOST, { type: "walkCancelled" })));
+    await assertSucceeds(add(HOST, ALICE, notif(HOST, { type: "walkStarting" })));
+    await assertFails(add(HOST, MALLORY, notif(HOST, { type: "walkCancelled" })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { type: "walkCancelled" })));
+  });
+
+  it("walk chat notifications only between walk members", async () => {
+    await assertSucceeds(add(ALICE, HOST, notif(ALICE, { type: "walkChatMessage" })));
+    await assertSucceeds(add(HOST, ALICE, notif(HOST, { type: "walkChatMessage" })));
+    await assertFails(add(MALLORY, ALICE, notif(MALLORY, { type: "walkChatMessage" })));
+    // bob left, so he is no longer a chat member
+    await assertFails(add(BOB, HOST, notif(BOB, { type: "walkChatMessage" })));
+  });
+
+  it("DM notifications only between thread participants", async () => {
+    const dm = (from) => notif(from, { type: "dmMessage", walkId: null, threadId: "alice_bob" });
+    await assertSucceeds(add(ALICE, BOB, dm(ALICE)));
+    await assertFails(add(MALLORY, BOB, dm(MALLORY)));
+  });
+
+  it("cannot impersonate another sender or forge fields", async () => {
+    await assertFails(add(ALICE, HOST, notif(ALICE, { userId: BOB })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { isRead: true })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { timestamp: inDays(-1) })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { expiresAt: inDays(365) })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { message: "x".repeat(301) })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { type: "badgeEarned" })));
+    await assertFails(add(ALICE, HOST, notif(ALICE, { extra: "field" })));
+  });
+
+  it("blocked users cannot notify the person who blocked them", async () => {
+    await seed((f) => setDoc(doc(f, "blocks/host/blocked/alice"), { targetUserId: ALICE }));
+    await assertFails(add(ALICE, HOST, notif(ALICE)));
+  });
+
+  it("only the owner can read, edit or delete their notifications", async () => {
+    await seed((f) => setDoc(doc(f, "users/host/notifications/n1"), notif(ALICE)));
+    await assertSucceeds(getDoc(doc(db(HOST), "users/host/notifications/n1")));
+    await assertSucceeds(updateDoc(doc(db(HOST), "users/host/notifications/n1"), { isRead: true }));
+    await assertFails(getDoc(doc(db(ALICE), "users/host/notifications/n1")));
+    await assertFails(updateDoc(doc(db(ALICE), "users/host/notifications/n1"), { message: "edited" }));
+    await assertFails(deleteDoc(doc(db(ALICE), "users/host/notifications/n1")));
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("invite codes (no Cloud Functions)", () => {
   const future = () => Timestamp.fromDate(new Date(Date.now() + 86400000));
   const past = () => Timestamp.fromDate(new Date(Date.now() - 86400000));

@@ -14,11 +14,12 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
 |---|---|
-| Firestore rules (`firestore.rules`) | ✅ Deployed 2026-11-22 (includes email rule) |
+| Firestore rules (`firestore.rules`) | ⚠️ Notification rules added 2026-11-22, **not deployed yet** |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
-| Rules tests | ✅ 57 passing |
+| Rules tests | ✅ 66 passing |
+| In-app notifications (Option A) | ✅ Built, ⏳ not tested in the app |
 | Manual test pass | ⏳ Steps 1–5 passed, 6–8 left |
 
 
@@ -54,12 +55,19 @@ Most avatars now use `UserAvatar`, which swallows these.
 9. 🔁 **Edit Profile → change name.** Then join a walk / check the friend list from the
    other account: the new name should appear.
 10. 🔁 **Create walk:** both tabs (Point to point / Loop) switch correctly and save.
+11. 🆕 **In-app notifications** (bell / notifications screen), after the rules are deployed:
+    - B joins A's walk → A gets "New walker joined! 🎉". B leaves → "Walker left 👋".
+    - B sends a walk chat message → A gets it (and vice versa).
+    - A cancels the walk → B gets "Walk cancelled ❌".
+    - A starts the walk (only works near its start time) → B gets "Walk starting ⏰".
+    - DM between friends → the other person gets it.
+    - If A blocks B, B's actions no longer notify A.
 
 If a friend-profile walk list fails with `failed-precondition` / "requires an index",
 follow the link in the error to create it, then add it to `firestore.indexes.json`.
 
-Expected to fail on Spark (not bugs): photo uploads, push notifications, **all
-in-app notifications** (see backlog #1), and walk auto-completion.
+Expected to fail on Spark (not bugs): photo uploads, **phone push** notifications,
+"walk ended" notifications, and walk auto-completion.
 
 If something fails with `permission-denied`, compare the write against
 `firestore.rules` and add a test in `rules-tests/test/firestore.test.js`.
@@ -84,35 +92,83 @@ All committed on this branch:
   broken leaderboard queries removed.
 - **README** rewritten (`50639bd`). `rules-tests` `npm test` now works on Windows.
 
+- **In-app notifications without functions** (Option A, chosen by the owner):
+  `lib/services/notification_sender.dart` writes into the recipient's
+  `users/{uid}/notifications`; rule `isValidPeerNotification` in `firestore.rules`
+  only accepts real events (see "Notifications" below).
+
 Running the rules tests locally: system Java is 1.8, so point at Android Studio's
 bundled JDK 21 for that shell:
 `$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:Path="$env:JAVA_HOME\bin;$env:Path"`
 
 ## Backlog (rough priority)
 
-1. **Notifications on Spark — needs an owner decision.** Every notification doc is
-   created by a Cloud Function; the client only reads them, and the rules only let
-   the owner write their own. Options:
-   - **A. Sender writes the notification** for the recipient, with rules limited to
-     valid cases (same walk/chat or friend request, fixed types, `fromUid == auth.uid`,
-     no edits). Brings back the in-app list. Small spam risk from walk members.
-   - **B. Unread badges only**, from chat `lastMessage` time vs a per-user last-read
-     time. No cross-user writes.
-   Push notifications need Blaze either way.
-2. **GPS tracking — needs an owner decision.** Only the host may write
+1. **GPS tracking — needs an owner decision.** Only the host may write
    `walks/{id}/tracking/point_N`. If participants should track too, move to
    per-user paths (`tracking/{uid}/points/{n}`) and update rules + reader code.
-3. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
+2. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
    are empty on Spark.
-4. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
-5. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
+3. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
+4. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
    `create_walk_screen.dart`, `event_details_screen.dart`, `profile_screen.dart`.
    Move the Firestore logic into repositories/providers (Riverpod is already a
    dependency).
-6. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
+5. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
    hardcoded in `main.dart`, `geocoding_service.dart`, `map_pick_screen.dart`, and
    `AndroidManifest.xml`; restrict by HTTP referrer / Android app signature).
-7. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
+6. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
+
+## Notifications (how they work now)
+
+On Spark there are no Cloud Functions, so **the user who causes an event writes the
+notification into the other user's list** (`NotificationSender`). In-app only: they
+show on the notifications screen and bell when the app is open. No phone push.
+
+| Event | Sent by → to | Type | Hook |
+|---|---|---|---|
+| Join / leave a walk | walker → host | `walkJoined` / `walkLeft` | `home_screen.dart` join toggle |
+| Walk cancelled | host → joined walkers | `walkCancelled` | `WalkControlService.cancelWalk` |
+| Walk started | host → joined walkers | `walkStarting` | `WalkControlService.startWalk` |
+| Walk chat message | sender → other members | `walkChatMessage` | `walk_chat_screen.dart` |
+| Direct message | sender → other person | `dmMessage` | `DmThreadService.sendMessage` |
+
+Rules (`isValidPeerNotification`): sender must be `userId`, fixed fields only, title
+≤120 / message ≤300 chars, `timestamp` = server time, expiry ≤31 days, and the
+sender must really be linked to the recipient by that walk/DM. Blocked users can't
+notify the person who blocked them. Recipients can read/mark read/delete; nobody
+else can read or edit them.
+
+Not covered yet: "walk ended" (needs walk completion, i.e. functions), friend
+request/accepted notifications (types exist; could be added the same way), and
+walk time/place changes (there's no edit-walk screen; the rule already accepts
+`walkRescheduled` / `walkLocationChanged` from the host).
+
+## ⭐ When upgrading to the paid Blaze plan
+
+Do these together, in this order:
+
+1. **Make the functions push-only, to avoid DUPLICATE notifications.** These functions
+   in `functions/index.js` also write an in-app notification doc, which the app now
+   writes itself: `onWalkJoined`, `onWalkLeft`, `onWalkCancelled`, `onWalkUpdated`,
+   `onDmMessageCreated`, `onChatMessage`. In each one, **delete the
+   `db.collection("users").doc(...).collection("notifications").add({...})` block
+   and keep only `sendNotificationToUser(...)`** (the FCM phone push).
+   - `onWalkUpdated` / `cp4_walk_completion.js` "walk ended": keep their in-app docs
+     only for events the app doesn't send (`walkEnded`; time/location changes).
+     Remove the in-app doc for `walkStarting`, which the app sends.
+   - The old chat function used type `"chatMessage"`, which the app doesn't
+     recognise (it showed as "system maintenance"). The app uses `walkChatMessage`.
+2. **Don't deploy the friend-profile functions** (`onFriendProfileUserSync`,
+   `onFriendProfileStatsSync`, `onFriendWalkSummarySync`): the app builds friend
+   profiles itself now. Remove their exports.
+3. The app already saves FCM tokens to `users/{uid}/fcmTokens` (`NotificationService`).
+   Test push on a real Android device (web push also needs a VAPID key).
+4. Deploy: `firebase deploy --only functions,storage`. Storage enables photo uploads
+   (walk, chat, review and profile photos).
+5. Optional: walk auto-completion + "walk ended" (`functions/cp4_walk_completion.js`),
+   badge leaderboards, the monthly email digest (needs SendGrid).
+6. Keep `NotificationSender` and its rules. In-app notifications keep working the same
+   way, and push gets added on top.
 
 ## Deploying
 
