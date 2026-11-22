@@ -405,6 +405,77 @@ describe("blocks, reports, DMs", () => {
 });
 
 // ---------------------------------------------------------------------------
+describe("per-walker GPS routes", () => {
+  const t0 = Date.now();
+  const chunk = (uid, extra = {}) => ({
+    uid,
+    firstAt: Timestamp.fromMillis(t0),
+    count: 2,
+    points: [
+      { latitude: 1, longitude: 2, timestamp: Timestamp.fromMillis(t0) },
+      { latitude: 1.0001, longitude: 2, timestamp: Timestamp.fromMillis(t0 + 5000) },
+    ],
+    ...extra,
+  });
+  const chunkPath = (uid) => `walks/open1/routes/${uid}/chunks/c${t0}`;
+
+  beforeEach(async () => {
+    await seed((f) => setDoc(doc(f, "walks/open1"), walk({
+      joinedUserUids: [ALICE], joinedUids: [ALICE], joinedCount: 1,
+      participantStates: { alice: "joined" },
+    })));
+  });
+
+  it("host and joined walkers save their own route chunks", async () => {
+    await assertSucceeds(setDoc(doc(db(HOST), chunkPath(HOST)), chunk(HOST)));
+    await assertSucceeds(setDoc(doc(db(ALICE), chunkPath(ALICE)), chunk(ALICE)));
+    // retry of the same chunk is fine
+    await assertSucceeds(setDoc(doc(db(ALICE), chunkPath(ALICE)), chunk(ALICE)));
+  });
+
+  it("nobody can write someone else's route", async () => {
+    await assertFails(setDoc(doc(db(ALICE), chunkPath(HOST)), chunk(HOST)));
+    await assertFails(setDoc(doc(db(ALICE), chunkPath(HOST)), chunk(ALICE)));
+  });
+
+  it("non-members cannot save a route for the walk", async () => {
+    await assertFails(setDoc(doc(db(MALLORY), chunkPath(MALLORY)), chunk(MALLORY)));
+  });
+
+  it("chunks are validated", async () => {
+    await assertFails(setDoc(doc(db(ALICE), "walks/open1/routes/alice/chunks/point_0"), chunk(ALICE)));
+    await assertFails(setDoc(doc(db(ALICE), chunkPath(ALICE)), chunk(ALICE, { count: 5 })));
+    await assertFails(setDoc(doc(db(ALICE), chunkPath(ALICE)), chunk(ALICE, {
+      points: Array.from({ length: 61 }, () => ({ latitude: 0, longitude: 0 })), count: 61,
+    })));
+    await assertFails(setDoc(doc(db(ALICE), chunkPath(ALICE)), chunk(ALICE, { extra: 1 })));
+  });
+
+  it("chunks cannot be deleted", async () => {
+    await seed((f) => setDoc(doc(f, chunkPath(ALICE)), chunk(ALICE)));
+    await assertFails(deleteDoc(doc(db(ALICE), chunkPath(ALICE))));
+  });
+
+  it("members read routes; strangers cannot", async () => {
+    await seed((f) => setDoc(doc(f, chunkPath(ALICE)), chunk(ALICE)));
+    const q = (uid) => query(collection(db(uid), "walks/open1/routes/alice/chunks"));
+    await assertSucceeds(getDocs(q(HOST)));
+    await assertSucceeds(getDocs(q(ALICE)));
+    await assertFails(getDocs(q(MALLORY)));
+  });
+
+  it("walkers save their own route summary", async () => {
+    const summary = {
+      uid: ALICE, pointsCount: 120, distanceKm: 3.2, averageSpeed: 2.9,
+      maxSpeed: 4.1, durationMinutes: 48, completed: true, updatedAt: serverTimestamp(),
+    };
+    await assertSucceeds(setDoc(doc(db(ALICE), "walks/open1/routes/alice"), summary));
+    await assertFails(setDoc(doc(db(HOST), "walks/open1/routes/alice"), summary));
+    await assertFails(setDoc(doc(db(ALICE), "walks/open1/routes/alice"), { ...summary, bogus: true }));
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("peer notifications (no Cloud Functions)", () => {
   const inDays = (d) => Timestamp.fromDate(new Date(Date.now() + d * 86400000));
   const notif = (from, extra = {}) => ({

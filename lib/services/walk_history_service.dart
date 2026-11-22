@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/route_snapshot.dart';
 import '../models/walk_participation.dart';
 import 'crash_service.dart';
+import 'route_store.dart';
 
 /// Service for tracking walk history and user participation
 /// Stores data at: /users/{userId}/walks/{walkId}
@@ -520,28 +521,26 @@ class WalkHistoryService {
             .collection('walks')
             .doc(walkId)
             .get();
-        final routePoints =
-            (walkSnapshot.data()?['routePointsCount'] as num?)?.toInt() ?? 0;
 
-        if (routePoints < 2) {
+        // The user's own route, else the host's, else the legacy format.
+        final points = await RouteStore.loadWalkRoute(
+          walkId,
+          preferUid: uid,
+          hostUid: walkSnapshot.data()?['hostUid'] as String?,
+        );
+        if (points.length < 2) {
           continue;
         }
 
-        final tracking = await _firestore
-            .collection('walks')
-            .doc(walkId)
-            .collection('tracking')
-            .orderBy('timestamp')
-            .limit(maxPoints)
-            .get();
+        // Evenly thin long routes down to about maxPoints for the preview.
+        final step = (points.length / maxPoints).ceil().clamp(1, 1 << 20);
+        final sampled = [
+          for (var i = 0; i < points.length; i += step) points[i],
+          if ((points.length - 1) % step != 0) points.last,
+        ];
 
-        if (tracking.docs.length < 2) {
-          continue;
-        }
-
-        final coordinates = tracking.docs
-            .map((doc) {
-              final data = doc.data();
+        final coordinates = sampled
+            .map((data) {
               final lat = (data['latitude'] as num?)?.toDouble();
               final lng = (data['longitude'] as num?)?.toDouble();
               if (lat == null || lng == null) return null;

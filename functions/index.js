@@ -1195,78 +1195,44 @@ exports.cleanupOldGpsData = onSchedule(
       
       console.log(`🧹 [GPS Cleanup] Cutoff date: ${thirtyDaysAgo.toISOString()}`);
       
-      // Find walks that ended more than 30 days ago
-      // Use endedAt for walks that have ended, or scheduledDate as fallback
-      const walksSnapshot = await db
-        .collection("walks")
-        .where("status", "in", ["completed", "completed_late", "ended", "cancelled"])
-        .where("endedAt", "<=", cutoffTimestamp)
-        .get();
-      
-      if (walksSnapshot.empty) {
+      // Walks that finished or were cancelled more than 30 days ago. The app
+      // writes completedAt (finished) and cancelledAt (cancelled).
+      const [completedSnap, cancelledSnap] = await Promise.all([
+        db.collection("walks").where("completedAt", "<=", cutoffTimestamp).get(),
+        db.collection("walks").where("cancelledAt", "<=", cutoffTimestamp).get(),
+      ]);
+      const walkDocs = new Map();
+      [...completedSnap.docs, ...cancelledSnap.docs].forEach((d) => walkDocs.set(d.id, d));
+
+      if (walkDocs.size === 0) {
         console.log("🧹 [GPS Cleanup] No walks found that need cleanup");
         return;
       }
-      
-      console.log(`🧹 [GPS Cleanup] Found ${walksSnapshot.size} walks to clean up`);
-      
-      let totalPointsDeleted = 0;
+
+      console.log(`🧹 [GPS Cleanup] Found ${walkDocs.size} walks to clean up`);
+
       let walksProcessed = 0;
-      
-      // Process walks in batches to avoid timeout
-      for (const walkDoc of walksSnapshot.docs) {
+
+      for (const walkDoc of walkDocs.values()) {
         const walkId = walkDoc.id;
-        const walkData = walkDoc.data();
-        const walkTitle = walkData.title || "Unknown Walk";
-        
+        const walkTitle = walkDoc.data().title || "Unknown Walk";
+
         try {
-          // Get all tracking points for this walk
-          const trackingSnapshot = await db
-            .collection("walks")
-            .doc(walkId)
-            .collection("tracking")
-            .get();
-          
-          if (trackingSnapshot.empty) {
-            console.log(`  ↳ Walk ${walkId} (${walkTitle}): No tracking data to delete`);
-            continue;
-          }
-          
-          const pointCount = trackingSnapshot.size;
-          
-          // Delete tracking points in batches (Firestore batch limit: 500 operations)
-          const batchSize = 500;
-          let batch = db.batch();
-          let operationsInBatch = 0;
-          
-          for (const pointDoc of trackingSnapshot.docs) {
-            batch.delete(pointDoc.ref);
-            operationsInBatch++;
-            
-            // Commit batch when it reaches the limit
-            if (operationsInBatch >= batchSize) {
-              await batch.commit();
-              batch = db.batch();
-              operationsInBatch = 0;
-            }
-          }
-          
-          // Commit any remaining operations
-          if (operationsInBatch > 0) {
-            await batch.commit();
-          }
-          
-          totalPointsDeleted += pointCount;
+          // Per-walker routes (walks/{id}/routes/{uid}/chunks/*) and the legacy
+          // host-only points (walks/{id}/tracking/*). The walk doc keeps its
+          // distance/speed summary fields.
+          const walkRef = db.collection("walks").doc(walkId);
+          await db.recursiveDelete(walkRef.collection("routes"));
+          await db.recursiveDelete(walkRef.collection("tracking"));
           walksProcessed++;
-          
-          console.log(`  ✅ Walk ${walkId} (${walkTitle}): Deleted ${pointCount} GPS points`);
+          console.log(`  ✅ Walk ${walkId} (${walkTitle}): GPS data deleted`);
         } catch (error) {
-          console.error(`  ❌ Walk ${walkId} (${walkTitle}): Error deleting tracking data:`, error);
+          console.error(`  ❌ Walk ${walkId} (${walkTitle}): Error deleting GPS data:`, error);
           // Continue processing other walks even if one fails
         }
       }
-      
-      console.log(`🧹 [GPS Cleanup] Complete: Processed ${walksProcessed} walks, deleted ${totalPointsDeleted} GPS points`);
+
+      console.log(`🧹 [GPS Cleanup] Complete: Processed ${walksProcessed} walks`);
     } catch (error) {
       console.error("❌ [GPS Cleanup] Fatal error during cleanup:", error);
       throw error; // Re-throw to mark function execution as failed

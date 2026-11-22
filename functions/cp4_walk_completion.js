@@ -159,6 +159,16 @@ exports.onWalkEnded = onDocumentUpdated(
 
       console.log(`Found ${participationSnapshot.docs.length} active participants`);
 
+      // Each walker's own GPS distance (walks/{id}/routes/{uid}, written by the
+      // app when they stop tracking). Falls back to the walk's distance if a
+      // walker didn't track or their phone hasn't saved its summary yet.
+      const routeSnap = await db.collection("walks").doc(walkId).collection("routes").get();
+      const ownDistanceKm = new Map();
+      routeSnap.docs.forEach((d) => {
+        const km = Number(d.data().distanceKm);
+        if (Number.isFinite(km) && km > 0) ownDistanceKm.set(d.id, km);
+      });
+
       // Update each participant's completion status
       const batch = db.batch();
       const userStatsToUpdate = [];
@@ -181,16 +191,18 @@ exports.onWalkEnded = onDocumentUpdated(
           actualDurationMinutes: userActualDurationMinutes,
         });
 
+        const userDistanceKm = ownDistanceKm.get(userId) ?? actualDistanceKm;
+
         userStatsToUpdate.push({
           userId,
           actualDurationMinutes: userActualDurationMinutes,
-          actualDistanceKm,
+          actualDistanceKm: userDistanceKm,
         });
 
         usersToNotify.push({
           userId,
           actualDurationMinutes: userActualDurationMinutes,
-          actualDistanceKm,
+          actualDistanceKm: userDistanceKm,
         });
       });
 

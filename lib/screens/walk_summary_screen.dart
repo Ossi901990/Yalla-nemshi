@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -16,6 +15,7 @@ import '../services/crash_service.dart';
 import '../services/review_service.dart';
 import '../services/storage_service.dart';
 import '../services/walk_summary_service.dart';
+import '../services/route_store.dart';
 
 class WalkSummaryScreen extends StatefulWidget {
   const WalkSummaryScreen({
@@ -35,7 +35,6 @@ class WalkSummaryScreen extends StatefulWidget {
 
 class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
   final WalkSummaryService _summaryService = WalkSummaryService.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DateFormat _dateFormat = DateFormat('MMM d, h:mm a');
 
   WalkSummaryData? _summary;
@@ -75,11 +74,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
         _summary = data;
         _loading = false;
       });
-      if (data.hasRouteTrace) {
-        await _loadRoutePolyline();
-      } else {
-        setState(() => _mapLoading = false);
-      }
+      // Each walker may have their own route even if the host's walk doc has
+      // no route count, so always try to load one.
+      await _loadRoutePolyline();
       _maybePromptForReview();
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'WalkSummaryScreen._loadSummary');
@@ -107,16 +104,16 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
 
   Future<void> _loadRoutePolyline() async {
     try {
-      final snapshot = await _firestore
-          .collection('walks')
-          .doc(widget.walkId)
-          .collection('tracking')
-          .orderBy('timestamp')
-          .get();
+      // The viewer's own route, else the host's, else the legacy format.
+      final routePoints = await RouteStore.loadWalkRoute(
+        widget.walkId,
+        preferUid: FirebaseAuth.instance.currentUser?.uid,
+        hostUid: _summary?.walk.hostUid,
+      );
 
       if (!mounted) return;
 
-      if (snapshot.docs.isEmpty) {
+      if (routePoints.length < 2) {
         setState(() => _mapLoading = false);
         return;
       }
@@ -124,9 +121,10 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
       final points = <LatLng>[];
       double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
 
-      for (final doc in snapshot.docs) {
-        final lat = (doc['latitude'] as num).toDouble();
-        final lng = (doc['longitude'] as num).toDouble();
+      for (final p in routePoints) {
+        final lat = (p['latitude'] as num?)?.toDouble();
+        final lng = (p['longitude'] as num?)?.toDouble();
+        if (lat == null || lng == null) continue;
         points.add(LatLng(lat, lng));
         minLat = math.min(minLat, lat);
         maxLat = math.max(maxLat, lat);
@@ -296,7 +294,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
       );
     }
 
-    if (!_summary!.hasRouteTrace) {
+    if (_polylines.isEmpty) {
       return Container(
         height: 220,
         decoration: BoxDecoration(

@@ -385,11 +385,44 @@ service cloud.firestore {
         }
       }
 
-      // GPS route points: host records, members read.
+      // Legacy GPS route points (host only, before per-walker routes).
+      // Still readable for old walks; no longer written by the app.
       match /tracking/{pointId} {
         allow read: if isWalkMember(walkId);
         allow write: if signedIn()
           && get(walkPath(walkId)).data.hostUid == request.auth.uid;
+      }
+
+      // Per-walker GPS routes (see lib/services/route_store.dart). Each walk
+      // member writes only their own route; all members can read them.
+      match /routes/{uid} {
+        allow read: if isWalkMember(walkId);
+        allow create, update: if isAuth(uid)
+          && isWalkMember(walkId)
+          && request.resource.data.keys().hasOnly([
+               'uid', 'pointsCount', 'distanceKm', 'averageSpeed', 'maxSpeed',
+               'durationMinutes', 'completed', 'updatedAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.pointsCount is int
+          && request.resource.data.distanceKm is number;
+        allow delete: if false;
+
+        match /chunks/{chunkId} {
+          allow read: if isWalkMember(walkId);
+          // Chunk id = 'c' + first point's epoch millis. Re-writing the same
+          // chunk (a retry) is allowed; deleting is not.
+          allow create, update: if isAuth(uid)
+            && isWalkMember(walkId)
+            && chunkId.matches('^c[0-9]{10,16}$')
+            && request.resource.data.keys().hasOnly(['uid', 'firstAt', 'count', 'points'])
+            && request.resource.data.uid == uid
+            && request.resource.data.firstAt is timestamp
+            && request.resource.data.points is list
+            && request.resource.data.points.size() > 0
+            && request.resource.data.points.size() <= 60
+            && request.resource.data.count == request.resource.data.points.size();
+          allow delete: if false;
+        }
       }
     }
 

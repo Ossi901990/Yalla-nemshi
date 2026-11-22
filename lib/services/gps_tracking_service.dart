@@ -1,12 +1,17 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'crash_service.dart';
+import 'route_store.dart';
 
-/// Service for real-time GPS tracking during active walks
-/// Stores route data in /walks/{walkId}/tracking
+/// Real-time GPS tracking during active walks.
+///
+/// Every walker (host and participants) records their own route. Points are
+/// buffered on the device and saved in chunks of [RouteStore.chunkSize], each
+/// written once (see [RouteStore] for the layout and costs).
 class GPSTrackingService {
   static final GPSTrackingService _instance = GPSTrackingService._internal();
 
@@ -20,7 +25,12 @@ class GPSTrackingService {
 
   // Active tracking subscriptions by walkId
   final Map<String, StreamSubscription<Position>> _trackingSubscriptions = {};
+
+  /// Points recorded in this session, by walkId.
   final Map<String, List<Map<String, dynamic>>> _routeData = {};
+
+  /// How many of [_routeData] points have been handed to [RouteStore].
+  final Map<String, int> _savedCount = {};
 
   void _debug(String message) {
     if (kDebugMode) {
@@ -28,22 +38,17 @@ class GPSTrackingService {
     }
   }
 
-  /// Start tracking a walk in real-time
-  /// Stores GPS positions to Firestore every 10 seconds (configurable)
-  Future<void> startTracking(
-    String walkId, {
-    Duration updateInterval = const Duration(seconds: 10),
-  }) async {
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  /// Start recording the current user's route for [walkId].
+  Future<void> startTracking(String walkId) async {
     try {
       _debug('startTracking requested for $walkId');
-      // Check if already tracking
       if (_trackingSubscriptions.containsKey(walkId)) {
         CrashService.log('Already tracking walk $walkId');
-        _debug('startTracking($walkId) ignored - subscription already active');
         return;
       }
 
-      // Request location permission
       final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         final result = await Geolocator.requestPermission();
@@ -51,27 +56,23 @@ class GPSTrackingService {
           throw Exception('Location permission denied');
         }
       }
-
       if (permission == LocationPermission.deniedForever) {
         throw Exception('Location permission permanently denied');
       }
 
-      // Initialize route storage
       _routeData[walkId] = [];
-      _debug('Initialized route buffer for $walkId');
+      _savedCount[walkId] = 0;
 
-      // Start listening to position updates
+      // No timeLimit: with a distance filter, standing still (e.g. at a
+      // crossing) produces no updates, and a timeLimit would end the stream.
       final subscription =
           Geolocator.getPositionStream(
-            locationSettings: LocationSettings(
+            locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.best,
-              distanceFilter: 5, // Update on 5m change
-              timeLimit: updateInterval,
+              distanceFilter: 5, // metres
             ),
           ).listen(
-            (Position position) async {
-              await _onPositionUpdate(walkId, position);
-            },
+            (Position position) => _onPositionUpdate(walkId, position),
             onError: (e) {
               CrashService.recordError(
                 e,
@@ -84,7 +85,6 @@ class GPSTrackingService {
 
       _trackingSubscriptions[walkId] = subscription;
       CrashService.log('Started tracking walk $walkId');
-      _debug('startTracking($walkId) subscribed to GPS stream');
     } catch (e) {
       CrashService.recordError(
         e,
@@ -95,115 +95,117 @@ class GPSTrackingService {
     }
   }
 
-  /// Handle position update - store locally and periodically to Firestore
   Future<void> _onPositionUpdate(String walkId, Position position) async {
+    final route = _routeData[walkId];
+    if (route == null) return;
+    route.add({
+      'latitude': position.latitude,
+      'longitude': position.longitude,
+      'accuracy': position.accuracy,
+      'altitude': position.altitude,
+      'speed': position.speed, // m/s
+      'heading': position.heading, // degrees
+      'timestamp': Timestamp.fromDate(position.timestamp),
+    });
+
+    final saved = _savedCount[walkId] ?? 0;
+    if (route.length - saved >= RouteStore.chunkSize) {
+      await _saveNextChunk(walkId);
+    }
+  }
+
+  /// Save the next unsaved chunk. On failure the points stay unsaved and are
+  /// retried with the next chunk or on stop (same chunk id, so no duplicates).
+  Future<void> _saveNextChunk(String walkId, {bool flush = false}) async {
+    final uid = _uid;
+    final route = _routeData[walkId];
+    if (uid == null || route == null) return;
+
+    final start = _savedCount[walkId] ?? 0;
+    final available = route.length - start;
+    if (available <= 0) return;
+    if (!flush && available < RouteStore.chunkSize) return;
+
+    final end = flush ? route.length : start + RouteStore.chunkSize;
+    final chunk = List<Map<String, dynamic>>.from(route.sublist(start, end));
+    _savedCount[walkId] = end; // claim before awaiting to avoid double saves
+
     try {
-      final pointData = {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'accuracy': position.accuracy,
-        'altitude': position.altitude,
-        'speed': position.speed, // m/s
-        'heading': position.heading, // degrees
-        'timestamp': Timestamp.fromDate(position.timestamp),
-      };
-
-      // Store in local list
-      if (_routeData.containsKey(walkId)) {
-        _routeData[walkId]!.add(pointData);
-      }
-
-      // Every 30 points (5 minutes at 10s intervals), save batch to Firestore
-      var len = _routeData[walkId]?.length;
-      if (len != null && len % 30 == 0) {
-        await _saveBatchToFirestore(walkId);
-      }
+      await RouteStore.saveChunk(walkId: walkId, uid: uid, points: chunk);
+      _debug('Saved ${chunk.length} points for $walkId');
     } catch (e) {
+      if (_savedCount[walkId] == end) _savedCount[walkId] = start;
       CrashService.recordError(
         e,
         StackTrace.current,
-        reason: 'GPSTrackingService._onPositionUpdate error for walk $walkId',
+        reason: 'GPSTrackingService chunk save failed for walk $walkId',
       );
     }
   }
 
-  /// Save route batch to Firestore
-  Future<void> _saveBatchToFirestore(String walkId) async {
-    try {
-      final batch = _firestore.batch();
-      final pointCount = _routeData[walkId]?.length ?? 0;
-
-      // Save 30 points at a time to avoid large document size issues
-      for (int i = 0; i < (_routeData[walkId]?.length ?? 0); i++) {
-        final point = _routeData[walkId]![i];
-        final pointRef = _firestore
-            .collection('walks')
-            .doc(walkId)
-            .collection('tracking')
-            .doc('point_$i');
-        batch.set(pointRef, point);
-      }
-
-      // Update walk document with point count
-      final walkRef = _firestore.collection('walks').doc(walkId);
-      batch.update(walkRef, {
-        'trackingPointsCount': pointCount,
-        'lastTrackingUpdate': Timestamp.now(),
-      });
-
-      await batch.commit();
-      CrashService.log('Saved $pointCount tracking points for walk $walkId');
-    } catch (e) {
-      CrashService.recordError(
-        e,
-        StackTrace.current,
-        reason:
-            'GPSTrackingService._saveBatchToFirestore error for walk $walkId',
-      );
-    }
-  }
-
-  /// Stop tracking a walk and return final route data
+  /// Stop tracking, save what's left, and return the route statistics.
+  ///
+  /// Stats are computed from everything saved for this walker (so a route that
+  /// spans an app restart still counts in full), falling back to this
+  /// session's points if the saved route can't be read.
   Future<Map<String, dynamic>> stopTracking(String walkId) async {
     try {
       _debug('stopTracking requested for $walkId');
-      final hadActive = _trackingSubscriptions.containsKey(walkId);
-      // Cancel subscription
-      _trackingSubscriptions[walkId]?.cancel();
-      _trackingSubscriptions.remove(walkId);
-      if (!hadActive) {
-        _debug('stopTracking($walkId) invoked without an active subscription');
+      await _trackingSubscriptions.remove(walkId)?.cancel();
+
+      // Flush everything not yet saved (may take more than one chunk if
+      // earlier saves failed).
+      while ((_routeData[walkId]?.length ?? 0) > (_savedCount[walkId] ?? 0)) {
+        final before = _savedCount[walkId];
+        await _saveNextChunk(walkId, flush: true);
+        if (_savedCount[walkId] == before) break; // save failed; give up
       }
 
-      // Save remaining points
-      if ((_routeData[walkId]?.length ?? 0) > 0) {
-        await _saveBatchToFirestore(walkId);
+      final uid = _uid;
+      final session = _routeData.remove(walkId) ?? const [];
+      _savedCount.remove(walkId);
+
+      var route = session;
+      if (uid != null) {
+        try {
+          final stored = await RouteStore.loadPoints(walkId, uid);
+          if (stored.length >= session.length) route = stored;
+        } catch (_) {}
       }
 
-      // Calculate route statistics
-      final route = _routeData[walkId] ?? [];
       final stats = _calculateRouteStats(route);
+      final durationMinutes = route.length >= 2
+          ? (route.last['timestamp'] as Timestamp)
+                .toDate()
+                .difference((route.first['timestamp'] as Timestamp).toDate())
+                .inMinutes
+          : null;
 
-      // Save route summary to Firestore
-      await _firestore.collection('walks').doc(walkId).update({
-        'trackingCompleted': true,
-        'actualDistanceKm': stats['totalDistanceKm'],
-        'averageSpeed': stats['averageSpeed'],
-        'maxSpeed': stats['maxSpeed'],
-        'routePointsCount': route.length,
-      });
+      if (uid != null && route.isNotEmpty) {
+        await RouteStore.saveSummary(
+          walkId: walkId,
+          uid: uid,
+          stats: stats,
+          pointsCount: route.length,
+          durationMinutes: durationMinutes,
+        );
 
-      // Clear local cache
-      _routeData.remove(walkId);
-      _debug('stopTracking($walkId) cleared local buffers and updated summary');
+        // The host's route is the walk's main route (summary map, walk card).
+        final walk = await _firestore.collection('walks').doc(walkId).get();
+        if (walk.data()?['hostUid'] == uid) {
+          await walk.reference.update({
+            'trackingCompleted': true,
+            'actualDistanceKm': stats['totalDistanceKm'],
+            'averageSpeed': stats['averageSpeed'],
+            'maxSpeed': stats['maxSpeed'],
+            'routePointsCount': route.length,
+          });
+        }
+      }
 
       CrashService.log(
         'Stopped tracking walk $walkId. Distance: ${stats['totalDistanceKm']} km',
       );
-      _debug(
-        'stopTracking($walkId) complete with distance ${stats['totalDistanceKm']} km and ${route.length} points',
-      );
-
       return stats;
     } catch (e) {
       CrashService.recordError(
@@ -215,7 +217,7 @@ class GPSTrackingService {
     }
   }
 
-  /// Calculate distance and speed statistics from route
+  /// Distance and speed statistics for a route.
   Map<String, double> _calculateRouteStats(List<Map<String, dynamic>> route) {
     if (route.isEmpty) {
       return {'totalDistanceKm': 0.0, 'averageSpeed': 0.0, 'maxSpeed': 0.0};
@@ -224,103 +226,78 @@ class GPSTrackingService {
     double totalDistanceMeters = 0;
     double maxSpeedMps = 0;
 
-    // Calculate distances between consecutive points using Haversine
     for (int i = 1; i < route.length; i++) {
       final prev = route[i - 1];
       final curr = route[i];
-
-      final distance = _haversineDistance(
-        prev['latitude'] as double,
-        prev['longitude'] as double,
-        curr['latitude'] as double,
-        curr['longitude'] as double,
+      totalDistanceMeters += _haversineDistance(
+        (prev['latitude'] as num).toDouble(),
+        (prev['longitude'] as num).toDouble(),
+        (curr['latitude'] as num).toDouble(),
+        (curr['longitude'] as num).toDouble(),
       );
-
-      totalDistanceMeters += distance;
-
-      // Track max speed
-      final speed = (curr['speed'] as double?) ?? 0;
-      if (speed > maxSpeedMps) {
-        maxSpeedMps = speed;
-      }
+      final speed = (curr['speed'] as num?)?.toDouble() ?? 0;
+      if (speed > maxSpeedMps) maxSpeedMps = speed;
     }
 
     final distanceKm = totalDistanceMeters / 1000;
 
-    // Calculate actual average speed: total distance / total time
     double avgSpeedMps = 0;
     if (route.length >= 2) {
-      final firstTimestamp = (route.first['timestamp'] as Timestamp).toDate();
-      final lastTimestamp = (route.last['timestamp'] as Timestamp).toDate();
-      final totalTimeSeconds = lastTimestamp
-          .difference(firstTimestamp)
-          .inSeconds
-          .toDouble();
-
-      if (totalTimeSeconds > 0) {
-        avgSpeedMps = totalDistanceMeters / totalTimeSeconds;
-      }
+      final first = (route.first['timestamp'] as Timestamp).toDate();
+      final last = (route.last['timestamp'] as Timestamp).toDate();
+      final seconds = last.difference(first).inSeconds.toDouble();
+      if (seconds > 0) avgSpeedMps = totalDistanceMeters / seconds;
     }
 
     // Convert m/s to mph (1 m/s = 2.237 mph)
-    final avgSpeedMph = avgSpeedMps * 2.237;
-    final maxSpeedMph = maxSpeedMps * 2.237;
-
     return {
       'totalDistanceKm': double.parse(distanceKm.toStringAsFixed(2)),
-      'averageSpeed': double.parse(avgSpeedMph.toStringAsFixed(1)),
-      'maxSpeed': double.parse(maxSpeedMph.toStringAsFixed(1)),
+      'averageSpeed': double.parse((avgSpeedMps * 2.237).toStringAsFixed(1)),
+      'maxSpeed': double.parse((maxSpeedMps * 2.237).toStringAsFixed(1)),
     };
   }
 
-  /// Haversine formula: calculate distance between two lat/lng points
-  /// Returns distance in meters
+  /// Haversine distance between two lat/lng points, in metres.
   double _haversineDistance(
     double lat1,
     double lng1,
     double lat2,
     double lng2,
   ) {
-    const R = 6371000; // Earth radius in meters
+    const R = 6371000; // Earth radius in metres
     final dLat = _toRadians(lat2 - lat1);
     final dLng = _toRadians(lng2 - lng1);
-
     final a =
         (math.sin(dLat / 2) * math.sin(dLat / 2)) +
         (math.cos(_toRadians(lat1)) *
             math.cos(_toRadians(lat2)) *
             math.sin(dLng / 2) *
             math.sin(dLng / 2));
-
     final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
     return R * c;
   }
 
-  double _toRadians(double degrees) => degrees * (3.14159265359 / 180);
+  double _toRadians(double degrees) => degrees * (math.pi / 180);
 
-  /// Get current route polyline (for map display)
+  /// Current session's route (for live map display).
   List<Map<String, dynamic>> getCurrentRoute(String walkId) {
     return _routeData[walkId] ?? [];
   }
 
-  /// Is a walk currently being tracked?
   bool isTracking(String walkId) {
     return _trackingSubscriptions.containsKey(walkId);
   }
 
-  /// Stop all active tracking
+  /// Stop all active tracking, saving unsaved points first.
   Future<void> stopAllTracking() async {
     try {
-      _debug(
-        'stopAllTracking invoked for ${_trackingSubscriptions.length} active walks',
-      );
-      for (final subscription in _trackingSubscriptions.values) {
-        subscription.cancel();
+      for (final walkId in _trackingSubscriptions.keys.toList()) {
+        await _trackingSubscriptions.remove(walkId)?.cancel();
+        await _saveNextChunk(walkId, flush: true);
       }
-      _trackingSubscriptions.clear();
       _routeData.clear();
+      _savedCount.clear();
       CrashService.log('Stopped all walk tracking');
-      _debug('All tracking subscriptions cancelled');
     } catch (e) {
       CrashService.recordError(
         e,
