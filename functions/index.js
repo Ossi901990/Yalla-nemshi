@@ -9,16 +9,6 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 // const sgMail = require("@sendgrid/mail");
 
 const db = admin.firestore();
-const friendProfiles = require("./friend_profiles")(admin);
-const {
-  FRIEND_STATS_DOC_ID,
-  refreshFriendProfile,
-  deleteFriendProfile,
-  collectShareableUserRoles,
-  upsertWalkSummaryForUser,
-  deleteWalkSummaryForUser,
-  enforceWalkSummaryLimit,
-} = friendProfiles;
 
 // TODO: Uncomment when ready to add SendGrid
 // const sendgridApiKey = defineSecret("SENDGRID_API_KEY");
@@ -105,82 +95,8 @@ module.exports.sendNotificationToUser = sendNotificationToUser;
 // security rules + the client (see lib/services/invite_service.dart), so they
 // work on the free Spark plan without Cloud Functions.
 
-// ===== FRIEND PROFILE SNAPSHOTS =====
-
-exports.onFriendProfileUserSync = onDocumentWritten("users/{userId}", async (event) => {
-  const uid = event.params.userId;
-
-  if (!event.data?.after?.exists) {
-    await deleteFriendProfile(uid);
-    return;
-  }
-
-  try {
-    await refreshFriendProfile(uid);
-  } catch (error) {
-    console.error(`❌ Failed to sync friend profile (user change) for ${uid}`, error);
-  }
-});
-
-exports.onFriendProfileStatsSync = onDocumentWritten("users/{userId}/stats/{statId}", async (event) => {
-  if (event.params.statId !== FRIEND_STATS_DOC_ID) {
-    return;
-  }
-
-  const uid = event.params.userId;
-
-  if (!event.data?.after?.exists) {
-    // Stats doc removed; still refresh to keep counts in sync
-    try {
-      await refreshFriendProfile(uid);
-    } catch (error) {
-      console.error(`❌ Failed to sync friend profile after stats removal for ${uid}`, error);
-    }
-    return;
-  }
-
-  try {
-    await refreshFriendProfile(uid);
-  } catch (error) {
-    console.error(`❌ Failed to sync friend profile (stats change) for ${uid}`, error);
-  }
-});
-
-exports.onFriendWalkSummarySync = onDocumentWritten("walks/{walkId}", async (event) => {
-  const walkId = event.params.walkId;
-  const beforeData = event.data?.before?.data();
-  const afterData = event.data?.after?.data();
-
-  const beforeRoles = collectShareableUserRoles(beforeData);
-  const afterRoles = collectShareableUserRoles(afterData);
-
-  const operations = [];
-  const pruneTargets = new Set();
-
-  afterRoles.forEach((role, uid) => {
-    operations.push(upsertWalkSummaryForUser(uid, walkId, afterData, role));
-    pruneTargets.add(uid);
-  });
-
-  beforeRoles.forEach((_, uid) => {
-    if (!afterRoles.has(uid)) {
-      operations.push(deleteWalkSummaryForUser(uid, walkId));
-    }
-  });
-
-  if (operations.length === 0) {
-    return;
-  }
-
-  try {
-    await Promise.all(operations);
-    if (pruneTargets.size > 0) {
-      await Promise.all([...pruneTargets].map((uid) => enforceWalkSummaryLimit(uid)));
-    }
-  } catch (error) {
-    console.error(`❌ Failed syncing friend walk summaries for ${walkId}`, error);
-  }
-});
+// Friend profiles are built by the app itself (FriendProfileService), so
+// there are no friend-profile snapshot functions any more.
 
 // ===== FCM NOTIFICATION TRIGGERS =====
 
