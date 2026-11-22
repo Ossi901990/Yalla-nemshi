@@ -61,10 +61,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
 
   String _title = '';
 
-  // Free walk distance (optional unless edited)
-  double _distanceKm = 3.0;
-  bool _distanceEdited = false;
-
   String _gender = 'Mixed';
   String _pace = 'Normal';
   DateTime _dateTime = DateTime.now().add(const Duration(days: 1));
@@ -207,12 +203,10 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
   }
 
   Future<void> _loadDefaultsFromPrefs() async {
-    final distance = await AppPreferences.getDefaultDistanceKm();
     final gender = await AppPreferences.getDefaultGender();
 
     if (!mounted) return;
     setState(() {
-      _distanceKm = distance;
       _gender = gender;
     });
   }
@@ -840,17 +834,13 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final LatLng? effectiveStart = _startLatLng;
     final LatLng? effectiveEnd = walkType == 'loop'
         ? (effectiveStart ?? _endLatLng)
-        : (walkType == 'free' ? null : _endLatLng);
+        : _endLatLng;
 
     final LatLng? effectiveMeeting = effectiveStart ?? _meetingLatLng;
 
-    // Effective distance:
-    // - point_to_point: null (we removed distance from this tab)
-    // - loop: loopDistanceKm
-    // - free: null unless edited
-    final double? effectiveDistanceKm = walkType == 'loop'
-        ? _loopDistanceKm
-        : (walkType == 'free' ? (_distanceEdited ? _distanceKm : null) : null);
+    // Effective distance: loops use loopDistanceKm; point-to-point has none.
+    final double? effectiveDistanceKm =
+        walkType == 'loop' ? _loopDistanceKm : null;
 
     // ✅ Ensure walk has a city (critical for visibility to other users!)
     // Fall back to user's saved city if auto-detect failed
@@ -1368,18 +1358,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                               initialIndex: 0,
                               child: Builder(
                                 builder: (context) {
-                                  final tabController = DefaultTabController.of(
-                                    context,
-                                  );
-
-                                  tabController.addListener(() {
-                                    if (!tabController.indexIsChanging) return;
-                                    setState(() {
-                                      _walkTypeIndex = tabController.index;
-                                      _distanceEdited = false;
-                                    });
-                                  });
-
                                   return Form(
                                     key: _formKey,
                                     child: Column(
@@ -1409,6 +1387,14 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             ),
                                           ),
                                           child: TabBar(
+                                            onTap: (index) {
+                                              if (index == _walkTypeIndex) {
+                                                return;
+                                              }
+                                              setState(
+                                                () => _walkTypeIndex = index,
+                                              );
+                                            },
                                             dividerColor: Colors.transparent,
                                             indicatorSize:
                                                 TabBarIndicatorSize.tab,
@@ -1649,7 +1635,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             ),
                                           ),
                                           const SizedBox(height: 16),
-                                        ] else if (_walkTypeIndex == 1) ...[
+                                        ] else ...[
                                           // Loop
                                           Align(
                                             alignment: Alignment.centerLeft,
@@ -1822,91 +1808,6 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                             _buildInviteCodeCard(theme, isDark),
                                             const SizedBox(height: 16),
                                           ],
-                                        ] else ...[
-                                          // Free
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Free walk',
-                                              style: theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1A2332,
-                                                          ),
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'No destination. Walk freely and end whenever you want.',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : Colors.black54,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                        ],
-
-                                        // Distance (Free walk only, optional)
-                                        if (_walkTypeIndex == 2) ...[
-                                          TextFormField(
-                                            key: ValueKey(
-                                              'distance_${_walkTypeIndex}_$_distanceKm',
-                                            ),
-                                            decoration: const InputDecoration(
-                                              labelText: 'Distance (km)',
-                                              helperText:
-                                                  'Optional: only used if you change it',
-                                            ),
-                                            keyboardType:
-                                                const TextInputType.numberWithOptions(
-                                                  decimal: true,
-                                                ),
-                                            initialValue: _distanceKm
-                                                .toStringAsFixed(1),
-                                            onChanged: (_) {
-                                              setState(
-                                                () => _distanceEdited = true,
-                                              );
-                                            },
-                                            validator: (val) {
-                                              if (!_distanceEdited) return null;
-                                              final d = double.tryParse(
-                                                (val ?? '').trim(),
-                                              );
-                                              if (d == null) {
-                                                return 'Please enter a number';
-                                              }
-                                              if (d <= 0) {
-                                                return 'Distance must be greater than 0';
-                                              }
-                                              if (d > 100) {
-                                                return 'That’s a long walk! Try under 100 km';
-                                              }
-                                              return null;
-                                            },
-                                            onSaved: (val) {
-                                              if (!_distanceEdited) return;
-                                              final parsed = double.tryParse(
-                                                (val ?? '').trim(),
-                                              );
-                                              if (parsed != null) {
-                                                _distanceKm = parsed;
-                                              }
-                                            },
-                                          ),
-                                          const SizedBox(height: 12),
                                         ],
 
                                         // Gender
