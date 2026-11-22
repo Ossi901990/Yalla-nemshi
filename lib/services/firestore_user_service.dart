@@ -21,7 +21,6 @@ class FirestoreUserService {
   /// Create a new user document in Firestore
   static Future<void> createUser({
     required String uid,
-    required String email,
     required String displayName,
     String? photoURL,
   }) async {
@@ -29,7 +28,6 @@ class FirestoreUserService {
       final normalizedName = _sanitizeDisplayName(displayName);
       final user = FirestoreUser(
         uid: uid,
-        email: email,
         displayName: normalizedName,
         photoURL: photoURL,
         createdAt: DateTime.now(),
@@ -174,6 +172,25 @@ class FirestoreUserService {
         reason: 'FirestoreUserService.deleteProfilePhoto',
       );
       rethrow;
+    }
+  }
+
+  /// Remove the `email` field from profiles created before emails were moved
+  /// out of the public users doc. Safe to call on every sign-in.
+  static Future<void> removeLegacyEmail(String uid) async {
+    try {
+      final ref = _firestore.collection(_usersCollection).doc(uid);
+      final doc = await ref.get().timeout(const Duration(seconds: 5));
+      if (doc.exists && (doc.data()?.containsKey('email') ?? false)) {
+        await ref.update({'email': FieldValue.delete()});
+        debugPrint('✅ Removed legacy email from public profile: $uid');
+      }
+    } catch (e, st) {
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'FirestoreUserService.removeLegacyEmail',
+      );
     }
   }
 

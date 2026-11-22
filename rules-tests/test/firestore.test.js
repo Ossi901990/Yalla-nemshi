@@ -66,6 +66,38 @@ beforeEach(async () => {
 });
 
 // ---------------------------------------------------------------------------
+describe("user profiles (no public email)", () => {
+  const profile = (uid, extra = {}) => ({
+    uid, displayName: "Alice", createdAt: Timestamp.now(), ...extra,
+  });
+
+  it("can create a profile without an email", async () => {
+    await assertSucceeds(setDoc(doc(db(ALICE), "users/alice"), profile(ALICE)));
+  });
+
+  it("cannot create a profile that stores an email", async () => {
+    await assertFails(setDoc(doc(db(ALICE), "users/alice"),
+      profile(ALICE, { email: "alice@example.com" })));
+  });
+
+  it("cannot add an email to an existing profile", async () => {
+    await seed((f) => setDoc(doc(f, "users/alice"), profile(ALICE)));
+    await assertFails(updateDoc(doc(db(ALICE), "users/alice"),
+      { email: "alice@example.com" }));
+  });
+
+  it("legacy profiles can remove their email and still update other fields", async () => {
+    await seed((f) => setDoc(doc(f, "users/alice"),
+      profile(ALICE, { email: "alice@example.com" })));
+    await assertSucceeds(updateDoc(doc(db(ALICE), "users/alice"), { bio: "hi" }));
+    await assertFails(updateDoc(doc(db(ALICE), "users/alice"),
+      { email: "other@example.com" }));
+    await assertSucceeds(updateDoc(doc(db(ALICE), "users/alice"),
+      { email: deleteField() }));
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("private walks", () => {
   it("strangers cannot read a private walk", async () => {
     await assertFails(getDoc(doc(db(MALLORY), "walks/priv1")));

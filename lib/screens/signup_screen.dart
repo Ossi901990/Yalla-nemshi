@@ -98,7 +98,6 @@ class _SignupScreenState extends State<SignupScreen> {
         try {
           await FirestoreUserService.createUser(
             uid: cred.user!.uid,
-            email: email,
             displayName: name,
           );
           debugPrint('✅ Firestore user created successfully');

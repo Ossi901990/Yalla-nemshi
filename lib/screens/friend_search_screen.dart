@@ -127,7 +127,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                       onTap: () => _openFriendProfile(user),
                       leading: const Icon(Icons.person),
                       title: Text(user.displayName),
-                      subtitle: Text(user.email),
                       trailing: ElevatedButton(
                         child: const Text('Add Friend'),
                         onPressed: () => _sendFriendRequest(user.uid),

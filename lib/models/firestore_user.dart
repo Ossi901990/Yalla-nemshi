@@ -2,9 +2,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// User profile stored in Firestore at /users/{uid}
+///
+/// This doc is readable by every signed-in user, so it must never hold private
+/// data such as the email address (that stays in Firebase Auth).
 class FirestoreUser {
   final String uid;
-  final String email;
   final String displayName;
   final String displayNameLower;
   final String? photoURL; // Firebase Storage URL
@@ -27,7 +29,6 @@ class FirestoreUser {
 
   FirestoreUser({
     required this.uid,
-    required this.email,
     required this.displayName,
     String? displayNameLower,
     this.photoURL,
@@ -49,7 +50,6 @@ class FirestoreUser {
   Map<String, dynamic> toFirestore() {
     return {
       'uid': uid,
-      'email': email,
       'displayName': displayName,
       'photoURL': photoURL,
       'displayNameLower': displayNameLower,
@@ -80,7 +80,6 @@ class FirestoreUser {
   factory FirestoreUser.fromMap(Map<String, dynamic> map) {
     return FirestoreUser(
       uid: map['uid'] as String? ?? '',
-      email: map['email'] as String? ?? '',
         displayName: map['displayName'] as String? ?? '',
         displayNameLower: (map['displayNameLower'] as String?) ??
           (map['displayName'] as String? ?? '').toLowerCase(),
@@ -104,7 +103,6 @@ class FirestoreUser {
   /// Create a copy with modifications
   FirestoreUser copyWith({
     String? uid,
-    String? email,
     String? displayName,
     String? displayNameLower,
     String? photoURL,
@@ -123,7 +121,6 @@ class FirestoreUser {
   }) {
     return FirestoreUser(
       uid: uid ?? this.uid,
-      email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       displayNameLower: displayNameLower ?? this.displayNameLower,
       photoURL: photoURL ?? this.photoURL,

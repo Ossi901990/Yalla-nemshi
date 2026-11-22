@@ -30,7 +30,6 @@ class ProfileMigrationService {
       // Create Firestore profile
       await FirestoreUserService.createUser(
         uid: user.uid,
-        email: user.email ?? '',
         displayName: localProfile?.name ?? user.displayName ?? 'User',
       );
 
@@ -63,7 +62,6 @@ class ProfileMigrationService {
 
       await FirestoreUserService.createUser(
         uid: user.uid,
-        email: user.email ?? '',
         displayName: localProfile?.name ?? user.displayName ?? 'User',
       );
 

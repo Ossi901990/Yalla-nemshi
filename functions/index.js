@@ -450,7 +450,13 @@ exports.sendMonthlyDigests = onSchedule(
 async function processMonthlyDigestForUser(userDoc, window) {
   const uid = userDoc.id;
   const userData = userDoc.data() || {};
-  const email = (userData.email || "").trim();
+  // Emails are not stored in the public users doc; read them from Auth.
+  let email = "";
+  try {
+    email = ((await admin.auth().getUser(uid)).email || "").trim();
+  } catch (err) {
+    console.warn(`⚠️ [Digest] Could not load auth record for ${uid}`, err);
+  }
 
   if (!email) {
     console.log(`ℹ️ [Digest] Skipping ${uid} — no email on file.`);
@@ -492,7 +498,7 @@ async function processMonthlyDigestForUser(userDoc, window) {
 
     await sendDigestEmail({
       email,
-      displayName: userData.displayName || userData.email,
+      displayName: userData.displayName || "there",
       monthLabel: window.label,
       stats,
     });

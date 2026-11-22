@@ -93,15 +93,18 @@ service cloud.firestore {
         && request.query.limit != null
         && request.query.limit <= 50;
 
+      // This doc is readable by every signed-in user, so it must not hold the
+      // email address. Legacy docs may still have one; it may only be removed.
       allow create: if isAuth(userId)
         && request.resource.data.uid == userId
-        && request.resource.data.email is string
+        && !('email' in request.resource.data)
         && request.resource.data.displayName is string
         && request.resource.data.createdAt is timestamp;
 
       allow update: if isAuth(userId)
         && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
+        && (!('email' in request.resource.data)
+            || request.resource.data.email == resource.data.get('email', null))
         && request.resource.data.createdAt == resource.data.createdAt;
 
       allow delete: if false; // Never allow user self-deletion (use admin)

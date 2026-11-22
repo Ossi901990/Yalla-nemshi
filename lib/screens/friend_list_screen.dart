@@ -148,7 +148,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
             displayName: (profile?.displayName.isNotEmpty ?? false)
                 ? profile!.displayName
                 : friendId,
-            email: profile?.email,
             photoUrl: profile?.photoURL,
             bio: profile?.bio,
             statusText: _buildStatusLine(profile, walks),
@@ -350,7 +349,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
           requestId: (data['requestId'] ?? doc.id).toString(),
           fromUserId: fromUid,
           displayName: profile?['displayName'] as String?,
-          email: profile?['email'] as String?,
           photoUrl: profile?['photoUrl'] as String?,
           sentAt: sentAt,
         ),
@@ -1019,7 +1017,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
     final placeholderFriend = _FriendCardData(
       userId: request.fromUserId,
       displayName: request.displayName ?? request.fromUserId,
-      email: request.email,
       photoUrl: request.photoUrl,
       bio: null,
       statusText: 'Pending friend request',
@@ -1051,8 +1048,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (request.email != null && request.email!.isNotEmpty)
-                  Text(request.email!, style: theme.textTheme.bodySmall),
                 Text(
                   subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -1166,7 +1161,6 @@ class _FriendRequestItem {
     required this.requestId,
     required this.fromUserId,
     this.displayName,
-    this.email,
     this.photoUrl,
     this.sentAt,
   });
@@ -1174,7 +1168,6 @@ class _FriendRequestItem {
   final String requestId;
   final String fromUserId;
   final String? displayName;
-  final String? email;
   final String? photoUrl;
   final DateTime? sentAt;
 }
@@ -1183,7 +1176,6 @@ class _FriendCardData {
   const _FriendCardData({
     required this.userId,
     required this.displayName,
-    this.email,
     this.photoUrl,
     this.bio,
     required this.statusText,
@@ -1193,7 +1185,6 @@ class _FriendCardData {
 
   final String userId;
   final String displayName;
-  final String? email;
   final String? photoUrl;
   final String? bio;
   final String statusText;

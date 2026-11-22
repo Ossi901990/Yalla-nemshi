@@ -27,6 +27,9 @@ class FirestoreSyncService {
       if (exists) {
         debugPrint('✅ User already exists in Firestore: ${user.uid}');
 
+        // Older profiles stored the email publicly; strip it.
+        await FirestoreUserService.removeLegacyEmail(user.uid);
+
         // Backfill displayName/photoURL from Auth if they are present there but
         // missing in Firestore (common when the profile was created without
         // Google info).
@@ -61,7 +64,6 @@ class FirestoreSyncService {
       // Create the user profile
       await FirestoreUserService.createUser(
         uid: user.uid,
-        email: user.email ?? '',
         displayName: user.displayName ?? 'User',
         photoURL: user.photoURL,
       );
