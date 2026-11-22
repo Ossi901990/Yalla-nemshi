@@ -14,16 +14,13 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
 |---|---|
-| Firestore rules (`firestore.rules`) | ⚠️ **Changed (email rule), not deployed yet** |
+| Firestore rules (`firestore.rules`) | ✅ Deployed 2026-11-22 (includes email rule) |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
 | Rules tests | ✅ 57 passing |
 | Manual test pass | ⏳ Steps 1–5 passed, 6–8 left |
 
-**Deploy the rules before testing the new build** (new sign-ups write profiles
-without an email; the old deployed rules require one):
-`firebase deploy --only firestore:rules`
 
 ## How to test (solo, web)
 
