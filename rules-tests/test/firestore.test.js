@@ -405,6 +405,40 @@ describe("blocks, reports, DMs", () => {
 });
 
 // ---------------------------------------------------------------------------
+describe("client-side walk completion (Spark)", () => {
+  const hist = (uid) => ({
+    walkId: "open1", userId: uid, joinedAt: Timestamp.now(), completed: true,
+    status: "completed", completedAt: Timestamp.now(), actualDistanceKm: 3.1,
+    actualDurationMinutes: 45, role: "participant", statsCounted: true,
+  });
+  const stats = (uid) => ({
+    userId: uid, totalWalksCompleted: 1, totalWalksHosted: 0, totalDistanceKm: 3.1,
+    totalDuration: 2700, averageDistancePerWalk: 3.1, averageDurationPerWalk: 2700,
+    lastWalkDate: Timestamp.now(), lastUpdated: serverTimestamp(),
+  });
+
+  it("a user records their own finished walk and stats", async () => {
+    const f = db(ALICE);
+    const b = writeBatch(f);
+    b.set(doc(f, "users/alice/walks/open1"), hist(ALICE), { merge: true });
+    b.set(doc(f, "users/alice/stats/walkStats"), stats(ALICE), { merge: true });
+    await assertSucceeds(b.commit());
+  });
+
+  it("nobody can write another user's history or stats", async () => {
+    await assertFails(setDoc(doc(db(MALLORY), "users/alice/walks/open1"), hist(ALICE)));
+    await assertFails(setDoc(doc(db(MALLORY), "users/alice/stats/walkStats"), stats(ALICE)));
+  });
+
+  it("history needs the owner's userId and a joinedAt time", async () => {
+    await assertFails(setDoc(doc(db(ALICE), "users/alice/walks/open1"),
+      { ...hist(ALICE), userId: BOB }));
+    const { joinedAt, ...noJoinedAt } = hist(ALICE);
+    await assertFails(setDoc(doc(db(ALICE), "users/alice/walks/open1"), noJoinedAt));
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("per-walker GPS routes", () => {
   const t0 = Date.now();
   const chunk = (uid, extra = {}) => ({

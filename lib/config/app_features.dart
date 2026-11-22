@@ -19,4 +19,9 @@ class AppFeatures {
   /// Photo uploads (walk photos, walk chat images, DM images, review photos).
   /// Needs Firebase Storage.
   static const bool photoUploads = paidPlanFeatures;
+
+  /// Walk completion (history, lifetime stats, badges) done by the Cloud
+  /// Functions in functions/cp4_walk_completion.js. While false, each user's
+  /// app counts their own finished walks (WalkCompletionService).
+  static const bool serverWalkCompletion = paidPlanFeatures;
 }

@@ -17,6 +17,7 @@ import '../services/storage_service.dart';
 import '../services/walk_summary_service.dart';
 import '../services/route_store.dart';
 import '../config/app_features.dart';
+import '../services/walk_completion_service.dart';
 
 class WalkSummaryScreen extends StatefulWidget {
   const WalkSummaryScreen({
@@ -75,6 +76,8 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
         _summary = data;
         _loading = false;
       });
+      // Free plan: count this finished walk in the user's own stats.
+      unawaited(WalkCompletionService.completeForMe(widget.walkId));
       // Each walker may have their own route even if the host's walk doc has
       // no route count, so always try to load one.
       await _loadRoutePolyline();

@@ -15,6 +15,8 @@ import '../services/firestore_user_service.dart';
 import '../services/host_rating_service.dart';
 import '../services/user_stats_service.dart';
 import '../services/walk_history_service.dart';
+import '../services/crash_service.dart';
+import '../services/walk_completion_service.dart';
 import '../services/walk_export_service.dart';
 import '../models/profile_badge.dart';
 import '../models/badge.dart';
@@ -112,6 +114,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   late final VoidCallback _offlineListener;
 
+  // Lifetime / weekly numbers loaded from Firestore. The values passed in by
+  // HomeScreen only cover walks currently on the home list (upcoming/active),
+  // so finished walks never counted; these replace them once loaded.
+  int? _cloudJoined;
+  int? _cloudHosted;
+  double? _cloudTotalKm;
+  int? _cloudWeeklyWalks;
+  double? _cloudWeeklyKm;
+
+  int get _walksJoined => _cloudJoined ?? widget.walksJoined;
+  int get _eventsHosted => _cloudHosted ?? widget.eventsHosted;
+  double get _totalKm => _cloudTotalKm ?? widget.totalKm;
+  int get _weeklyWalks => _cloudWeeklyWalks ?? widget.weeklyWalks;
+  double get _weeklyKm => _cloudWeeklyKm ?? widget.weeklyKm;
+
   @override
   void initState() {
     super.initState();
@@ -132,6 +149,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _isOffline = OfflineService.instance.isOffline.value;
 
     _loadProfile();
+    _loadCloudStats();
+  }
+
+  /// Count finished walks first (free plan: nobody else does it), then load
+  /// the user's real totals from Firestore.
+  Future<void> _loadCloudStats() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await WalkCompletionService.completePendingForMe();
+
+      final db = FirebaseFirestore.instance;
+      final walks = db.collection('walks');
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final weekStart = today.subtract(Duration(days: today.weekday - 1));
+
+      final results = await Future.wait([
+        walks
+            .where('hostUid', isEqualTo: uid)
+            .where('cancelled', isEqualTo: false)
+            .count()
+            .get(),
+        walks
+            .where('joinedUserUids', arrayContains: uid)
+            .where('cancelled', isEqualTo: false)
+            .count()
+            .get(),
+      ]);
+      final statsDoc = await db
+          .collection('users')
+          .doc(uid)
+          .collection('stats')
+          .doc('walkStats')
+          .get();
+      final thisWeek = await db
+          .collection('users')
+          .doc(uid)
+          .collection('walks')
+          .where(
+            'completedAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart),
+          )
+          .get();
+      final weekly = thisWeek.docs.where((d) => d.data()['completed'] == true);
+
+      if (!mounted) return;
+      setState(() {
+        _cloudHosted = results[0].count ?? 0;
+        _cloudJoined = results[1].count ?? 0;
+        _cloudTotalKm =
+            (statsDoc.data()?['totalDistanceKm'] as num?)?.toDouble() ?? 0.0;
+        _cloudWeeklyWalks = weekly.length;
+        _cloudWeeklyKm = weekly.fold<double>(
+          0.0,
+          (acc, d) =>
+              acc + ((d.data()['actualDistanceKm'] as num?)?.toDouble() ?? 0.0),
+        );
+      });
+    } catch (e, st) {
+      CrashService.recordError(e, st, reason: 'ProfileScreen._loadCloudStats');
+    }
   }
 
   @override
@@ -182,6 +261,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
+    // Nothing (or no name) saved on this device, e.g. a new browser or phone:
+    // use the account's profile (Firestore), then the sign-in name.
+    if (p == null || p.name.trim().isEmpty) {
+      final cloud = await FirestoreUserService.getCurrentUser();
+      final authName = FirebaseAuth.instance.currentUser?.displayName?.trim();
+      final name = (cloud?.displayName.trim().isNotEmpty ?? false)
+          ? cloud!.displayName.trim()
+          : (authName ?? '');
+      if (name.isNotEmpty) {
+        p = UserProfile(
+          name: name,
+          age: p?.age ?? cloud?.age ?? 0,
+          gender: p?.gender ?? cloud?.gender ?? 'Not set',
+          bio: (p?.bio.isNotEmpty ?? false) ? p!.bio : (cloud?.bio ?? ''),
+          profileImagePath: p?.profileImagePath,
+          profileImageBase64: p?.profileImageBase64,
+        );
+        await ProfileStorage.saveProfile(p);
+      }
+    }
+
+    if (!mounted) return;
     setState(() {
       _profile = p;
       _loading = false;
@@ -311,7 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String get _walkerLevel {
-    final km = widget.totalKm;
+    final km = _totalKm;
     if (km < 5) return 'New walker';
     if (km < 25) return 'Getting active';
     if (km < 100) return 'Regular walker';
@@ -359,7 +460,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final tier = HostRatingService.getRatingTier(rating);
 
         // Only show if user has hosted at least one walk
-        if (widget.eventsHosted == 0 && reviewCount == 0) {
+        if (_eventsHosted == 0 && reviewCount == 0) {
           return const SizedBox.shrink();
         }
 
@@ -1195,7 +1296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final double weeklyProgress = _weeklyGoalKmLocal <= 0
         ? 0
-        : (widget.weeklyKm / _weeklyGoalKmLocal).clamp(0.0, 1.0);
+        : (_weeklyKm / _weeklyGoalKmLocal).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: isDark
@@ -1742,8 +1843,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
-                                          '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
+                                          '$_weeklyWalks walk${_weeklyWalks == 1 ? '' : 's'} • '
+                                          '${_weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
                                           style:
                                               theme.textTheme.bodyMedium
                                                   ?.copyWith(
@@ -1853,7 +1954,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Text(
                                     _weeklyMotivationText(
                                       progress: weeklyProgress,
-                                      weeklyKm: widget.weeklyKm,
+                                      weeklyKm: _weeklyKm,
                                       weeklyGoalKm: _weeklyGoalKmLocal,
                                       streakDays: widget.streakDays,
                                     ),
@@ -1908,17 +2009,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               _statCard(
                                 label: 'Walks joined',
-                                value: widget.walksJoined.toString(),
+                                value: _walksJoined.toString(),
                                 icon: Icons.directions_walk,
                               ),
                               _statCard(
                                 label: 'Hosted',
-                                value: widget.eventsHosted.toString(),
+                                value: _eventsHosted.toString(),
                                 icon: Icons.flag,
                               ),
                               _statCard(
                                 label: 'Total km',
-                                value: widget.totalKm.toStringAsFixed(1),
+                                value: _totalKm.toStringAsFixed(1),
                                 icon: Icons.map,
                               ),
                             ],
@@ -1963,7 +2064,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 24),
 
                           // Host Rating (only if user has hosted walks)
-                          if (widget.eventsHosted > 0)
+                          if (_eventsHosted > 0)
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

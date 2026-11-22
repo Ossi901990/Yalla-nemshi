@@ -4,6 +4,7 @@ import '../models/walk_event.dart';
 import 'crash_service.dart';
 import 'dart:async';
 import 'notification_sender.dart';
+import 'walk_completion_service.dart';
 
 /// Service for controlling walk state (start/end walks)
 /// For CP-4 walk completion and participant confirmation flow
@@ -134,6 +135,10 @@ class WalkControlService {
       CrashService.log(
         'Walk $walkId ended by $uid (${actualDurationMinutes}m)',
       );
+
+      // Free plan: count the walk for the host now (walkers' apps count it
+      // for them; see WalkCompletionService).
+      unawaited(WalkCompletionService.completeForMe(walkId));
     } catch (e) {
       CrashService.recordError(
         e,
