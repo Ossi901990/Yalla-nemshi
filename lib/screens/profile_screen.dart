@@ -117,9 +117,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     
     final currentUser = FirebaseAuth.instance.currentUser;
-    debugPrint('ðŸ‘¤ðŸ‘¤ðŸ‘¤ PROFILE_SCREEN.initState - Current User: ${currentUser?.uid}');
-    debugPrint('ðŸ‘¤ðŸ‘¤ðŸ‘¤ PROFILE_SCREEN.initState - Email: ${currentUser?.email}');
-    debugPrint('ðŸ‘¤ðŸ‘¤ðŸ‘¤ PROFILE_SCREEN.initState - Display Name: ${currentUser?.displayName}');
+    debugPrint('👤👤👤 PROFILE_SCREEN.initState - Current User: ${currentUser?.uid}');
+    debugPrint('👤👤👤 PROFILE_SCREEN.initState - Display Name: ${currentUser?.displayName}');
     
     _weeklyGoalKmLocal = widget.weeklyGoalKm;
 
@@ -303,12 +302,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required double weeklyGoalKm,
     required int streakDays,
   }) {
-    if (weeklyKm <= 0.0) return 'Letâ€™s start smallâ€”join a short walk today.';
-    if (progress >= 1.0) return 'Goal achieved! Bonus walk? ðŸ’ª';
-    if (progress >= 0.75) return 'Great paceâ€”almost there!';
-    if (progress >= 0.50) return 'Youâ€™re building momentumâ€”keep going!';
-    if (progress >= 0.25) return 'Nice startâ€”stay consistent!';
-    return 'Good startâ€”one more walk will help a lot.';
+    if (weeklyKm <= 0.0) return 'Let’s start small—join a short walk today.';
+    if (progress >= 1.0) return 'Goal achieved! Bonus walk? 💪';
+    if (progress >= 0.75) return 'Great pace—almost there!';
+    if (progress >= 0.50) return 'You’re building momentum—keep going!';
+    if (progress >= 0.25) return 'Nice start—stay consistent!';
+    return 'Good start—one more walk will help a lot.';
   }
 
   String get _walkerLevel {
@@ -1207,7 +1206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (_buildStaleDataBanner() != null) _buildStaleDataBanner()!,
           // ===== HEADER (match Home/Nearby) =====
           if (isDark)
-            // âœ… Dark: NO BAR, floating header (same as Home)
+            // ✅ Dark: NO BAR, floating header (same as Home)
             SafeArea(
               bottom: false,
               child: Padding(
@@ -1298,7 +1297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // âœ… Settings icon (40x40)
+                        // ✅ Settings icon (40x40)
                         Semantics(
                           label: 'Settings',
                           button: true,
@@ -1341,7 +1340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           else
-            // âœ… Light: gradient bar (same as Home)
+            // ✅ Light: gradient bar (same as Home)
             Container(
               height: 80,
               width: double.infinity,
@@ -1557,7 +1556,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: Stack(
                                     alignment: Alignment.center,
                                     children: [
-                                      // âœ… Name stays perfectly centered
+                                      // ✅ Name stays perfectly centered
                                       Center(
                                         child: Text(
                                           profile?.name.isNotEmpty == true
@@ -1586,7 +1585,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                       ),
 
-                                      // âœ… Pen icon on the right, does NOT shift the text
+                                      // ✅ Pen icon on the right, does NOT shift the text
                                       Positioned(
                                         right: 0,
                                         child: IconButton(
@@ -1653,7 +1652,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 backgroundColor: isDark
                                     ? const Color(
                                         0xFF123647,
-                                      ) // ðŸ‘ˆ bluish chip surface
+                                      ) // 👈 bluish chip surface
                                     : theme.colorScheme.surface,
                                 side: BorderSide(
                                   color: (isDark ? Colors.white : Colors.black)
@@ -1743,7 +1742,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} â€¢ '
+                                          '${widget.weeklyWalks} walk${widget.weeklyWalks == 1 ? '' : 's'} • '
                                           '${widget.weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
                                           style:
                                               theme.textTheme.bodyMedium

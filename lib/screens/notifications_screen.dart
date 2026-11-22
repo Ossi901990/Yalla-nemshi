@@ -28,7 +28,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     final user = FirebaseAuth.instance.currentUser;
     debugPrint('🔔 NOTIFICATIONS SCREEN - Current User: ${user?.uid}');
-    debugPrint('🔔 NOTIFICATIONS SCREEN - Email: ${user?.email}');
     _loadNotifications();
   }
 

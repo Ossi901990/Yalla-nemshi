@@ -86,7 +86,7 @@ class _SignupScreenState extends State<SignupScreen> {
       if (cred.user != null && !cred.user!.emailVerified) {
         try {
           await cred.user!.sendEmailVerification();
-          debugPrint('✅ Verification email sent to $email');
+          debugPrint('✅ Verification email sent');
         } catch (e) {
           debugPrint('⚠️ Failed to send verification email: $e');
           // Continue anyway - user can request resend later

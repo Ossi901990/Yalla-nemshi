@@ -47,7 +47,6 @@ class NotificationService {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       debugPrint('🔔🔔🔔 NOTIFICATION SERVICE INIT - Current User: ${currentUser?.uid}');
-      debugPrint('🔔🔔🔔 NOTIFICATION SERVICE INIT - Email: ${currentUser?.email}');
       debugPrint('🔔🔔🔔 NOTIFICATION SERVICE INIT - Display Name: ${currentUser?.displayName}');
       
       final instance = NotificationService.instance;
@@ -87,7 +86,6 @@ class NotificationService {
   void startListeningToNotifications(String uid) {
     final user = FirebaseAuth.instance.currentUser;
     debugPrint('📡 NOTIFICATION SERVICE - Starting listener for user: ${user?.uid}');
-    debugPrint('📡 NOTIFICATION SERVICE - User email: ${user?.email}');
     debugPrint('📡 NOTIFICATION SERVICE - Display name: ${user?.displayName}');
     debugPrint('🔔 Starting notification listener for user: $uid');
     

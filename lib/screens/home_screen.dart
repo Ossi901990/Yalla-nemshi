@@ -157,7 +157,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             : nullCity;
         query = query.where(cityFilter);
       } else {
-        debugPrint('ΓÜá∩╕Å No user city set; polling all walks');
+        debugPrint('⚠️ No user city set; polling all walks');
       }
 
       // Upcoming walks query (future dateTime)
@@ -263,7 +263,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         fromCache: fromCache,
       );
     } catch (e, st) {
-      debugPrint('Γ¥î Error fetching walks: $e');
+      debugPrint('❌ Error fetching walks: $e');
       CrashService.recordError(e, st);
     }
   }
@@ -406,7 +406,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           _isLoadingMore = false;
         });
 
-        debugPrint('Γ¥î Error loading more walks: $e');
+        debugPrint('❌ Error loading more walks: $e');
         CrashService.recordError(e, st);
 
         String message = 'Unable to load more walks';
@@ -518,7 +518,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       return walk;
     } catch (error, stackTrace) {
-      debugPrint('Γ¥î Failed to parse walk ${doc.id}: $error');
+      debugPrint('❌ Failed to parse walk ${doc.id}: $error');
       _debugWalkDrop(
         'parse failure: $error',
         id: doc.id,
@@ -903,7 +903,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<WalkEvent> _eventsForDay(DateTime day) {
     final d0 = DateTime(day.year, day.month, day.day);
 
-    // Γ£à Only walks that YOU host or joined and are not cancelled
+    // ✅ Only walks that YOU host or joined and are not cancelled
     return _events.where((e) {
       if (e.cancelled) return false;
       if (!(e.joined || e.isOwner)) return false;
@@ -922,7 +922,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bool isToday = isSameDay(day, DateTime.now());
     final bool hasWalk = _hasUpcomingWalkOnDay(day);
 
-    // Γ£à Single-letter labels to match your UI
+    // ✅ Single-letter labels to match your UI
     String dowLetter(int weekday) {
       // weekday: Mon=1 ... Sun=7
       switch (weekday) {
@@ -944,7 +944,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     }
 
-    // Γ£à Priority: Selected > Walk day > Today > Normal
+    // ✅ Priority: Selected > Walk day > Today > Normal
     Color bg;
     Color border;
     Color labelColor;
@@ -961,7 +961,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       labelColor = isDark ? Colors.black87 : Colors.black87;
       numberColor = Colors.black87;
     } else if (isToday) {
-      // Γ£à Today gets a subtle outline ONLY (different from walk highlight)
+      // ✅ Today gets a subtle outline ONLY (different from walk highlight)
       bg = Colors.transparent;
       border = isDark ? Colors.white24 : Colors.black12;
       labelColor = isDark ? Colors.white70 : Colors.black54;
@@ -973,7 +973,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       numberColor = isDark ? Colors.white : Colors.black87;
     }
 
-    // Γ£à FIX: Force every cell to same size to prevent weird pills + overflow
+    // ✅ FIX: Force every cell to same size to prevent weird pills + overflow
     const double cellSize = 44;
 
     return Center(
@@ -985,7 +985,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             color: bg,
             borderRadius: BorderRadius.circular(kRadiusPill),
 
-            // Γ£à Walk day indicator
+            // ✅ Walk day indicator
             // - if it has an upcoming walk and it's not selected ΓåÆ show a subtle border
             // - if it's selected ΓåÆ keep selected clean (no extra border needed)
             border: (hasWalk && !isSelected)
@@ -1045,7 +1045,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // DEBUG: Print current user info
     final user = FirebaseAuth.instance.currentUser;
     debugPrint('🆔 HOME SCREEN - Current User ID: ${user?.uid}');
-    debugPrint('🆔 HOME SCREEN - Current User Email: ${user?.email}');
     debugPrint('🆔 HOME SCREEN - Current User Name: ${user?.displayName}');
     
     if (!kIsWeb) {
@@ -1072,10 +1071,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _pendingActions = OfflineService.instance.pendingActionCount.value;
 
     _loadUserName();
-    _loadProfile(); // Γ£à load saved avatar
+    _loadProfile(); // ✅ load saved avatar
     _loadWeeklyGoal();
     _loadCachedWalks();
-    _loadRecommendations(); // Γ£à Load tag-based recommendations
+    _loadRecommendations(); // ✅ Load tag-based recommendations
     _listenToWalks();
 
     // ≡ƒö╣ Sync user profile to Firestore (if missing)
@@ -1105,7 +1104,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         });
       }
     } catch (e, st) {
-      debugPrint('ΓÜá∩╕Å Error loading weekly goal: $e');
+      debugPrint('⚠️ Error loading weekly goal: $e');
       CrashService.recordError(e, st);
       // Fall back to default (already set in class)
     }
@@ -1144,7 +1143,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!mounted) return;
       setState(() => _unreadNotifCount = unread);
     } catch (e, st) {
-      debugPrint('ΓÜá∩╕Å Error refreshing notification count: $e');
+      debugPrint('⚠️ Error refreshing notification count: $e');
       CrashService.recordError(e, st);
     }
   }
@@ -1166,20 +1165,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final status = await Permission.activityRecognition.request();
       if (!status.isGranted) {
-        debugPrint('ΓÜá∩╕Å Activity recognition permission denied');
+        debugPrint('⚠️ Activity recognition permission denied');
         return;
       }
 
       _stepSubscription = Pedometer.stepCountStream.listen(
         _onStepCount,
         onError: (error, stackTrace) {
-          debugPrint('Γ¥î Pedometer error: $error');
+          debugPrint('❌ Pedometer error: $error');
           CrashService.recordError(error, stackTrace ?? StackTrace.current);
         },
         cancelOnError: false,
       );
     } catch (e, st) {
-      debugPrint('Γ¥î Error initializing step counter: $e');
+      debugPrint('❌ Error initializing step counter: $e');
       CrashService.recordError(e, st);
       // Don't fail the entire app, just skip step counter
     }
@@ -1211,7 +1210,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       });
     } catch (e, st) {
-      debugPrint('Γ¥î Error loading user name: $e');
+      debugPrint('❌ Error loading user name: $e');
       CrashService.recordError(e, st);
       // Fall back to default
       if (mounted) {
@@ -1325,7 +1324,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
 
-    // Γ£à Always use Firestore doc id
+    // ✅ Always use Firestore doc id
     final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
     final docRef = FirebaseFirestore.instance.collection('walks').doc(walkId);
 
@@ -1342,7 +1341,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? rawDisplayName
         : 'User ${uid.substring(0, 6)}';
 
-    // Γ£à Optimistic UI update
+    // ✅ Optimistic UI update
     setState(() {
       final index = _events.indexWhere((e) {
         final idA = e.firestoreId.isNotEmpty ? e.firestoreId : e.id;
@@ -1392,7 +1391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     try {
-      // Γ£à Get current user info for participant data
+      // ✅ Get current user info for participant data
       final currentUser = FirebaseAuth.instance.currentUser;
       final userPhotoUrl = currentUser?.photoURL;
         final rawDisplayName = currentUser?.displayName?.trim();
@@ -1401,7 +1400,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ? rawDisplayName
             : 'User ${uid.substring(0, 6)}';
 
-      // Γ£à Persist to Firestore with timeout
+      // ✅ Persist to Firestore with timeout
       final updateData = <String, dynamic>{
         'joinedUids': willJoin
             ? FieldValue.arrayUnion([uid])
@@ -1435,7 +1434,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       }
 
-      // Γ£à Record walk history for tracking
+      // ✅ Record walk history for tracking
       if (willJoin) {
         await WalkHistoryService.instance.recordWalkJoin(walkId);
         await UserStatsService.instance.recordWalkJoined(uid);
@@ -1471,7 +1470,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       }
     } on TimeoutException catch (e, st) {
-      // Γ¥î Roll back on timeout
+      // ❌ Roll back on timeout
       _rollbackJoinStatus(walkId, wasJoined);
 
       if (mounted) {
@@ -1482,11 +1481,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       }
     } catch (e, st) {
-      // Γ¥î Roll back if Firestore failed
+      // ❌ Roll back if Firestore failed
       _rollbackJoinStatus(walkId, wasJoined);
 
       if (mounted) {
-        debugPrint('Γ¥î Join/Leave error: $e');
+        debugPrint('❌ Join/Leave error: $e');
         CrashService.recordError(e, st);
 
         String message = 'Failed to update join status';
@@ -1528,15 +1527,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Get the correct walk ID (use firestoreId if available)
     final walkId = event.firestoreId.isNotEmpty ? event.firestoreId : event.id;
 
-    // Γ£à Save cancellation to Firestore FIRST
+    // ✅ Save cancellation to Firestore FIRST
     WalkControlService.instance
         .cancelWalk(walkId)
         .then((_) {
           // Firestore listener will auto-update UI via snapshot
-          debugPrint('Γ£à Walk $walkId cancelled on Firestore');
+          debugPrint('✅ Walk $walkId cancelled on Firestore');
         })
         .catchError((e, st) {
-          debugPrint('Γ¥î Error cancelling walk: $e');
+          debugPrint('❌ Error cancelling walk: $e');
           CrashService.recordError(e, st);
           // Show error to user
           if (mounted) {
@@ -1686,7 +1685,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
 
-    // Γ£à When user returns from Profile, reload the saved profile (avatar)
+    // ✅ When user returns from Profile, reload the saved profile (avatar)
     await _loadProfile();
   }
 
@@ -1832,7 +1831,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? 'Walk in progress'
         : 'Starts in ${_formatHostedCountdown(_hostedCountdownRemaining)}';
     final subtitle = walk.meetingPlaceName != null
-        ? '${walk.meetingPlaceName} ΓÇó ${DateFormat('MMM d, hh:mm a').format(walk.dateTime)}'
+        ? '${walk.meetingPlaceName} • ${DateFormat('MMM d, hh:mm a').format(walk.dateTime)}'
         : DateFormat('MMM d, hh:mm a').format(walk.dateTime);
 
     final primaryLabel = isActive ? 'Open Active Walk' : 'Start Walk';
@@ -1969,10 +1968,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Γ£à Force the phone status-bar area to match our header color
+    // ✅ Force the phone status-bar area to match our header color
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
-        // Γ£à Match the TOP of your gradient bar: Color(0xFF1ABFC4)
+        // ✅ Match the TOP of your gradient bar: Color(0xFF1ABFC4)
         statusBarColor: isDark ? Colors.transparent : const Color(0xFF1ABFC4),
         statusBarIconBrightness: Brightness.light, // Android icons
         statusBarBrightness: Brightness.dark, // iOS text/icons
@@ -2026,7 +2025,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return Scaffold(
-      // Γ£à Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
+      // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
       backgroundColor: isDark ? kDarkBg : const Color(0xFF1ABFC4),
 
       body: Column(
@@ -2635,14 +2634,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ? 72
                                         : 60,
 
-                                    // Γ£à smoother swipe between weeks
+                                    // ✅ smoother swipe between weeks
                                     pageAnimationEnabled: true,
                                     pageAnimationDuration: const Duration(
                                       milliseconds: 220,
                                     ),
                                     pageAnimationCurve: Curves.easeOutCubic,
 
-                                    // Γ£à IMPORTANT: keep outside days visible so the week row is consistent
+                                    // ✅ IMPORTANT: keep outside days visible so the week row is consistent
                                     calendarStyle: const CalendarStyle(
                                       isTodayHighlighted: false,
                                       outsideDaysVisible: true,
@@ -2680,7 +2679,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         );
                                       },
 
-                                      // Γ£à FIX: outside days were not using your pill builder
+                                      // ✅ FIX: outside days were not using your pill builder
                                       outsideBuilder:
                                           (context, day, focusedDay) {
                                             return _buildCalendarDayCell(
@@ -2690,7 +2689,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             );
                                           },
 
-                                      // Γ£à (optional safety) disabled days also use the same pill rendering
+                                      // ✅ (optional safety) disabled days also use the same pill rendering
                                       disabledBuilder:
                                           (context, day, focusedDay) {
                                             return _buildCalendarDayCell(
@@ -3351,7 +3350,7 @@ class _StepsRing extends StatelessWidget {
         // Very light color at 0 progress (so the start is almost white)
         final Color veryLight = isDark
             ? Colors.white.withAlpha((0.16 * 255).round())
-            : const Color(0xFFE8F1EA); // Γ£à light green tint (not white)
+            : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
 
         // End color gets darker as progress increases
         final Color endColor = Color.lerp(veryLight, base, animatedProgress)!;
@@ -3371,10 +3370,10 @@ class _StepsRing extends StatelessWidget {
                       ? Colors.white.withAlpha((0.10 * 255).round())
                       : const Color(
                           0xFFD7E2D7,
-                        ), // Γ£à slightly darker track so ring feels consistent
-                  // Γ£à start ALWAYS very light
+                        ), // ✅ slightly darker track so ring feels consistent
+                  // ✅ start ALWAYS very light
                   startColor: veryLight,
-                  // Γ£à end darkens with progress
+                  // ✅ end darkens with progress
                   endColor: endColor,
                 ),
               ),
@@ -3456,7 +3455,7 @@ class _GradientRingPainter extends CustomPainter {
 
     // Gradient on the progress arc
     final gradient = SweepGradient(
-      // Γ£à end with startColor again ΓåÆ seam becomes light (no dark tick at top)
+      // ✅ end with startColor again ΓåÆ seam becomes light (no dark tick at top)
       colors: [startColor, endColor, startColor],
       stops: const [0.0, 0.85, 1.0],
       transform: const GradientRotation(-math.pi / 2),

@@ -33,7 +33,6 @@ class DmChatScreen extends StatelessWidget {
     final currentUid = currentUser?.uid;
     
     debugPrint('💬💬💬 DM_CHAT_SCREEN - Current User: ${currentUser?.uid}');
-    debugPrint('💬💬💬 DM_CHAT_SCREEN - Email: ${currentUser?.email}');
     debugPrint('💬💬💬 DM_CHAT_SCREEN - Thread ID: ${args.threadId}');
     debugPrint('💬💬💬 DM_CHAT_SCREEN - Friend UID: ${args.friendUid}');
 
