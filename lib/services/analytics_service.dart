@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/analytics_summary.dart';
 import 'crash_service.dart';
+import '../models/friend_profile.dart';
+import 'friend_profile_service.dart';
 
 class AnalyticsService {
   AnalyticsService._();
@@ -71,30 +73,18 @@ class AnalyticsService {
     final rangeStart = _startOfDay(start);
     final rangeEnd = _endOfDay(end);
     try {
-      final startTs = Timestamp.fromDate(rangeStart);
-      final endTs = Timestamp.fromDate(rangeEnd);
-
-      Query<Map<String, dynamic>> query = _firestore
-          .collection('friend_profiles')
-          .doc(friendUid)
-          .collection('walk_summaries')
-          .where('category', isEqualTo: 'past')
-          .where(
-            Filter.or(
-              Filter.and(
-                Filter('endTime', isGreaterThanOrEqualTo: startTs),
-                Filter('endTime', isLessThanOrEqualTo: endTs),
-              ),
-              Filter.and(
-                Filter('endTime', isNull: true),
-                Filter('startTime', isGreaterThanOrEqualTo: startTs),
-                Filter('startTime', isLessThanOrEqualTo: endTs),
-              ),
-            ),
-          );
-
-      final snapshot = await query.get();
-      final rows = snapshot.docs
+      // Built from the friend's open walks (no friend_profiles snapshots on
+      // the Spark plan).
+      final summaries =
+          await FriendProfileService.fetchWalkSummaries(friendUid);
+      final rows = summaries
+          .where((w) => w.isPast)
+          .where((w) {
+            final at = w.endTime ?? w.startTime;
+            return at != null &&
+                !at.isBefore(rangeStart) &&
+                !at.isAfter(rangeEnd);
+          })
           .map(_normalizeFriendWalk)
           .whereType<_WalkAnalyticsRow>()
           .toList();
@@ -249,16 +239,14 @@ class AnalyticsService {
     );
   }
 
-  _WalkAnalyticsRow? _normalizeFriendWalk(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data();
-    final occurredAt = _readTimestamp(data['endTime']) ?? _readTimestamp(data['startTime']);
+  _WalkAnalyticsRow? _normalizeFriendWalk(FriendWalkSummary walk) {
+    final occurredAt = walk.endTime ?? walk.startTime;
     if (occurredAt == null) {
       return null;
     }
 
-    final distance = _readDouble(data['distanceKm']) ?? 0.0;
-    final minutes = _readDouble(data['estimatedDurationMinutes']) ??
-        _readDouble(data['actualDurationMinutes']);
+    final distance = walk.distanceKm ?? 0.0;
+    final minutes = walk.estimatedDurationMinutes;
 
     return _WalkAnalyticsRow(
       occurredAt: occurredAt,

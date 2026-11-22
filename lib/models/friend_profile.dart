@@ -111,6 +111,56 @@ class FriendWalkSummary {
   bool get isUpcoming => category == 'upcoming';
   bool get isPast => category == 'past';
 
+  /// Build a summary straight from a `walks/{id}` doc (no Cloud Function on
+  /// the Spark plan). Mirrors functions/friend_profiles.js.
+  factory FriendWalkSummary.fromWalk(
+    String walkId,
+    Map<String, dynamic> data,
+    String role, {
+    DateTime? now,
+  }) {
+    final start = _timestampToDate(
+      data['dateTime'] ?? data['startTime'] ?? data['startedAt'],
+    );
+    final end = _timestampToDate(
+      data['completedAt'] ?? data['endTime'] ?? data['endedAt'],
+    );
+    final status = (data['status'] as String?)?.toLowerCase();
+
+    final String category;
+    if (data['cancelled'] == true) {
+      category = 'cancelled';
+    } else if (status == 'completed' || status == 'past') {
+      category = 'past';
+    } else if (start != null && !start.isAfter(now ?? DateTime.now())) {
+      category = 'past';
+    } else {
+      category = 'upcoming';
+    }
+
+    return FriendWalkSummary(
+      walkId: walkId,
+      role: role,
+      title: _cleanString(data['title']) ?? 'Walk',
+      meetingPlaceName: _cleanString(
+        data['meetingPlaceName'] ?? data['meetingPointName'],
+      ),
+      category: category,
+      visibility: (data['visibility'] ?? 'open') as String,
+      status: data['status'] as String?,
+      startTime: start,
+      endTime: end,
+      distanceKm: _toDouble(data['distanceKm'] ?? data['loopDistanceKm']),
+      estimatedDurationMinutes: _toDouble(
+        data['plannedDurationMinutes'] ??
+            data['estimatedDurationMinutes'] ??
+            data['loopMinutes'],
+      ),
+      coverPhotoUrl: _cleanString(data['coverPhotoUrl'] ?? data['photoUrl']),
+      hostUid: data['hostUid'] as String?,
+    );
+  }
+
   factory FriendWalkSummary.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
     if (data == null) {

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../models/firestore_user.dart';
 import '../services/firestore_user_service.dart';
+import '../services/friend_profile_service.dart';
 import '../services/friends_service.dart';
 import '../utils/invite_utils.dart';
 import 'friend_profile_screen.dart';
@@ -35,7 +36,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
   final Set<String> _unfriending = {};
   final Set<String> _blocking = {};
   final Set<String> _reporting = {};
-  final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+  final Map<String, StreamSubscription<Object?>>
   _walkSummarySubscriptions = {};
   final Map<String, List<_FriendWalkActivity>> _recentWalksByFriend = {};
   List<String> _currentFriendIds = [];
@@ -229,29 +230,24 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
     for (final friendId in desiredIds) {
       if (_walkSummarySubscriptions.containsKey(friendId)) continue;
-      final subscription = _firestore
-          .collection('friend_profiles')
-          .doc(friendId)
-          .collection('walk_summaries')
-          .orderBy('startTime', descending: true)
-          .limit(_walkSummariesPerFriend)
-          .snapshots()
-          .listen(
-            (snapshot) {
-              final walks = snapshot.docs
-                  .map((doc) {
-                    final data = doc.data();
-                    return _FriendWalkActivity(
-                      walkId: doc.id,
-                      joinedAt:
-                          _readTimestamp(data['startTime']) ?? DateTime.now(),
-                      completedAt: _readTimestamp(data['endTime']),
-                      status: data['status']?.toString(),
-                      distanceKm:
-                          (data['distanceKm'] as num?)?.toDouble() ??
-                          (data['actualDistanceKm'] as num?)?.toDouble(),
-                    );
-                  })
+      // Built from the friend's open walks (no friend_profiles snapshots on
+      // the Spark plan).
+      final subscription =
+          Stream.fromFuture(
+            FriendProfileService.fetchWalkSummaries(friendId),
+          ).listen(
+            (summaries) {
+              final walks = summaries
+                  .take(_walkSummariesPerFriend)
+                  .map(
+                    (s) => _FriendWalkActivity(
+                      walkId: s.walkId,
+                      joinedAt: s.startTime ?? DateTime.now(),
+                      completedAt: s.endTime,
+                      status: s.status,
+                      distanceKm: s.distanceKm,
+                    ),
+                  )
                   .toList(growable: false);
 
               if (!mounted) return;
