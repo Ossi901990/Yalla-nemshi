@@ -1,6 +1,6 @@
 # Handoff: continue work here
 
-**Last updated:** 2026-11-16
+**Last updated:** 2026-11-22
 **Branch:** `claude/inspiring-goldberg-xlwagq` (not merged into `main` yet)
 **Firebase plan:** Spark (free). The owner does not want paid plans for now, so avoid
 anything that needs Cloud Functions or Storage.
@@ -9,23 +9,21 @@ the web build with two accounts (see "How to test" below).
 
 ## Where we are
 
-Device testing is **in progress: steps 1–5 passed, resume at step 6.**
+Manual testing: **steps 1–5 passed; resume at step 6.** On 2026-11-22 a batch of
+fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
 |---|---|
-| Firestore rules (`firestore.rules`) | ✅ Deployed |
+| Firestore rules (`firestore.rules`) | ⚠️ **Changed (email rule), not deployed yet** |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
-| Old test walks | ✅ Deleted (no migration needed) |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
-| `flutter analyze` / `flutter test` | ✅ No issues / 14 passing (2026-11-16) |
+| `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
+| Rules tests | ✅ 57 passing |
 | Manual test pass | ⏳ Steps 1–5 passed, 6–8 left |
 
-### Uncommitted change
-
-- `lib/screens/create_walk_screen.dart`: `DefaultTabController` `length: 3` → `2`.
-  The "Free walk" tab had been removed but the length wasn't updated, which threw
-  "Controller's length property (3) does not match the number of tabs (2)" and
-  broke the create-walk tab bar. Commit this with the next batch of fixes.
+**Deploy the rules before testing the new build** (new sign-ups write profiles
+without an email; the old deployed rules require one):
+`firebase deploy --only firestore:rules`
 
 ## How to test (solo, web)
 
@@ -37,72 +35,87 @@ Device testing is **in progress: steps 1–5 passed, resume at step 6.**
 
 Harmless log noise: `NetworkImageLoadException ... statusCode: 429` from
 `lh3.googleusercontent.com` (Google profile photos are rate-limited on localhost).
+Most avatars now use `UserAvatar`, which swallows these.
 
 ## Test checklist
 
 1. ✅ **Open walk** shows on A's home and in B's Nearby walks.
 2. ✅ **Private walk** shows the invite code to A, hidden from B.
 3. ✅ **Join with code (B)** via search → "enter invite code". A sees the join, B sees the walk.
-4. ✅ **Regenerate code (host).** Passed per owner; not 100% confirmed that the *old*
-   code was tried and rejected (rules tests cover it). Re-check if convenient.
+   🔁 The walk details "People joining" row should now show B's **name** and avatar
+   (initials if no photo); tap it for the full list.
+4. ✅ **Regenerate code (host).** Not 100% confirmed the *old* code was rejected
+   (rules tests cover it).
 5. ✅ **Walk chat (text)** works both ways in real time.
 6. ⏭️ **Review a walk (B)** without a photo. It should save, and A's profile host
    rating should update. If the review button only appears after a walk ends,
    check that condition.
 7. ⬜ **Friend request A → B, accept on B.** Both should see each other as friends.
+   🔁 Open B's profile from A's friend list: name, stats and B's open walks should
+   show (previously empty on Spark). No emails should appear anywhere.
 8. ⬜ **Block / report a user.** Should succeed without errors.
+9. 🔁 **Edit Profile → change name.** Then join a walk / check the friend list from the
+   other account: the new name should appear.
+10. 🔁 **Create walk:** both tabs (Point to point / Loop) switch correctly and save.
+
+If a friend-profile walk list fails with `failed-precondition` / "requires an index",
+follow the link in the error to create it, then add it to `firestore.indexes.json`.
 
 Expected to fail on Spark (not bugs): photo uploads, push notifications, **all
-in-app notifications** (see backlog #2), friend profile snapshots (`friend_profiles`),
-and walk auto-completion.
+in-app notifications** (see backlog #1), and walk auto-completion.
 
 If something fails with `permission-denied`, compare the write against
 `firestore.rules` and add a test in `rules-tests/test/firestore.test.js`.
 
-## Findings from testing (not yet fixed)
+## Fixed on 2026-11-22
 
-- **Participant names aren't shown** on the walk details screen. It only shows avatars
-  and a count (`event_details_screen.dart` ~L2037–2148). Names are saved in
-  `joinedUserNames` but only `active_walk_screen.dart` displays them. Idea: a tappable
-  participant list on the details screen.
-- **Email sign-ups have no display name**, so they're stored as `User <uid prefix>`
-  (`home_screen.dart` ~L1340). Idea: add a name field at sign-up.
-- **Avatars with no photo / a failed load** render blank. Add an `errorBuilder` /
-  initials fallback.
-- **`create_walk_screen.dart`** still has the dead "Free walk" UI branch
-  (`_walkTypeIndex == 2`), and it calls `tabController.addListener` inside `build`,
-  which adds a new listener on every rebuild.
+All committed on this branch:
+
+- **Emails are private** (`f6fcc84`): no `email` in `users/{uid}`; rules refuse adding
+  it; existing profiles have it removed on next sign-in (`FirestoreSyncService`).
+  Friend list/search no longer show emails. Debug logs no longer print them.
+- **Participant names + avatars** (`0fa3928`): new `ParticipantsRow` and `UserAvatar`
+  widgets; walk details shows names from profiles.
+- **Edit Profile syncs** (`0fa3928`): it used to save only on the device; now it also
+  updates the Auth display name and the Firestore profile.
+- **Create walk cleanup** (`8c36081`): dead Free walk branch removed; tab listener
+  no longer re-added on every build.
+- **Friend profiles without functions** (`d52c652`): `FriendProfileService` builds
+  profiles from `users` + stats + host rating, and walk lists from the friend's open
+  walks. Also used by the friend activity feed and friend analytics.
+- **Cleanup** (`867f5e1`): 59 lines of mojibake fixed (some user-facing), unused
+  broken leaderboard queries removed.
+- **README** rewritten (`50639bd`). `rules-tests` `npm test` now works on Windows.
+
+Running the rules tests locally: system Java is 1.8, so point at Android Studio's
+bundled JDK 21 for that shell:
+`$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:Path="$env:JAVA_HOME\bin;$env:Path"`
 
 ## Backlog (rough priority)
 
-1. **Hide user emails.** `users/{uid}` (including `email`) is readable by any
-   signed-in user, and `friend_list_screen.dart` shows other users' emails. Move
-   email to a private subdoc and update `FirestoreUser`, `firestore_sync_service`,
-   `profile_migration_service`, and the friend list UI.
-2. **Notifications on Spark.** Every notification doc is created by a Cloud Function;
-   the client only reads and marks them, and the rules (`users/{uid}/notifications`)
-   only let the owner write. So nothing appears in-app today. Options:
-   - Let the sender's client write a notification for another user, with rules
-     limited to valid cases (same walk/chat, fixed types, `fromUid == auth.uid`).
-   - Unread badges derived from chat `lastMessage` time vs the user's last-read time.
-3. **Other Spark gaps:** `friend_profiles` could be read from `users` + stats directly;
-   walk completion lives in `functions/cp4_walk_completion.js`.
-4. **Participant names / display names** (see Findings).
-5. **GPS tracking:** every participant writes `walks/{id}/tracking/point_N`, so
-   their points collide. The rules currently allow the host only. If participants
-   should track too, use per-user paths.
-6. **Leaderboards:** `UserStatsService.getTopWalkers/getTopHosts` query
-   `collectionGroup('walkStats')`, but `walkStats` is a doc id, so the result is
-   always empty (nothing calls it today).
-7. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
+1. **Notifications on Spark — needs an owner decision.** Every notification doc is
+   created by a Cloud Function; the client only reads them, and the rules only let
+   the owner write their own. Options:
+   - **A. Sender writes the notification** for the recipient, with rules limited to
+     valid cases (same walk/chat or friend request, fixed types, `fromUid == auth.uid`,
+     no edits). Brings back the in-app list. Small spam risk from walk members.
+   - **B. Unread badges only**, from chat `lastMessage` time vs a per-user last-read
+     time. No cross-user writes.
+   Push notifications need Blaze either way.
+2. **GPS tracking — needs an owner decision.** Only the host may write
+   `walks/{id}/tracking/point_N`. If participants should track too, move to
+   per-user paths (`tracking/{uid}/points/{n}`) and update rules + reader code.
+3. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
+   are empty on Spark.
+4. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
+5. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
    `create_walk_screen.dart`, `event_details_screen.dart`, `profile_screen.dart`.
    Move the Firestore logic into repositories/providers (Riverpod is already a
    dependency).
-8. **Restrict API keys** in Google Cloud Console (Maps/Geocoding keys are hardcoded
-   in `main.dart`, `geocoding_service.dart`, `map_pick_screen.dart`, and
-   `AndroidManifest.xml`).
-9. **Minor:** fix mojibake comments in `home_screen.dart` (e.g. `Γ£à`), trim the
-   ~250 `debugPrint` calls, and replace the template README intro.
+6. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
+   hardcoded in `main.dart`, `geocoding_service.dart`, `map_pick_screen.dart`, and
+   `AndroidManifest.xml`; restrict by HTTP referrer / Android app signature).
+7. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
 
 ## Deploying
 
@@ -115,8 +128,8 @@ is the old `walks (shareCode, cancelled)` index, which is unused and safe to del
 
 ```bash
 flutter analyze          # expect no issues
-flutter test             # 14 tests
-cd rules-tests && npm ci && npm test   # 53 rules tests; needs Node 22+ and Java 21+
+flutter test             # 22 tests
+cd rules-tests && npm ci && npm test   # 57 rules tests; needs Node 22+ and Java 21+
 ```
 
 Every rules change should come with a test in `rules-tests/test/`.
@@ -137,10 +150,8 @@ Every rules change should come with a test in `rules-tests/test/`.
    with the code, and the rules validate it. Code: `lib/services/invite_service.dart`.
 4. **Host rating:** an average/count aggregate over the host's reviews
    (`lib/services/host_rating_service.dart`). No function involved.
-5. **Other fixes:** walk chat image message rules, chat notification trigger path,
-   `WalkEvent.toMap` writes `visibility`, and the friend accept flow is atomic.
+5. **Create-walk tab crash** (2026-11-16): tab count 3 → 2.
 
 ## When it's ready
 
-Once steps 6–8 pass, commit the outstanding fix, open a PR from this branch into
-`main`, and merge it.
+Once the checklist passes, open a PR from this branch into `main` and merge it.
