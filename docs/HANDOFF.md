@@ -15,7 +15,7 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
 |---|---|
-| Firestore rules (`firestore.rules`) | ⚠️ Route rules added 2026-11-22, **not deployed yet** (email + notification rules are deployed) |
+| Firestore rules (`firestore.rules`) | ✅ Deployed 2026-11-22 (email, notification and route rules) |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
