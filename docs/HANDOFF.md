@@ -26,8 +26,15 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 ## How to test (solo, web)
 
-1. `flutter run -d chrome --web-port 5050` opens account **A** in its own Chrome window
-   (fresh profile each launch, so sign in again after every restart).
+1. Start the app, either way (same app):
+   - `flutter run -d web-server --web-port 5050` (**default since 2026-11-22**): open
+     `http://localhost:5050` in your normal Chrome for account **A** (stays signed
+     in). App errors show in the browser console (F12), not in the terminal.
+   - `flutter run -d chrome --web-port 5050`: opens its own Chrome window (fresh
+     profile, sign in each launch) and errors show in the terminal, so Claude can
+     watch them. On 2026-11-22 it once failed with "Failed to establish connection
+     with the application instance in Chrome"; if that repeats, close leftover
+     debug Chrome windows and retry, or use web-server mode.
 2. Open `http://localhost:5050` in an **Incognito** window for account **B**.
 3. A third account (for "stranger" checks) = log out in Incognito and sign up again.
 4. Desktop isn't supported: the `windows/`, `macos/` and `linux/` folders were removed
