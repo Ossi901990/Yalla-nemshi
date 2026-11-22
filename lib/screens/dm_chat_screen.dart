@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/dm_thread_service.dart';
+import '../widgets/user_avatar.dart';
 
 class DmChatScreenArgs {
   const DmChatScreenArgs({
@@ -40,17 +41,10 @@ class DmChatScreen extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
+            UserAvatar(
               radius: 16,
-              backgroundImage:
-                  args.friendPhotoUrl != null && args.friendPhotoUrl!.isNotEmpty
-                      ? NetworkImage(args.friendPhotoUrl!)
-                      : null,
-              child: (args.friendPhotoUrl == null || args.friendPhotoUrl!.isEmpty)
-                  ? Text(args.friendName.isNotEmpty
-                      ? args.friendName.substring(0, 1).toUpperCase()
-                      : '?')
-                  : null,
+              name: args.friendName,
+              photoUrl: args.friendPhotoUrl,
             ),
             const SizedBox(width: 8),
             Expanded(

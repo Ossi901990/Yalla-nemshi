@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/review.dart';
+import 'user_avatar.dart';
 
 /// Widget to display a single review
 class ReviewCard extends StatelessWidget {
@@ -28,14 +29,10 @@ class ReviewCard extends StatelessWidget {
             Row(
               children: [
                 // Avatar
-                CircleAvatar(
+                UserAvatar(
                   radius: 20,
-                  backgroundImage: review.userProfileUrl != null
-                      ? NetworkImage(review.userProfileUrl!)
-                      : null,
-                  child: review.userProfileUrl == null
-                      ? const Icon(Icons.person, size: 20)
-                      : null,
+                  name: review.userName,
+                  photoUrl: review.userProfileUrl,
                 ),
                 const SizedBox(width: 12),
                 // Name and date

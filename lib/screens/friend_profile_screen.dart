@@ -7,6 +7,7 @@ import '../services/dm_thread_service.dart';
 import '../services/friend_profile_service.dart';
 import '../services/friends_service.dart';
 import 'dm_chat_screen.dart';
+import '../widgets/user_avatar.dart';
 
 class FriendProfileScreenArgs {
   final String userId;
@@ -120,27 +121,16 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     final lastActiveText = profile.lastActiveAt != null
         ? 'Active ${DateFormat('MMM d, h:mm a').format(profile.lastActiveAt!)}'
         : 'Activity not available';
-    final initials = profile.displayName.trim().isNotEmpty
-        ? profile.displayName.trim()[0].toUpperCase()
-        : '?';
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            CircleAvatar(
+            UserAvatar(
               radius: 48,
-              backgroundColor: theme.colorScheme.primary.withAlpha(40),
-              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-              child: photoUrl == null
-                  ? Text(
-                      initials,
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    )
-                  : null,
+              name: profile.displayName,
+              photoUrl: photoUrl,
             ),
             const SizedBox(height: 16),
             Text(

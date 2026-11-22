@@ -1,9 +1,12 @@
 // lib/screens/edit_profile_screen.dart
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/user_profile.dart';
+import '../services/crash_service.dart';
+import '../services/firestore_user_service.dart';
 import '../services/profile_storage.dart';
 
 
@@ -108,6 +111,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
 
     await ProfileStorage.saveProfile(updatedProfile);
+
+    // Publish the change so other users (friends, walk participants) see it.
+    // Auth's displayName is what joins/chat read, and FirestoreSyncService
+    // copies it over the Firestore name on startup, so update both.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final name = updatedProfile.name;
+        if (name.isNotEmpty && name != user.displayName) {
+          await user.updateDisplayName(name);
+        }
+        await FirestoreUserService.updateUser(
+          uid: user.uid,
+          displayName: name.isNotEmpty ? name : null,
+          bio: updatedProfile.bio,
+          age: age > 0 ? age : null,
+          gender: _gender != 'Not set' ? _gender : null,
+        );
+      } catch (e, st) {
+        CrashService.recordError(e, st, reason: 'EditProfileScreen._save');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Saved on this device, but could not sync your profile.'),
+            ),
+          );
+        }
+      }
+    }
+
     if (!mounted) return;
     Navigator.of(context).pop();
   }

@@ -3551,7 +3551,14 @@ class _HeaderAvatar extends StatelessWidget {
       backgroundColor: isDark
           ? Colors.white.withAlpha((0.08 * 255).round())
           : Colors.white,
-      backgroundImage: img,
+      // foregroundImage so the icon shows through if the image fails to load.
+      foregroundImage: img,
+      onForegroundImageError: (_, _) {},
+      child: Icon(
+        Icons.person,
+        size: size * 0.55,
+        color: isDark ? Colors.white : Colors.black87,
+      ),
     );
   }
 }

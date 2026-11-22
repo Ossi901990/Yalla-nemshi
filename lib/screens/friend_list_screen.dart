@@ -11,6 +11,7 @@ import '../services/firestore_user_service.dart';
 import '../services/friends_service.dart';
 import '../utils/invite_utils.dart';
 import 'friend_profile_screen.dart';
+import '../widgets/user_avatar.dart';
 
 class FriendListScreen extends StatefulWidget {
   static const routeName = '/friends';
@@ -427,13 +428,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
       return '${diff.inMinutes}m ago';
     }
     return 'Just now';
-  }
-
-  String _initialFor(_FriendRequestItem request) {
-    final source = (request.displayName?.trim().isNotEmpty ?? false)
-        ? request.displayName!.trim()
-        : request.fromUserId;
-    return source.isNotEmpty ? source.substring(0, 1).toUpperCase() : '?';
   }
 
   String _initialForName(String value) {
@@ -958,7 +952,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
 
   Widget _buildAvatar(ThemeData theme, String? photoUrl, String displayName) {
     if (photoUrl != null && photoUrl.isNotEmpty) {
-      return CircleAvatar(backgroundImage: NetworkImage(photoUrl));
+      return UserAvatar(name: displayName, photoUrl: photoUrl);
     }
     final initial = _initialForName(displayName);
     return CircleAvatar(
@@ -1028,21 +1022,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
       child: Column(
         children: [
           ListTile(
-            leading: CircleAvatar(
-              backgroundColor: theme.colorScheme.primary.withAlpha(30),
-              backgroundImage:
-                  request.photoUrl != null && request.photoUrl!.isNotEmpty
-                  ? NetworkImage(request.photoUrl!)
-                  : null,
-              child: (request.photoUrl == null || request.photoUrl!.isEmpty)
-                  ? Text(
-                      _initialFor(request),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    )
-                  : null,
+            leading: UserAvatar(
+              name: request.displayName ?? '',
+              photoUrl: request.photoUrl,
             ),
             title: Text(request.displayName ?? request.fromUserId),
             subtitle: Column(

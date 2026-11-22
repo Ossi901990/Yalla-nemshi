@@ -14,6 +14,8 @@ import '../services/walk_control_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/gps_tracking_service.dart';
 import '../utils/invite_utils.dart';
+import '../widgets/participants_row.dart';
+import '../widgets/user_avatar.dart';
 
 class EventDetailsScreen extends StatefulWidget {
   final WalkEvent event;
@@ -553,24 +555,10 @@ class _InviteeListTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
+      leading: UserAvatar(
         radius: 22,
-        backgroundColor: theme.colorScheme.primary.withAlpha(30),
-        backgroundImage:
-            (effectivePhotoUrl != null && effectivePhotoUrl.isNotEmpty)
-            ? NetworkImage(effectivePhotoUrl)
-            : null,
-        child: (effectivePhotoUrl == null || effectivePhotoUrl.isEmpty)
-            ? Text(
-                effectiveDisplayName.isNotEmpty
-                    ? effectiveDisplayName.substring(0, 1).toUpperCase()
-                    : '?',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              )
-            : null,
+        name: effectiveDisplayName,
+        photoUrl: effectivePhotoUrl,
       ),
       title: Text(
         effectiveDisplayName,
@@ -1969,24 +1957,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             ),
                             child: Row(
                               children: [
-                                CircleAvatar(
+                                UserAvatar(
                                   radius: 24,
-                                  backgroundColor: theme.colorScheme.primary
-                                      .withAlpha((0.2 * 255).round()),
-                                  backgroundImage:
-                                      (event.hostPhotoUrl != null &&
-                                          event.hostPhotoUrl!.isNotEmpty)
-                                      ? NetworkImage(event.hostPhotoUrl!)
-                                      : null,
-                                  child:
-                                      (event.hostPhotoUrl == null ||
-                                          event.hostPhotoUrl!.isEmpty)
-                                      ? Icon(
-                                          Icons.person,
-                                          size: 28,
-                                          color: theme.colorScheme.primary,
-                                        )
-                                      : null,
+                                  name: event.hostName ?? '',
+                                  photoUrl: event.hostPhotoUrl,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -2030,130 +2004,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              // Overlapping avatars
-                              SizedBox(
-                                width: event.joinedUserPhotoUrls.isEmpty
-                                    ? 88
-                                    : (event.joinedUserPhotoUrls.length > 4
-                                          ? 120
-                                          : (event.joinedUserPhotoUrls.length *
-                                                    24.0 +
-                                                16)),
-                                height: 40,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    if (event.joinedUserPhotoUrls.isEmpty)
-                                    // Show 3 placeholder avatars when no one joined
-                                    ...[
-                                      Positioned(
-                                        left: 0,
-                                        child: CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: Colors.grey
-                                              .withAlpha((0.3 * 255).round()),
-                                          child: Icon(
-                                            Icons.person_outline,
-                                            size: 20,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 24,
-                                        child: CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: Colors.grey
-                                              .withAlpha((0.3 * 255).round()),
-                                          child: Icon(
-                                            Icons.person_outline,
-                                            size: 20,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 48,
-                                        child: CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: Colors.grey
-                                              .withAlpha((0.3 * 255).round()),
-                                          child: Icon(
-                                            Icons.person_outline,
-                                            size: 20,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ),
-                                    ] else
-                                      // Show actual participant avatars (max 4)
-                                      ...List.generate(
-                                        event.joinedUserPhotoUrls.length > 4
-                                            ? 4
-                                            : event.joinedUserPhotoUrls.length,
-                                        (index) {
-                                          final photoUrl =
-                                              event.joinedUserPhotoUrls[index];
-                                          return Positioned(
-                                            left: index * 24.0,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: isDark
-                                                      ? const Color(0xFF0C2430)
-                                                      : const Color(0xFFFBFEF8),
-                                                  width: 2,
-                                                ),
-                                              ),
-                                              child: CircleAvatar(
-                                                radius: 20,
-                                                backgroundColor: theme
-                                                    .colorScheme
-                                                    .primary
-                                                    .withAlpha(
-                                                      (0.2 * 255).round(),
-                                                    ),
-                                                backgroundImage:
-                                                    photoUrl.isNotEmpty
-                                                    ? NetworkImage(photoUrl)
-                                                    : null,
-                                                child: photoUrl.isEmpty
-                                                    ? Icon(
-                                                        Icons.person,
-                                                        size: 20,
-                                                        color: theme
-                                                            .colorScheme
-                                                            .primary,
-                                                      )
-                                                    : null,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                event.joinedCount > 0
-                                    ? (event.joinedCount > 4
-                                          ? '+${event.joinedCount - 4} others joining'
-                                          : event.joinedCount == 1
-                                          ? '1 person joining'
-                                          : '${event.joinedCount} people joining')
-                                    : '+0 others joining',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isDark
-                                      ? Colors.white70
-                                      : Colors.black87,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          ParticipantsRow(
+                            userIds: event.joinedUserUids,
+                            fallbackNames: event.joinedUserNames,
+                            isDark: isDark,
                           ),
 
                           const SizedBox(height: 16),

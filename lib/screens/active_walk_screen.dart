@@ -13,6 +13,7 @@ import '../services/walk_history_service.dart';
 import '../utils/error_handler.dart';
 import 'walk_summary_screen.dart';
 import 'walk_chat_screen.dart';
+import '../widgets/user_avatar.dart';
 
 class ActiveWalkScreen extends StatefulWidget {
   final String walkId;
@@ -1098,20 +1099,10 @@ class _ParticipantTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
+          UserAvatar(
             radius: 24,
-            backgroundColor: Colors.white.withAlpha(40),
-            backgroundImage: tile.photoUrl != null
-                ? NetworkImage(tile.photoUrl!)
-                : null,
-            child: tile.photoUrl == null
-                ? Text(
-                    tile.displayName.isNotEmpty
-                        ? tile.displayName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(color: Colors.white),
-                  )
-                : null,
+            name: tile.displayName,
+            photoUrl: tile.photoUrl,
           ),
           const SizedBox(width: 12),
           Expanded(
