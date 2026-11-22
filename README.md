@@ -62,5 +62,4 @@ Every rules change should come with a test in `rules-tests/test/`.
 ## Project status
 
 Current progress, the manual test checklist, and the backlog are in
-[`docs/HANDOFF.md`](docs/HANDOFF.md). Older design notes are in
-[`docs/archive/`](docs/archive/).
+[`docs/HANDOFF.md`](docs/HANDOFF.md).

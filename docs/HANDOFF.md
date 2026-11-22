@@ -122,6 +122,22 @@ bundled JDK 21 for that shell:
    `AndroidManifest.xml`; restrict by HTTP referrer / Android app signature).
 5. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
 
+### Product decisions on record
+
+- **Address search (Google Places autocomplete): postponed.** Costs about $7 per
+  1,000 lookups; walks use map pin picking + Geocoding (free tier) instead.
+- **Offline maps: not supported.** Google Maps for Flutter can't download map tiles
+  for offline use. If needed later, the cheap option is caching a static map image
+  of each walk (Static Maps API) to show when offline.
+
+## Docs
+
+Only these are kept up to date: this file, [`SECURITY_RULES.md`](SECURITY_RULES.md),
+[`GOOGLE_SIGNIN_MOBILE_SETUP.md`](GOOGLE_SIGNIN_MOBILE_SETUP.md) (needed when building
+for Android/iOS), and the root [`README.md`](../README.md). Older docs were removed on
+2026-11-22 because they were out of date; they're still in git history before that
+date if ever needed.
+
 ## Notifications (how they work now)
 
 On Spark there are no Cloud Functions, so **the user who causes an event writes the
@@ -225,7 +241,7 @@ Every rules change should come with a test in `rules-tests/test/`.
 ## What was done (earlier sessions)
 
 1. **Cleanup & CI:** removed ~45 MB of zips/backups, moved old docs into
-   `docs/archive/`, replaced 4 broken workflows with `.github/workflows/flutter_ci.yml`
+   `docs/archive/` (since deleted), replaced 4 broken workflows with `.github/workflows/flutter_ci.yml`
    (Flutter 3.50.0: analyze, tests, rules tests, web build), and fixed the 4 failing
    unit tests.
 2. **Security rules rewrite** (see `docs/SECURITY_RULES.md`): private walks hidden
