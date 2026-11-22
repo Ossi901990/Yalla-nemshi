@@ -14,7 +14,7 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
 |---|---|
-| Firestore rules (`firestore.rules`) | ⚠️ Notification rules added 2026-11-22, **not deployed yet** |
+| Firestore rules (`firestore.rules`) | ✅ Deployed 2026-11-22 (email + notification rules) |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
@@ -55,7 +55,7 @@ Most avatars now use `UserAvatar`, which swallows these.
 9. 🔁 **Edit Profile → change name.** Then join a walk / check the friend list from the
    other account: the new name should appear.
 10. 🔁 **Create walk:** both tabs (Point to point / Loop) switch correctly and save.
-11. 🆕 **In-app notifications** (bell / notifications screen), after the rules are deployed:
+11. 🆕 **In-app notifications** (bell / notifications screen):
     - B joins A's walk → A gets "New walker joined! 🎉". B leaves → "Walker left 👋".
     - B sends a walk chat message → A gets it (and vice versa).
     - A cancels the walk → B gets "Walk cancelled ❌".
