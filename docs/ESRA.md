@@ -20,7 +20,8 @@ We test in the web browser with two accounts (one normal window, one private win
 | Join a private walk with an invite code | ✅ Works |
 | Make a new invite code | ✅ Works |
 | Walk group chat | ✅ Works |
-| Reviews, friends, blocking, notifications, profile changes | ⏳ Not tested yet |
+| Review a walk after it ends; host's rating and profile update | ✅ Works (after a fix) |
+| Friends, blocking, notifications, profile changes | ⏳ Not tested yet |
 
 ## Problems we found and fixed
 
@@ -34,6 +35,10 @@ We test in the web browser with two accounts (one normal window, one private win
 - The **Create Walk** screen crashed because of a leftover tab ("Free walk") that had
   been removed.
 - **Editing your profile** (name, bio) only saved on your own phone, so nobody else saw it.
+- **The profile page never changed after a walk.** Walks you hosted or joined weren't
+  counted once they ended, your total km and badges never updated, the host's rating
+  didn't show, and the name said "Your name". Now each person's app records their
+  finished walks, and the profile shows the real numbers, name and photo.
 - The walk page didn't show **who joined**, only a count. Now it shows names and pictures.
 - **Friend profiles** were empty, because they depended on a paid feature. The app now
   builds them by itself.
@@ -70,7 +75,7 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
 
 1. **Make invite links work.** Hosts can share an invite link, but tapping it doesn't
    open anything yet. Typing the invite code by hand works fine.
-2. **Finish testing:** reviews, friends, blocking, notifications, profile changes.
+2. **Finish testing:** friends, blocking, notifications, profile changes.
 3. **Test GPS tracking on a real phone** (it's hard to test on a computer).
 4. When everything passes, **save the work into the main version** of the app.
 5. Later:

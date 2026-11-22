@@ -10,7 +10,7 @@ the web build with two accounts (see "How to test" below).
 
 ## Where we are
 
-Manual testing: **steps 1–5 passed; resume at step 6.** On 2026-11-22 a batch of
+Manual testing: **steps 1–6 passed; resume at step 7.** On 2026-11-22 a batch of
 fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
@@ -22,7 +22,7 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 | Rules tests | ✅ 73 passing |
 | In-app notifications (Option A) | ✅ Built, ⏳ not tested in the app |
 | Per-walker GPS routes | ✅ Built, ⏳ needs a real phone to test properly |
-| Manual test pass | ⏳ Steps 1–5 passed, 6–8 left |
+| Manual test pass | ⏳ Steps 1–6 passed, 7–8 + 🔁/🆕 items left |
 
 ## How to test (solo, web)
 
@@ -47,10 +47,10 @@ Most avatars now use `UserAvatar`, which swallows these.
 4. ✅ **Regenerate code (host).** Not 100% confirmed the *old* code was rejected
    (rules tests cover it).
 5. ✅ **Walk chat (text)** works both ways in real time.
-6. ⏭️ **Review a walk (B)** without a photo. It should save, and A's profile host
-   rating should update. If the review button only appears after a walk ends,
-   check that condition.
-7. ⬜ **Friend request A → B, accept on B.** Both should see each other as friends.
+6. ✅ **Review a walk (B)** after the walk ended: saved, and A's profile shows the host
+   rating, hosted/joined counts, total stats, past walk, name and photo (after the
+   fix below, `29a50ec`).
+7. ⏭️ **Friend request A → B, accept on B.** Both should see each other as friends.
    🔁 Open B's profile from A's friend list: name, stats and B's open walks should
    show (previously empty on Spark). No emails should appear anywhere.
 8. ⬜ **Block / report a user.** Should succeed without errors.
@@ -104,6 +104,14 @@ All committed on this branch:
 - **GPS routes rewritten** (`d8b5496`): see "GPS tracking" below.
 - **Paid-plan setting** (`lib/config/app_features.dart`): photo upload buttons hidden
   until Blaze.
+- **Profile stats + finished walks** (`29a50ec`, found in step 6): the profile counted
+  only walks on the home list (upcoming/active), so finished walks never counted and
+  the host-rating card stayed hidden; nothing marked walks completed on Spark; the
+  name came only from device storage. Now `WalkCompletionService` counts each finished
+  walk once on the user's own device (history + `walkStats` + badges), triggered when
+  the host ends a walk, when the walk summary opens, and as a catch-up when the
+  profile opens. The profile loads hosted/joined counts, total km and this week from
+  Firestore, and the name falls back to the account profile.
 - **Code cleanup:** removed 16 unused Dart files (old screens, widgets, providers,
   helpers), the desktop platform folders, one-time migration scripts, the
   friend-profile Cloud Functions, and unused config files (`.env.example`,
@@ -226,7 +234,13 @@ Do these together, in this order:
 4. Deploy: `firebase deploy --only functions,storage`. Storage enables photo uploads.
 5. **Turn on paid features in the app:** set `paidPlanFeatures = true` in
    `lib/config/app_features.dart`. That shows the photo buttons again (create walk,
-   walk chat, DMs, reviews). Test each upload, then ship a new app build.
+   walk chat, DMs, reviews) **and hands walk completion to the functions**
+   (`serverWalkCompletion`): the app stops counting finished walks itself, so the
+   CP-4 functions in `cp4_walk_completion.js` must be deployed in the same step.
+   Walks already counted by the app carry `statsCounted: true` and status
+   `completed` in `users/{uid}/walks`, so the functions (which look for
+   `actively_walking`) won't count them again. Test each upload, then ship a new
+   app build.
 6. **GPS (already prepared in `functions/`):** `cleanupOldGpsData` deletes routes of
    walks finished/cancelled 30+ days ago (both formats), and walk completion
    (`cp4_walk_completion.js`) credits each walker with **their own** route distance
