@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/dm_thread_service.dart';
 import '../widgets/user_avatar.dart';
+import '../config/app_features.dart';
 
 class DmChatScreenArgs {
   const DmChatScreenArgs({
@@ -265,16 +266,17 @@ class _DmMessageComposerState extends State<_DmMessageComposer> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           child: Row(
             children: [
-              IconButton(
-                onPressed: _uploadingAttachment ? null : _pickAndSendImage,
-                icon: _uploadingAttachment
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.photo_outlined),
-              ),
+              if (AppFeatures.photoUploads)
+                IconButton(
+                  onPressed: _uploadingAttachment ? null : _pickAndSendImage,
+                  icon: _uploadingAttachment
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.photo_outlined),
+                ),
               Expanded(
                 child: TextField(
                   controller: _controller,

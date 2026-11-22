@@ -16,6 +16,7 @@ import '../services/review_service.dart';
 import '../services/storage_service.dart';
 import '../services/walk_summary_service.dart';
 import '../services/route_store.dart';
+import '../config/app_features.dart';
 
 class WalkSummaryScreen extends StatefulWidget {
   const WalkSummaryScreen({
@@ -892,14 +893,16 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          _PhotoPickerRow(
-            retainedPhotoUrls: _retainedPhotoUrls,
-            drafts: _drafts,
-            onAddPhotos: _pickPhotos,
-            onRemoveDraft: _removeDraft,
-            onRemoveExisting: _removeExistingPhoto,
-          ),
-          const SizedBox(height: 24),
+          if (AppFeatures.photoUploads) ...[
+            _PhotoPickerRow(
+              retainedPhotoUrls: _retainedPhotoUrls,
+              drafts: _drafts,
+              onAddPhotos: _pickPhotos,
+              onRemoveDraft: _removeDraft,
+              onRemoveExisting: _removeExistingPhoto,
+            ),
+            const SizedBox(height: 24),
+          ],
           SizedBox(
             width: double.infinity,
             child: FilledButton(

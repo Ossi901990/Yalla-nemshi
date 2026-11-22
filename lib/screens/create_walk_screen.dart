@@ -22,6 +22,7 @@ import '../services/storage_service.dart';
 import '../utils/error_handler.dart';
 import '../utils/invite_utils.dart';
 import '../utils/search_utils.dart';
+import '../config/app_features.dart';
 
 // ===== Design tokens (match Home / Profile) =====
 const double kRadiusCard = 24;
@@ -2043,7 +2044,8 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                         ),
                                         const SizedBox(height: 24),
 
-                                        // ===== Photo Picker Section =====
+                                        // ===== Photo Picker Section (needs Storage / Blaze) =====
+                                        if (AppFeatures.photoUploads) ...[
                                         Container(
                                           decoration: BoxDecoration(
                                             color: isDark
@@ -2235,6 +2237,7 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 24),
+                                        ],
 
                                         // ===== Recurring Walk Section =====
                                         Container(

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:async';
 import '../services/notification_sender.dart';
+import '../config/app_features.dart';
 
 class WalkChatScreen extends StatelessWidget {
   final String walkId;
@@ -306,11 +307,12 @@ class _MessageComposerState extends State<_MessageComposer> {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.photo),
-                tooltip: 'Send Image',
-                onPressed: _sending ? null : pickAndSendImage,
-              ),
+              if (AppFeatures.photoUploads)
+                IconButton(
+                  icon: const Icon(Icons.photo),
+                  tooltip: 'Send Image',
+                  onPressed: _sending ? null : pickAndSendImage,
+                ),
               Expanded(
                 child: TextField(
                   controller: _controller,

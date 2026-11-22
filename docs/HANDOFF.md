@@ -2,8 +2,9 @@
 
 **Last updated:** 2026-11-22
 **Branch:** `claude/inspiring-goldberg-xlwagq` (not merged into `main` yet)
-**Firebase plan:** Spark (free). The owner does not want paid plans for now, so avoid
-anything that needs Cloud Functions or Storage.
+**Firebase plan:** Spark (free) for now. **The owner will pay for Blaze when the app is
+published.** Build everything so it works on Spark today, with paid features ready
+to switch on (the `AppFeatures` setting plus the "⭐ When upgrading" checklist below).
 **Testing setup:** the owner works alone, with no phone/emulator. Testing is done on
 the web build with two accounts (see "How to test" below).
 
@@ -14,14 +15,14 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 
 | Item | Status |
 |---|---|
-| Firestore rules (`firestore.rules`) | ✅ Deployed 2026-11-22 (email + notification rules) |
+| Firestore rules (`firestore.rules`) | ⚠️ Route rules added 2026-11-22, **not deployed yet** (email + notification rules are deployed) |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
-| Rules tests | ✅ 66 passing |
+| Rules tests | ✅ 73 passing |
 | In-app notifications (Option A) | ✅ Built, ⏳ not tested in the app |
+| Per-walker GPS routes | ✅ Built, ⏳ needs a real phone to test properly |
 | Manual test pass | ⏳ Steps 1–5 passed, 6–8 left |
-
 
 ## How to test (solo, web)
 
@@ -55,6 +56,7 @@ Most avatars now use `UserAvatar`, which swallows these.
 9. 🔁 **Edit Profile → change name.** Then join a walk / check the friend list from the
    other account: the new name should appear.
 10. 🔁 **Create walk:** both tabs (Point to point / Loop) switch correctly and save.
+    🆕 The "Photos (Optional)" section should be **hidden** (paid-plan feature).
 11. 🆕 **In-app notifications** (bell / notifications screen):
     - B joins A's walk → A gets "New walker joined! 🎉". B leaves → "Walker left 👋".
     - B sends a walk chat message → A gets it (and vice versa).
@@ -62,12 +64,17 @@ Most avatars now use `UserAvatar`, which swallows these.
     - A starts the walk (only works near its start time) → B gets "Walk starting ⏰".
     - DM between friends → the other person gets it.
     - If A blocks B, B's actions no longer notify A.
+12. 🆕 **No photo buttons** in walk chat, DMs, or the review form (paid-plan feature).
+13. 🆕 **GPS routes** (best on a real phone; Chrome can share location but you'd have to
+    walk with the laptop): start a walk near its time, confirm as B, walk a bit, end
+    it. Each person's summary map should show **their own** route; the host's distance
+    appears on the walk. In Firestore: `walks/{id}/routes/{uid}/chunks/*`.
 
 If a friend-profile walk list fails with `failed-precondition` / "requires an index",
 follow the link in the error to create it, then add it to `firestore.indexes.json`.
 
-Expected to fail on Spark (not bugs): photo uploads, **phone push** notifications,
-"walk ended" notifications, and walk auto-completion.
+Expected to fail on Spark (not bugs): **phone push** notifications, "walk ended"
+notifications, and walk auto-completion. Photo uploads are hidden, not broken.
 
 If something fails with `permission-denied`, compare the write against
 `firestore.rules` and add a test in `rules-tests/test/firestore.test.js`.
@@ -88,14 +95,14 @@ All committed on this branch:
 - **Friend profiles without functions** (`d52c652`): `FriendProfileService` builds
   profiles from `users` + stats + host rating, and walk lists from the friend's open
   walks. Also used by the friend activity feed and friend analytics.
-- **Cleanup** (`867f5e1`): 59 lines of mojibake fixed (some user-facing), unused
-  broken leaderboard queries removed.
+- **Cleanup** (`867f5e1`): mojibake fixed (some user-facing), unused broken
+  leaderboard queries removed.
 - **README** rewritten (`50639bd`). `rules-tests` `npm test` now works on Windows.
-
-- **In-app notifications without functions** (Option A, chosen by the owner):
-  `lib/services/notification_sender.dart` writes into the recipient's
-  `users/{uid}/notifications`; rule `isValidPeerNotification` in `firestore.rules`
-  only accepts real events (see "Notifications" below).
+- **In-app notifications without functions** (`536563a`, Option A chosen by the owner):
+  see "Notifications" below.
+- **GPS routes rewritten** (`d8b5496`): see "GPS tracking" below.
+- **Paid-plan setting** (`lib/config/app_features.dart`): photo upload buttons hidden
+  until Blaze.
 
 Running the rules tests locally: system Java is 1.8, so point at Android Studio's
 bundled JDK 21 for that shell:
@@ -103,20 +110,17 @@ bundled JDK 21 for that shell:
 
 ## Backlog (rough priority)
 
-1. **GPS tracking — needs an owner decision.** Only the host may write
-   `walks/{id}/tracking/point_N`. If participants should track too, move to
-   per-user paths (`tracking/{uid}/points/{n}`) and update rules + reader code.
-2. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
+1. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
    are empty on Spark.
-3. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
-4. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
+2. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
+3. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
    `create_walk_screen.dart`, `event_details_screen.dart`, `profile_screen.dart`.
    Move the Firestore logic into repositories/providers (Riverpod is already a
    dependency).
-5. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
+4. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
    hardcoded in `main.dart`, `geocoding_service.dart`, `map_pick_screen.dart`, and
    `AndroidManifest.xml`; restrict by HTTP referrer / Android app signature).
-6. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
+5. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
 
 ## Notifications (how they work now)
 
@@ -138,10 +142,35 @@ sender must really be linked to the recipient by that walk/DM. Blocked users can
 notify the person who blocked them. Recipients can read/mark read/delete; nobody
 else can read or edit them.
 
+The owner decided **no pop-up banners** for chat while the app is open; in-app list +
+bell is enough until push arrives with Blaze.
+
 Not covered yet: "walk ended" (needs walk completion, i.e. functions), friend
 request/accepted notifications (types exist; could be added the same way), and
 walk time/place changes (there's no edit-walk screen; the rule already accepts
 `walkRescheduled` / `walkLocationChanged` from the host).
+
+## GPS tracking (how it works now)
+
+Every walker records **their own** route once they confirm (host when starting).
+`GPSTrackingService` buffers points on the phone (one every 5 m) and `RouteStore`
+saves them in chunks of 30, each written once:
+
+```
+walks/{walkId}/routes/{uid}                    summary: distanceKm, averageSpeed, maxSpeed,
+                                               durationMinutes, pointsCount
+walks/{walkId}/routes/{uid}/chunks/c{millis}   up to 30 points (id = first point's time)
+```
+
+About 35 writes per walker for a 5 km walk (the old code used ~17,000 and broke past
+~2.5 km). The host's route also fills the walk doc (`actualDistanceKm`,
+`routePointsCount`, ...). The summary map and the "latest route" preview show the
+viewer's own route, else the host's, else the old `walks/{id}/tracking/point_N` data.
+Rules: each walk member writes only their own route; members read all routes.
+
+Fixed along the way: tracking used to stop after any 10 s without movement
+(`timeLimit`), participants' routes were silently rejected, and an app restart
+mid-walk overwrote earlier points.
 
 ## ⭐ When upgrading to the paid Blaze plan
 
@@ -163,11 +192,17 @@ Do these together, in this order:
    profiles itself now. Remove their exports.
 3. The app already saves FCM tokens to `users/{uid}/fcmTokens` (`NotificationService`).
    Test push on a real Android device (web push also needs a VAPID key).
-4. Deploy: `firebase deploy --only functions,storage`. Storage enables photo uploads
-   (walk, chat, review and profile photos).
-5. Optional: walk auto-completion + "walk ended" (`functions/cp4_walk_completion.js`),
+4. Deploy: `firebase deploy --only functions,storage`. Storage enables photo uploads.
+5. **Turn on paid features in the app:** set `paidPlanFeatures = true` in
+   `lib/config/app_features.dart`. That shows the photo buttons again (create walk,
+   walk chat, DMs, reviews). Test each upload, then ship a new app build.
+6. **GPS (already prepared in `functions/`):** `cleanupOldGpsData` deletes routes of
+   walks finished/cancelled 30+ days ago (both formats), and walk completion
+   (`cp4_walk_completion.js`) credits each walker with **their own** route distance
+   (falls back to the walk's distance). Deploying the functions turns both on.
+7. Optional: walk auto-completion + "walk ended" (`functions/cp4_walk_completion.js`),
    badge leaderboards, the monthly email digest (needs SendGrid).
-6. Keep `NotificationSender` and its rules. In-app notifications keep working the same
+8. Keep `NotificationSender` and its rules. In-app notifications keep working the same
    way, and push gets added on top.
 
 ## Deploying
@@ -182,7 +217,7 @@ is the old `walks (shareCode, cancelled)` index, which is unused and safe to del
 ```bash
 flutter analyze          # expect no issues
 flutter test             # 22 tests
-cd rules-tests && npm ci && npm test   # 57 rules tests; needs Node 22+ and Java 21+
+cd rules-tests && npm ci && npm test   # 73 rules tests; needs Node 22+ and Java 21+
 ```
 
 Every rules change should come with a test in `rules-tests/test/`.
