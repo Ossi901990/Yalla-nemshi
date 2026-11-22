@@ -52,7 +52,9 @@ We test in the web browser with two accounts (one normal window, one private win
 **Cleaning**
 - Photo upload buttons are **hidden for now**, because they need the paid plan. They
   come back with one switch when we pay.
-- Removed old, out-of-date documents and unused files.
+- Removed old, out-of-date documents and **unused code** (old screens and files nothing
+  used anymore, about 2,000 lines, plus desktop app folders we don't need). We checked
+  carefully: the app is exactly the same as before, just tidier.
 
 ## Not working yet, on purpose (needs the paid plan)
 
@@ -66,10 +68,12 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
 
 ## What's next
 
-1. **Finish testing:** reviews, friends, blocking, notifications, profile changes.
-2. **Test GPS tracking on a real phone** (it's hard to test on a computer).
-3. When everything passes, **save the work into the main version** of the app.
-4. Later:
+1. **Make invite links work.** Hosts can share an invite link, but tapping it doesn't
+   open anything yet. Typing the invite code by hand works fine.
+2. **Finish testing:** reviews, friends, blocking, notifications, profile changes.
+3. **Test GPS tracking on a real phone** (it's hard to test on a computer).
+4. When everything passes, **save the work into the main version** of the app.
+5. Later:
    - make the biggest screens' code simpler, so it's easier to change;
    - protect the Google Maps keys in the Google Cloud settings.
 

@@ -30,7 +30,8 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
    (fresh profile each launch, so sign in again after every restart).
 2. Open `http://localhost:5050` in an **Incognito** window for account **B**.
 3. A third account (for "stranger" checks) = log out in Incognito and sign up again.
-4. Windows desktop is not an option: `main.dart` only has a hardcoded config for web.
+4. Desktop isn't supported: the `windows/`, `macos/` and `linux/` folders were removed
+   (regenerate with `flutter create --platforms=windows .` if ever needed).
 
 Harmless log noise: `NetworkImageLoadException ... statusCode: 429` from
 `lh3.googleusercontent.com` (Google profile photos are rate-limited on localhost).
@@ -103,6 +104,12 @@ All committed on this branch:
 - **GPS routes rewritten** (`d8b5496`): see "GPS tracking" below.
 - **Paid-plan setting** (`lib/config/app_features.dart`): photo upload buttons hidden
   until Blaze.
+- **Code cleanup:** removed 16 unused Dart files (old screens, widgets, providers,
+  helpers), the desktop platform folders, one-time migration scripts, the
+  friend-profile Cloud Functions, and unused config files (`.env.example`,
+  `codecov.yml`, `copilot-instructions.md`). Verified: analyze, unit, rules tests and
+  web build pass, and the compiled web app is **byte-identical** to before the cleanup
+  (so no screen changed).
 
 Running the rules tests locally: system Java is 1.8, so point at Android Studio's
 bundled JDK 21 for that shell:
@@ -110,17 +117,24 @@ bundled JDK 21 for that shell:
 
 ## Backlog (rough priority)
 
-1. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
+1. **Invite links don't open anything yet.** Hosts can share
+   `https://yalla-nemshi-app.firebaseapp.com/invite?walkId=…&code=…`, but nothing
+   handles it: there's no web hosting at that URL and no app-link setup.
+   `lib/services/deep_link_service.dart` already has the handler (redeem code, open
+   the walk); it just isn't called. Needs: read `Uri.base` on web startup, add the
+   `app_links` package + Android/iOS link config for phones, and deploy web hosting
+   (free on Spark). Entering the code by hand works today.
+2. **Badge leaderboards** (`leaderboards/*`) are written only by functions, so they
    are empty on Spark.
-2. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
-3. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
+3. **Walk completion** lives in `functions/cp4_walk_completion.js` (Blaze).
+4. **Refactor huge screens:** `home_screen.dart` (~3.5k lines),
    `create_walk_screen.dart`, `event_details_screen.dart`, `profile_screen.dart`.
    Move the Firestore logic into repositories/providers (Riverpod is already a
    dependency).
-4. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
+5. **Restrict API keys** in Google Cloud Console (owner task: Maps/Geocoding keys are
    hardcoded in `main.dart`, `geocoding_service.dart`, `map_pick_screen.dart`, and
    `AndroidManifest.xml`; restrict by HTTP referrer / Android app signature).
-5. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
+6. **Minor:** ~250 `debugPrint` calls could be trimmed or routed through a logger.
 
 ### Product decisions on record
 
@@ -205,9 +219,8 @@ Do these together, in this order:
      Remove the in-app doc for `walkStarting`, which the app sends.
    - The old chat function used type `"chatMessage"`, which the app doesn't
      recognise (it showed as "system maintenance"). The app uses `walkChatMessage`.
-2. **Don't deploy the friend-profile functions** (`onFriendProfileUserSync`,
-   `onFriendProfileStatsSync`, `onFriendWalkSummarySync`): the app builds friend
-   profiles itself now. Remove their exports.
+2. ~~Remove the friend-profile functions~~ (done 2026-11-22: the app builds friend
+   profiles itself).
 3. The app already saves FCM tokens to `users/{uid}/fcmTokens` (`NotificationService`).
    Test push on a real Android device (web push also needs a VAPID key).
 4. Deploy: `firebase deploy --only functions,storage`. Storage enables photo uploads.
