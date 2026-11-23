@@ -142,13 +142,47 @@ bundled JDK 21 for that shell:
 
 ## Next up
 
-**Design overhaul** (owner's plan). Do together, since they touch the same files:
-1. Agree on the new look first (screenshots/mock-ups of the main screens).
-2. Theme first (`lib/design_tokens.dart` + app theme: colours, fonts, spacing,
-   components) so the look changes everywhere at once.
-3. Split the huge screens while restyling them (backlog #4).
-4. Move from `package:flutter/material.dart` to `package:material_ui` (the ~40
-   analyzer infos).
+**Design overhaul: start with the HOME SCREEN** (agreed 2026-11-23, to do next session).
+
+- **Branch:** `design/home-redesign` (created from `main` at `0fc2c2c`; no commits yet
+  besides these docs). Work there; merge into `main` when the owner approves.
+- **Mock-ups (owner's):** [`design/home-dark.png`](design/home-dark.png) and
+  [`design/home-light.png`](design/home-light.png). Only the home screen is designed;
+  the owner asked Claude to design the other screens later in the same style.
+- **Look:** near-black background (dark) / off-white (light); accents lime `~#C8F03C`,
+  coral `~#FF8A5C`, periwinkle `~#8FB3FF` (sample exact values from the PNGs); big
+  rounded cards (~24 px radius); chunky bold grotesque headlines ("Yalla, Osaid!");
+  pill buttons; avatar stacks; floating bottom bar with a raised lime + in the middle
+  (the bar stays dark in light mode too).
+- **Decisions:** support **both** light and dark mode with the same accents (swap only
+  backgrounds, surfaces and text). In light mode **lime is a background only, never a
+  text colour** (e.g. "See all" is black).
+- **Home order (from the mock-up):** date pill + greeting + bell (badge) + avatar →
+  next-walk hero card → "N walks near you" map card → "Coming up" rows (day/time
+  chip, name, place · N going, + join) → "This week" day strip (dots on days with
+  walks) → Streak and second stat card → bottom bar (home, map, +, calendar,
+  profile).
+- **Things to handle (raised in review):** bottom padding so the floating bar doesn't
+  cover content; give the chip colours a meaning (e.g. lime = today/soon, blue = this
+  week, coral = weekend) or keep them consistent; friendly empty/zero states ("Join
+  your first walk to start a streak"); hero-card variants: not joined ("I'm in"),
+  joined ("You're in ✓"), hosting ("Start walk" when in the start window), nothing
+  upcoming (create/browse); brighten grey secondary text on dark cards for contrast;
+  use the offset coral shadow only on the hero card.
+- **Data:** "New people met this week" isn't tracked; plan is to show "people you
+  walked with" (from finished walks' participants) or drop the card. Map card needs
+  walk locations (already in walk docs).
+- **Font:** propose bundling **Bricolage Grotesque** (free, Google Fonts) for headlines,
+  keep Inter for body text. Needs adding the .ttf files to `assets/fonts/` + pubspec.
+- **Plan (~2–3 h, with owner check-ins):**
+  1. Design system: tokens + `ThemeData` for light/dark in `lib/design_tokens.dart`
+     (or a new `lib/theme/`), plus shared widgets (cards, pill buttons, time chips,
+     avatar stack, bottom bar). ~30–45 min.
+  2. Rebuild the home screen with real data, splitting `home_screen.dart` (~3.5k
+     lines) into smaller widgets. ~1.5–2 h.
+  3. Check both modes, edge cases, and that join/notifications still work. ~30 min.
+- Later: apply the system to every other screen; move from
+  `package:flutter/material.dart` to `package:material_ui` (the ~40 analyzer infos).
 
 ## Backlog (rough priority)
 
