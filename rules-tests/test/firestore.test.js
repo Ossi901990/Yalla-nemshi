@@ -392,6 +392,35 @@ describe("blocks, reports, DMs", () => {
     await assertFails(deleteDoc(doc(f, "friend_requests/bob/received/r3")));
   });
 
+  it("a blocked user can't send a friend request to the blocker", async () => {
+    await seed((f) => setDoc(doc(f, "blocks/alice/blocked/bob"), { targetUserId: BOB }));
+    const req = { fromUserId: BOB, toUserId: ALICE, status: "pending" };
+    await assertFails(setDoc(doc(db(BOB), "friend_requests/alice/received/r9"), req));
+    // others still can
+    await assertSucceeds(setDoc(doc(db(MALLORY), "friend_requests/alice/received/r8"),
+      { ...req, fromUserId: MALLORY }));
+  });
+
+  it("no friendship while either side has blocked the other", async () => {
+    await seed(async (f) => {
+      await setDoc(doc(f, "friend_requests/alice/received/req1"),
+        { fromUserId: BOB, toUserId: ALICE, status: "pending" });
+      await setDoc(doc(f, "blocks/bob/blocked/alice"), { targetUserId: ALICE });
+    });
+    await assertFails(setDoc(doc(db(ALICE), "friends/alice/friendsList/bob"),
+      { friendId: BOB, since: serverTimestamp(), requestId: "req1" }));
+  });
+
+  it("a blocked user can't DM the blocker; the blocker can still read", async () => {
+    await seed(async (f) => {
+      await setDoc(doc(f, "dm_threads/alice_bob"), { participants: [ALICE, BOB] });
+      await setDoc(doc(f, "blocks/alice/blocked/bob"), { targetUserId: BOB });
+    });
+    const msg = (from) => ({ senderId: from, type: "text", text: "hi", createdAt: serverTimestamp() });
+    await assertFails(setDoc(doc(db(BOB), "dm_threads/alice_bob/messages/m1"), msg(BOB)));
+    await assertSucceeds(setDoc(doc(db(ALICE), "dm_threads/alice_bob/messages/m2"), msg(ALICE)));
+  });
+
   it("users can block and report (was always denied before)", async () => {
     await assertSucceeds(setDoc(doc(db(ALICE), "blocks/alice/blocked/mallory"),
       { targetUserId: MALLORY, blockedAt: serverTimestamp() }));

@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'notification_sender.dart';
+import '../models/app_exception.dart';
 
 class DmThreadService {
   DmThreadService._();
@@ -71,10 +72,9 @@ class DmThreadService {
   static Stream<QuerySnapshot<Map<String, dynamic>>> watchMessages(
     String threadId,
   ) {
-    return _threadRef(threadId)
-        .collection('messages')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+    return _threadRef(
+      threadId,
+    ).collection('messages').orderBy('createdAt', descending: true).snapshots();
   }
 
   static Future<void> sendMessage({
@@ -94,41 +94,53 @@ class DmThreadService {
     final messageRef = threadRef.collection('messages').doc();
     var notificationPreview = trimmed;
 
-    await _firestore.runTransaction((tx) async {
-      final normalizedType = (type.isNotEmpty ? type : (mediaUrl != null ? 'image' : 'text')).toLowerCase();
-      final payload = <String, dynamic>{
-        'senderId': senderUid,
-        'type': normalizedType,
-        'createdAt': FieldValue.serverTimestamp(),
-      };
+    try {
+      await _firestore.runTransaction((tx) async {
+        final normalizedType =
+            (type.isNotEmpty ? type : (mediaUrl != null ? 'image' : 'text'))
+                .toLowerCase();
+        final payload = <String, dynamic>{
+          'senderId': senderUid,
+          'type': normalizedType,
+          'createdAt': FieldValue.serverTimestamp(),
+        };
 
-      if (trimmed.isNotEmpty) {
-        payload['text'] = trimmed;
-      }
-      if (mediaUrl != null) {
-        payload['mediaUrl'] = mediaUrl;
-        if (mediaPath != null) payload['mediaPath'] = mediaPath;
-        if (mediaType != null) payload['mediaType'] = mediaType;
-        if (mediaSizeBytes != null) payload['mediaSizeBytes'] = mediaSizeBytes;
-      }
+        if (trimmed.isNotEmpty) {
+          payload['text'] = trimmed;
+        }
+        if (mediaUrl != null) {
+          payload['mediaUrl'] = mediaUrl;
+          if (mediaPath != null) payload['mediaPath'] = mediaPath;
+          if (mediaType != null) payload['mediaType'] = mediaType;
+          if (mediaSizeBytes != null) {
+            payload['mediaSizeBytes'] = mediaSizeBytes;
+          }
+        }
 
-      tx.set(messageRef, payload);
+        tx.set(messageRef, payload);
 
         final preview = trimmed.isNotEmpty
-          ? trimmed
-          : (normalizedType == 'image' ? '📷 Photo' : 'Attachment');
-      notificationPreview = preview;
+            ? trimmed
+            : (normalizedType == 'image' ? '📷 Photo' : 'Attachment');
+        notificationPreview = preview;
 
-      tx.set(
-        threadRef,
-        {
+        tx.set(threadRef, {
           'lastMessage': preview,
           'lastMessageAt': FieldValue.serverTimestamp(),
           'lastSenderId': senderUid,
-        },
-        SetOptions(merge: true),
-      );
-    });
+        }, SetOptions(merge: true));
+      });
+    } on FirebaseException catch (e) {
+      // The rules refuse messages to someone who blocked the sender.
+      if (e.code == 'permission-denied') {
+        throw AppError(
+          message: "You can't send messages to this user.",
+          code: 'dm-refused',
+          originalError: e,
+        );
+      }
+      rethrow;
+    }
 
     unawaited(
       NotificationSender.dmMessage(

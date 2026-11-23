@@ -76,6 +76,18 @@ service cloud.firestore {
         );
     }
 
+    // True if `owner` has blocked `uid`.
+    function hasBlocked(owner, uid) {
+      return exists(/databases/$(database)/documents/blocks/$(owner)/blocked/$(uid));
+    }
+
+    // True if the other participant of a DM thread has blocked the caller.
+    function dmPeerBlockedMe(threadId) {
+      let p = get(/databases/$(database)/documents/dm_threads/$(threadId)).data.participants;
+      let other = p[0] == request.auth.uid ? p[1] : p[0];
+      return hasBlocked(other, request.auth.uid);
+    }
+
     function dmThreadHasParticipant(threadId) {
       return signedIn()
         && _threadDataContainsUser(
@@ -507,7 +519,8 @@ service cloud.firestore {
           && request.resource.data.fromUserId == request.auth.uid
           && request.resource.data.toUserId == userId
           && userId != request.auth.uid
-          && request.resource.data.status == 'pending';
+          && request.resource.data.status == 'pending'
+          && !hasBlocked(userId, request.auth.uid);
       }
 
       match /sent/{requestId} {
@@ -539,7 +552,9 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['friendId', 'since', 'requestId'])
           && request.resource.data.friendId == friendId
           && request.resource.data.requestId is string
-          && isAcceptedRequestBetween(userId, friendId, request.resource.data.requestId);
+          && isAcceptedRequestBetween(userId, friendId, request.resource.data.requestId)
+          && !hasBlocked(userId, friendId)
+          && !hasBlocked(friendId, userId);
 
         allow delete: if isAuth(userId) || isAuth(friendId);
 
@@ -618,6 +633,7 @@ service cloud.firestore {
         allow get, list: if dmThreadHasParticipant(threadId);
 
         allow create: if dmThreadHasParticipant(threadId)
+          && !dmPeerBlockedMe(threadId)
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.type is string
           && request.resource.data.createdAt != null

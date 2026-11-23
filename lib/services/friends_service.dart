@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/app_exception.dart';
 
 class FriendsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -58,12 +59,25 @@ class FriendsService {
       'status': 'pending',
       'sentAt': FieldValue.serverTimestamp(),
     };
-    await _firestore
-        .collection('friend_requests')
-        .doc(recipientUid)
-        .collection('received')
-        .doc(requestId)
-        .set(requestData);
+    try {
+      await _firestore
+          .collection('friend_requests')
+          .doc(recipientUid)
+          .collection('received')
+          .doc(requestId)
+          .set(requestData);
+    } on FirebaseException catch (e) {
+      // The rules refuse requests to someone who blocked the sender. Don't
+      // reveal the block; just say requests aren't accepted.
+      if (e.code == 'permission-denied') {
+        throw AppError(
+          message: "This user isn't accepting friend requests.",
+          code: 'friend-request-refused',
+          originalError: e,
+        );
+      }
+      rethrow;
+    }
     await _firestore
         .collection('friend_requests')
         .doc(senderUid)

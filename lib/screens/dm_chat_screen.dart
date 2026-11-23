@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/dm_thread_service.dart';
 import '../widgets/user_avatar.dart';
 import '../config/app_features.dart';
+import '../models/app_exception.dart';
 
 class DmChatScreenArgs {
   const DmChatScreenArgs({
@@ -180,7 +181,11 @@ class _DmMessageComposerState extends State<_DmMessageComposer> {
       debugPrint('Failed to send DM text: $error\n$stackTrace');
       if (mounted) {
         messenger.showSnackBar(
-          SnackBar(content: Text('Message failed: $error')),
+          SnackBar(
+            content: Text(
+              error is AppException ? error.message : 'Message failed: $error',
+            ),
+          ),
         );
       }
     } finally {
