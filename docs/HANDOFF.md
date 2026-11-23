@@ -18,7 +18,7 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 | Firestore rules (`firestore.rules`) | ✅ Deployed 2026-11-22 (email, notification and route rules) |
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
-| `flutter analyze` / `flutter test` | ✅ No issues / 22 passing |
+| `flutter analyze` / `flutter test` | ✅ No warnings or errors (40 infos, see below) / 22 passing |
 | Rules tests | ✅ 73 passing |
 | In-app notifications (Option A) | ✅ Built, ⏳ not tested in the app |
 | Per-walker GPS routes | ✅ Built, ⏳ needs a real phone to test properly |
@@ -266,8 +266,13 @@ is the old `walks (shareCode, cancelled)` index, which is unused and safe to del
 
 ## How to verify changes
 
+Use Flutter **3.50.x** (local machine upgraded to 3.50.1 on 2026-11-23; CI uses 3.50.0).
+An older Flutter rewrites `pubspec.lock` on every run. Since 3.47, Flutter flags
+`package:flutter/material.dart` as deprecated (replacement: `package:material_ui`);
+those ~40 infos are expected, and CI runs `flutter analyze --no-fatal-infos`.
+
 ```bash
-flutter analyze          # expect no issues
+flutter analyze          # expect 0 warnings/errors; ~40 infos are the material.dart deprecation
 flutter test             # 22 tests
 cd rules-tests && npm ci && npm test   # 73 rules tests; needs Node 22+ and Java 21+
 ```
