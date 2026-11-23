@@ -1,7 +1,8 @@
 # Handoff: continue work here
 
 **Last updated:** 2026-11-23
-**Branch:** `claude/inspiring-goldberg-xlwagq` (not merged into `main` yet)
+**Branch:** everything up to `607294a` is **merged into `main`** (2026-11-23, after CI passed).
+Start new work (e.g. the design overhaul) on a **new branch** from `main`.
 **Firebase plan:** Spark (free) for now. **The owner will pay for Blaze when the app is
 published.** Build everything so it works on Spark today, with paid features ready
 to switch on (the `AppFeatures` setting plus the "⭐ When upgrading" checklist below).
@@ -11,7 +12,7 @@ the web build with two accounts (see "How to test" below).
 ## Where we are
 
 Manual testing: **steps 1–8 passed** (2026-11-23). Still to re-check in the app: the 🔁 and
-🆕 items (9–13). The branch is being merged into `main` now; the design overhaul comes
+🆕 items (9–13). All of it is merged into `main`; the design overhaul comes
 next (see "Next up").
 
 | Item | Status |
@@ -319,6 +320,7 @@ Every rules change should come with a test in `rules-tests/test/`.
    (`lib/services/host_rating_service.dart`). No function involved.
 5. **Create-walk tab crash** (2026-11-16): tab count 3 → 2.
 
-## When it's ready
+## Merging
 
-Once the checklist passes, open a PR from this branch into `main` and merge it.
+The testing branch was merged into `main` on 2026-11-23 (fast-forward, CI green).
+For future work: branch from `main`, wait for CI to pass, then merge.

@@ -81,7 +81,7 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
 
 1. **Make invite links work.** Hosts can share an invite link, but tapping it doesn't
    open anything yet. Typing the invite code by hand works fine.
-2. **Save all this work into the main version** of the app (being done now).
+2. ✅ **All this work is now saved into the main version** of the app (23 November).
 3. **New design for the app:** a fresh look first, then restyle each screen.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
