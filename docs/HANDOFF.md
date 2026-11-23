@@ -19,7 +19,7 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No warnings or errors (40 infos, see below) / 22 passing |
-| Rules tests | ✅ 73 passing |
+| Rules tests | ✅ 76 passing |
 | In-app notifications (Option A) | ✅ Built, ⏳ not tested in the app |
 | Per-walker GPS routes | ✅ Built, ⏳ needs a real phone to test properly |
 | Manual test pass | ⏳ Steps 1–6 passed, 7–8 + 🔁/🆕 items left |
@@ -274,7 +274,7 @@ those ~40 infos are expected, and CI runs `flutter analyze --no-fatal-infos`.
 ```bash
 flutter analyze          # expect 0 warnings/errors; ~40 infos are the material.dart deprecation
 flutter test             # 22 tests
-cd rules-tests && npm ci && npm test   # 73 rules tests; needs Node 22+ and Java 21+
+cd rules-tests && npm ci && npm test   # 76 rules tests; needs Node 22+ and Java 21+
 ```
 
 Every rules change should come with a test in `rules-tests/test/`.
