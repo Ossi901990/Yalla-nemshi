@@ -1,6 +1,6 @@
 # Handoff: continue work here
 
-**Last updated:** 2026-11-22
+**Last updated:** 2026-11-23
 **Branch:** `claude/inspiring-goldberg-xlwagq` (not merged into `main` yet)
 **Firebase plan:** Spark (free) for now. **The owner will pay for Blaze when the app is
 published.** Build everything so it works on Spark today, with paid features ready
@@ -10,8 +10,9 @@ the web build with two accounts (see "How to test" below).
 
 ## Where we are
 
-Manual testing: **steps 1–6 passed; resume at step 7.** On 2026-11-22 a batch of
-fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
+Manual testing: **steps 1–8 passed** (2026-11-23). Still to re-check in the app: the 🔁 and
+🆕 items (9–13). The branch is being merged into `main` now; the design overhaul comes
+next (see "Next up").
 
 | Item | Status |
 |---|---|
@@ -19,10 +20,10 @@ fixes landed (see "Fixed on 2026-11-22"), so re-check the items marked 🔁 too.
 | Firestore indexes (`firestore.indexes.json`) | ✅ Deployed, all **Enabled** |
 | Storage rules / Cloud Functions | ❌ Not deployed; need Blaze |
 | `flutter analyze` / `flutter test` | ✅ No warnings or errors (40 infos, see below) / 22 passing |
-| Rules tests | ✅ 76 passing |
+| Rules tests | ✅ 80 passing |
 | In-app notifications (Option A) | ✅ Built, ⏳ not tested in the app |
 | Per-walker GPS routes | ✅ Built, ⏳ needs a real phone to test properly |
-| Manual test pass | ⏳ Steps 1–6 passed, 7–8 + 🔁/🆕 items left |
+| Manual test pass | ✅ Steps 1–8 passed; ⏳ re-check items 9–13 |
 
 ## How to test (solo, web)
 
@@ -57,10 +58,11 @@ Most avatars now use `UserAvatar`, which swallows these.
 6. ✅ **Review a walk (B)** after the walk ended: saved, and A's profile shows the host
    rating, hosted/joined counts, total stats, past walk, name and photo (after the
    fix below, `29a50ec`).
-7. ⏭️ **Friend request A → B, accept on B.** Both should see each other as friends.
-   🔁 Open B's profile from A's friend list: name, stats and B's open walks should
-   show (previously empty on Spark). No emails should appear anywhere.
-8. ⬜ **Block / report a user.** Should succeed without errors.
+7. ✅ **Friend request A → B, accept on B.** Both see each other as friends; B's
+   profile from A's friend list shows name, stats and open walks, no email.
+8. ✅ **Block / report a user.** Report works. Block needed two fixes (below): it used to
+   error out, and afterwards the blocked user could still send a friend request.
+   Now a blocked user can't send friend requests or DMs to the blocker.
 9. 🔁 **Edit Profile → change name.** Then join a walk / check the friend list from the
    other account: the new name should appear.
 10. 🔁 **Create walk:** both tabs (Point to point / Loop) switch correctly and save.
@@ -111,6 +113,13 @@ All committed on this branch:
 - **GPS routes rewritten** (`d8b5496`): see "GPS tracking" below.
 - **Paid-plan setting** (`lib/config/app_features.dart`): photo upload buttons hidden
   until Blaze.
+- **Blocking** (`7a21d69`, `0643199`, found in step 8): blocking failed while deleting
+  the request A had sent to B (only B could read B's inbox); the sender can now see and
+  withdraw their own request. Blocks also weren't enforced: rules now refuse friend
+  requests to, friendships with, and DMs to someone who blocked you. The app shows
+  neutral messages ("This user isn't accepting friend requests", "You can't send
+  messages to this user"). Not covered: a blocked user can still join/chat in the
+  blocker's public walks (backlog).
 - **Profile stats + finished walks** (`29a50ec`, found in step 6): the profile counted
   only walks on the home list (upcoming/active), so finished walks never counted and
   the host-rating card stayed hidden; nothing marked walks completed on Spark; the
@@ -130,8 +139,21 @@ Running the rules tests locally: system Java is 1.8, so point at Android Studio'
 bundled JDK 21 for that shell:
 `$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"; $env:Path="$env:JAVA_HOME\bin;$env:Path"`
 
+## Next up
+
+**Design overhaul** (owner's plan). Do together, since they touch the same files:
+1. Agree on the new look first (screenshots/mock-ups of the main screens).
+2. Theme first (`lib/design_tokens.dart` + app theme: colours, fonts, spacing,
+   components) so the look changes everywhere at once.
+3. Split the huge screens while restyling them (backlog #4).
+4. Move from `package:flutter/material.dart` to `package:material_ui` (the ~40
+   analyzer infos).
+
 ## Backlog (rough priority)
 
+0. **Blocks don't cover walks yet.** A blocked user can still join the blocker's public
+   walks and chat there. Decide the behaviour (hide the blocker's walks from them? refuse
+   the join in rules?) before building.
 1. **Invite links don't open anything yet.** Hosts can share
    `https://yalla-nemshi-app.firebaseapp.com/invite?walkId=…&code=…`, but nothing
    handles it: there's no web hosting at that URL and no app-link setup.
@@ -274,7 +296,7 @@ those ~40 infos are expected, and CI runs `flutter analyze --no-fatal-infos`.
 ```bash
 flutter analyze          # expect 0 warnings/errors; ~40 infos are the material.dart deprecation
 flutter test             # 22 tests
-cd rules-tests && npm ci && npm test   # 76 rules tests; needs Node 22+ and Java 21+
+cd rules-tests && npm ci && npm test   # 80 rules tests; needs Node 22+ and Java 21+
 ```
 
 Every rules change should come with a test in `rules-tests/test/`.

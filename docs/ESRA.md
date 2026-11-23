@@ -1,6 +1,6 @@
 # Yalla Nemshi: where we are (short version)
 
-*Last updated: 22 November 2026. This is the simple version of `HANDOFF.md`.*
+*Last updated: 23 November 2026. This is the simple version of `HANDOFF.md`.*
 
 ## In one paragraph
 
@@ -21,7 +21,9 @@ We test in the web browser with two accounts (one normal window, one private win
 | Make a new invite code | ✅ Works |
 | Walk group chat | ✅ Works |
 | Review a walk after it ends; host's rating and profile update | ✅ Works (after a fix) |
-| Friends, blocking, notifications, profile changes | ⏳ Not tested yet |
+| Friend requests and friend profiles | ✅ Works |
+| Reporting and blocking someone | ✅ Works (after two fixes) |
+| Notifications, profile changes, hidden photo buttons | ⏳ Quick re-check still to do |
 
 ## Problems we found and fixed
 
@@ -30,6 +32,10 @@ We test in the web browser with two accounts (one normal window, one private win
 - Notifications are protected: people can only send them for real events (for
   example, you can't fake a "walk cancelled" message), and blocked people can't send
   you any.
+- **Blocking didn't really block.** It showed an error, and the blocked person could
+  still send you a new friend request. Now a blocked person can't send you friend
+  requests or messages. They just see a polite "not accepting" message and aren't
+  told they're blocked. (They can still join your public walks. That's on the list.)
 
 **Things that were broken**
 - The **Create Walk** screen crashed because of a leftover tab ("Free walk") that had
@@ -75,10 +81,13 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
 
 1. **Make invite links work.** Hosts can share an invite link, but tapping it doesn't
    open anything yet. Typing the invite code by hand works fine.
-2. **Finish testing:** friends, blocking, notifications, profile changes.
-3. **Test GPS tracking on a real phone** (it's hard to test on a computer).
-4. When everything passes, **save the work into the main version** of the app.
-5. Later:
+2. **Save all this work into the main version** of the app (being done now).
+3. **New design for the app:** a fresh look first, then restyle each screen.
+4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
+5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
+6. Decide what blocking should do for **walks** (for example, hide your walks from
+   people you blocked).
+7. Later:
    - make the biggest screens' code simpler, so it's easier to change;
    - protect the Google Maps keys in the Google Cloud settings.
 
