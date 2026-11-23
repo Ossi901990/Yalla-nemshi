@@ -370,6 +370,28 @@ describe("friends", () => {
 
 // ---------------------------------------------------------------------------
 describe("blocks, reports, DMs", () => {
+  it("blocking cleans up friend requests in both directions", async () => {
+    await seed(async (f) => {
+      await setDoc(doc(f, "friend_requests/bob/received/r1"),
+        { fromUserId: ALICE, toUserId: BOB, status: "pending" });
+      await setDoc(doc(f, "friend_requests/alice/received/r2"),
+        { fromUserId: BOB, toUserId: ALICE, status: "pending" });
+      await setDoc(doc(f, "friend_requests/bob/received/r3"),
+        { fromUserId: MALLORY, toUserId: BOB, status: "pending" });
+    });
+    const f = db(ALICE);
+    // Alice (blocking Bob) can find and withdraw the request she sent Bob...
+    const mine = await assertSucceeds(getDocs(query(
+      collection(f, "friend_requests/bob/received"), where("fromUserId", "==", ALICE))));
+    for (const d of mine.docs) await assertSucceeds(deleteDoc(d.ref));
+    // ...and delete Bob's request in her own inbox.
+    await assertSucceeds(deleteDoc(doc(f, "friend_requests/alice/received/r2")));
+    // She can't see or delete anyone else's requests to Bob.
+    await assertFails(getDocs(collection(f, "friend_requests/bob/received")));
+    await assertFails(getDoc(doc(f, "friend_requests/bob/received/r3")));
+    await assertFails(deleteDoc(doc(f, "friend_requests/bob/received/r3")));
+  });
+
   it("users can block and report (was always denied before)", async () => {
     await assertSucceeds(setDoc(doc(db(ALICE), "blocks/alice/blocked/mallory"),
       { targetUserId: MALLORY, blockedAt: serverTimestamp() }));

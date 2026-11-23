@@ -499,7 +499,10 @@ service cloud.firestore {
       allow get, list: if isAuth(userId);
 
       match /received/{requestId} {
-        allow read, delete: if isAuth(userId);
+        // The recipient manages their inbox; the sender may see and withdraw
+        // their own request (e.g. when blocking the recipient).
+        allow read, delete: if isAuth(userId)
+          || (signedIn() && resource.data.fromUserId == request.auth.uid);
         allow create: if signedIn()
           && request.resource.data.fromUserId == request.auth.uid
           && request.resource.data.toUserId == userId
