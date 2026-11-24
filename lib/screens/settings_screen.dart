@@ -9,6 +9,7 @@ import '../services/firestore_user_service.dart';
 import 'safety_tips_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_screen.dart';
+import '../theme/theme_controller.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -409,6 +410,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: ListView(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                             children: [
+                              // ===== Appearance =====
+                              Text(
+                                'Appearance',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ValueListenableBuilder<ThemeMode>(
+                                valueListenable: ThemeController.instance.mode,
+                                builder: (context, mode, _) =>
+                                    SegmentedButton<ThemeMode>(
+                                      segments: const [
+                                        ButtonSegment(
+                                          value: ThemeMode.light,
+                                          label: Text('Light'),
+                                          icon: Icon(Icons.light_mode_outlined),
+                                        ),
+                                        ButtonSegment(
+                                          value: ThemeMode.dark,
+                                          label: Text('Dark'),
+                                          icon: Icon(Icons.dark_mode_outlined),
+                                        ),
+                                        ButtonSegment(
+                                          value: ThemeMode.system,
+                                          label: Text('System'),
+                                          icon: Icon(
+                                            Icons.settings_suggest_outlined,
+                                          ),
+                                        ),
+                                      ],
+                                      selected: {mode},
+                                      showSelectedIcon: false,
+                                      onSelectionChanged: (s) =>
+                                          ThemeController.instance.set(s.first),
+                                    ),
+                              ),
+                              const SizedBox(height: 20),
+
                               // ===== Notifications =====
                               Text(
                                 'Notifications',

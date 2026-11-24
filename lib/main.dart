@@ -28,6 +28,8 @@ import 'screens/badge_leaderboard_screen.dart';
 import 'screens/per_badge_leaderboard_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_controller.dart';
 
 /// Background notification handler (must be top-level function)
 /// This handles notifications when the app is terminated or in background
@@ -63,6 +65,9 @@ Future<void> main() async {
 
   // 🔹 Enable Firestore persistence and connectivity tracking (non-web)
   await OfflineService.instance.init();
+
+  // 🔹 Appearance (Light / Dark / System), saved on the device
+  await ThemeController.instance.load();
 
   // 🔹 Initialize Firebase Crashlytics (not supported on web)
   if (!kIsWeb) {
@@ -154,50 +159,58 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Yalla Nemshi',
-      debugShowCheckedModeBanner: false,
-      theme: _lightTheme,
-      navigatorKey: NotificationService.navigatorKey,
-      home: const AuthStateRouter(),
-      routes: {
-        LoginScreen.routeName: (context) => const LoginScreen(),
-        ForgotPasswordScreen.routeName: (context) =>
-            const ForgotPasswordScreen(),
-        ReviewWalkScreen.routeName: (context) {
-          final args =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>?;
-          return ReviewWalkScreen(
-            walk: args?['walk'],
-            userId: args?['userId'],
-            userName: args?['userName'],
-          );
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.instance.mode,
+      builder: (context, themeMode, _) => MaterialApp(
+        title: 'Yalla Nemshi',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeMode,
+        navigatorKey: NotificationService.navigatorKey,
+        home: const AuthStateRouter(),
+        routes: {
+          LoginScreen.routeName: (context) => const LoginScreen(),
+          ForgotPasswordScreen.routeName: (context) =>
+              const ForgotPasswordScreen(),
+          ReviewWalkScreen.routeName: (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>?;
+            return ReviewWalkScreen(
+              walk: args?['walk'],
+              userId: args?['userId'],
+              userName: args?['userName'],
+            );
+          },
+          PrivacyPolicyScreen.routeName: (context) =>
+              const PrivacyPolicyScreen(),
+          TermsScreen.routeName: (context) => const TermsScreen(),
+          AnalyticsScreen.routeName: (context) => const AnalyticsScreen(),
+          SignupScreen.routeName: (context) => const SignupScreen(),
+          '/home': (context) => const HomeScreen(),
+          '/friends': (context) => FriendListScreen(),
+          FriendSearchScreen.routeName: (context) => const FriendSearchScreen(),
+          FriendProfileScreen.routeName: (context) =>
+              const FriendProfileScreen(),
+          WalkSearchScreen.routeName: (context) => const WalkSearchScreen(),
+          DmChatScreen.routeName: (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments as DmChatScreenArgs;
+            return DmChatScreen(args: args);
+          },
+          BadgeLeaderboardScreen.routeName: (context) =>
+              const BadgeLeaderboardScreen(),
+          PerBadgeLeaderboardScreen.routeName: (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return PerBadgeLeaderboardScreen(badgeData: args);
+          },
+          NotificationsScreen.routeName: (context) =>
+              const NotificationsScreen(),
         },
-        PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
-        TermsScreen.routeName: (context) => const TermsScreen(),
-        AnalyticsScreen.routeName: (context) => const AnalyticsScreen(),
-        SignupScreen.routeName: (context) => const SignupScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/friends': (context) => FriendListScreen(),
-        FriendSearchScreen.routeName: (context) => const FriendSearchScreen(),
-        FriendProfileScreen.routeName: (context) => const FriendProfileScreen(),
-        WalkSearchScreen.routeName: (context) => const WalkSearchScreen(),
-        DmChatScreen.routeName: (context) {
-          final args =
-              ModalRoute.of(context)!.settings.arguments as DmChatScreenArgs;
-          return DmChatScreen(args: args);
-        },
-        BadgeLeaderboardScreen.routeName: (context) =>
-            const BadgeLeaderboardScreen(),
-        PerBadgeLeaderboardScreen.routeName: (context) {
-          final args =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>;
-          return PerBadgeLeaderboardScreen(badgeData: args);
-        },
-        NotificationsScreen.routeName: (context) => const NotificationsScreen(),
-      },
+      ),
     );
   }
 }
@@ -234,133 +247,3 @@ class AuthStateRouter extends ConsumerWidget {
     );
   }
 }
-
-/// LIGHT THEME  🌤️
-final ThemeData _lightTheme = ThemeData(
-  useMaterial3: true,
-  brightness: Brightness.light,
-  fontFamily: 'Poppins',
-  colorScheme: const ColorScheme.light(
-    primary: Color(0xFF1ABFC4),
-    secondary: Color(0xFF1A2332),
-    surface: Color(0xFFFBFEF8),
-    onSurface: Colors.black87,
-    onPrimary: Colors.white,
-    onSecondary: Colors.white,
-  ),
-  scaffoldBackgroundColor: const Color(0xFFF7F9F2),
-  cardColor: const Color(0xFFFBFEF8),
-  // ✅ Professional typography system - Poppins for headlines, Inter for body
-  textTheme: const TextTheme(
-    // === DISPLAY STYLES (Large headlines) ===
-    displayLarge: TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: 32,
-      fontWeight: FontWeight.bold, // 700
-      letterSpacing: -0.5,
-      height: 1.2,
-    ),
-    displayMedium: TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: 28,
-      fontWeight: FontWeight.bold, // 700
-      letterSpacing: -0.3,
-      height: 1.25,
-    ),
-    displaySmall: TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: 24,
-      fontWeight: FontWeight.bold, // 700
-      letterSpacing: 0,
-      height: 1.3,
-    ),
-    // === HEADLINE STYLES (Subheadings) ===
-    headlineLarge: TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: 22,
-      fontWeight: FontWeight.w600, // SemiBold
-      letterSpacing: 0,
-      height: 1.3,
-    ),
-    headlineMedium: TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: 20,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0,
-      height: 1.4,
-    ),
-    headlineSmall: TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: 18,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0,
-      height: 1.4,
-    ),
-    // === TITLE STYLES (Section titles) ===
-    titleLarge: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 16,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.15,
-      height: 1.5,
-    ),
-    titleMedium: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 14,
-      fontWeight: FontWeight.w500, // Medium
-      letterSpacing: 0.1,
-      height: 1.5,
-    ),
-    titleSmall: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.1,
-      height: 1.5,
-    ),
-    // === BODY STYLES (Main text) ===
-    bodyLarge: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 16,
-      fontWeight: FontWeight.normal, // 400
-      letterSpacing: 0.15,
-      height: 1.5,
-    ),
-    bodyMedium: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 14,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0.25,
-      height: 1.5,
-    ),
-    bodySmall: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 12,
-      fontWeight: FontWeight.normal,
-      letterSpacing: 0.4,
-      height: 1.5,
-    ),
-    // === LABEL STYLES (Tags, badges) ===
-    labelLarge: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.1,
-      height: 1.43,
-    ),
-    labelMedium: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.5,
-      height: 1.33,
-    ),
-    labelSmall: TextStyle(
-      fontFamily: 'Inter',
-      fontSize: 11,
-      fontWeight: FontWeight.w500,
-      letterSpacing: 0.5,
-      height: 1.45,
-    ),
-  ),
-);

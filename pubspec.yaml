@@ -64,6 +64,12 @@ flutter:
           weight: 600
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
+    # Bricolage Grotesque - display headlines (2026 redesign). Variable font:
+    # pick the weight with FontVariation('wght', 400-800). Licence: OFL
+    # (assets/fonts/BricolageGrotesque-OFL.txt).
+    - family: Bricolage
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-Variable.ttf
     # Inter - Body and UI text
     - family: Inter
       fonts:
