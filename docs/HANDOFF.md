@@ -189,9 +189,23 @@ bundled JDK 21 for that shell:
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
-- **Next screens** (same style, Claude designs them): create walk, walks/map tab,
+- **Next screens** (same style, Claude designs them): walks/map tab,
   events/calendar, profile, chat. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
+
+### Create walk redesigned (2026-11-24, branch `design/create-walk`, not merged yet)
+
+- Restyle, not a rewrite: `create_walk_screen.dart` keeps all form logic. New frame
+  (back button, "New walk" headline, section headings Where / Who & pace / When /
+  Details), sticky Create button (`_buildSubmitBar`), form controls themed in
+  `_formTheme` (fields, chips, switch, segmented button). Old teal colours gone.
+- **Bug fixed:** no double-tap guard on Create (could create the walk twice); now
+  `_isSubmitting` + spinner.
+- Dropdowns use `isExpanded` (overflowed with large text); Recurring header wraps.
+- Tests: `test/create_walk_test.dart` (point / loop / repeating × 7 phones × 3 text
+  sizes × 2 modes = 126 layouts + label check). 750 tests total.
+- Not restyled yet: date/time picker dialogs (still the old dark-blue colours in
+  dark mode), the map picker screen, and the invite-code card styling.
 
 ### Walk details redesigned and merged into `main` (2026-11-24)
 
