@@ -3,7 +3,6 @@
 // Home tab of the 2026 redesign (docs/design/home-dark.png, home-light.png).
 // Pure UI: all data and actions come from HomeScreen, which keeps the state
 // and the Firestore logic.
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -63,6 +62,7 @@ class HomeTabActions {
 class HomeTab extends StatelessWidget {
   const HomeTab({
     super.key,
+    required this.currentUid,
     required this.userName,
     required this.photoUrl,
     required this.unreadCount,
@@ -78,6 +78,8 @@ class HomeTab extends StatelessWidget {
     this.banners = const [],
   });
 
+  /// Signed-in user's id (null when signed out).
+  final String? currentUid;
   final String userName;
   final String? photoUrl;
   final int unreadCount;
@@ -135,6 +137,7 @@ class HomeTab extends StatelessWidget {
               const SizedBox(height: AppSpace.xl),
               if (heroWalk != null && heroMode != null)
                 _HeroCard(
+                  currentUid: currentUid,
                   walk: heroWalk!,
                   mode: heroMode!,
                   canStart: canStartHosted,
@@ -168,7 +171,7 @@ class HomeTab extends StatelessWidget {
               const SizedBox(height: AppSpace.lg),
               _StatCards(
                 streakDays: streakDays,
-                walkingWith: _peopleThisWeek(open, now),
+                walkingWith: _peopleThisWeek(open, now, currentUid),
               ),
               const SizedBox(height: AppSpace.lg),
               _WeeklyGoal(km: weeklyKm, goalKm: weeklyGoalKm),
@@ -180,8 +183,7 @@ class HomeTab extends StatelessWidget {
   }
 
   /// Distinct people (other than me) in my walks this week.
-  static int _peopleThisWeek(List<WalkEvent> walks, DateTime now) {
-    final me = FirebaseAuth.instance.currentUser?.uid;
+  static int _peopleThisWeek(List<WalkEvent> walks, DateTime now, String? me) {
     final start = DateTime(
       now.year,
       now.month,
@@ -215,12 +217,14 @@ String _whenLabel(DateTime t) {
   return '${DateFormat('EEE d MMM').format(t)} · $time';
 }
 
+/// "Starts in 40 min" / "Starts in 3 h" within a day; empty otherwise (the
+/// date label already says "Tomorrow" etc.).
 String _startsIn(DateTime t) {
   final d = t.difference(DateTime.now());
   if (d.isNegative) return 'Starting now';
   if (d.inMinutes < 60) return 'Starts in ${d.inMinutes} min';
   if (d.inHours < 24) return 'Starts in ${d.inHours} h';
-  return 'In ${d.inDays} day${d.inDays == 1 ? '' : 's'}';
+  return '';
 }
 
 String _details(WalkEvent w) {
@@ -280,27 +284,10 @@ class _Header extends StatelessWidget {
     final p = AppPalette.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final first = userName.trim().split(RegExp(r'\s+')).first;
-    final date = DateFormat('EEE · d MMM').format(DateTime.now()).toUpperCase();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final buttons = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PillLabel(text: date),
-              const SizedBox(height: AppSpace.md),
-              Text(
-                'Yalla,\n${first.isEmpty ? 'walker' : first}!',
-                style: AppText.display(52, color: p.text, height: 0.98),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpace.sm),
         RoundIconButton(
           icon: Icons.search_rounded,
           onTap: actions.onSearch,
@@ -327,23 +314,81 @@ class _Header extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppPalette.lime, width: 3),
               ),
-              child: Theme(
-                // Initials on the soft lime circle of the mock-up.
-                data: Theme.of(context).copyWith(
-                  colorScheme: Theme.of(context).colorScheme.copyWith(
-                    primary: isDark ? AppPalette.lime : AppPalette.ink,
-                  ),
-                ),
-                child: UserAvatar(
-                  name: userName,
-                  photoUrl: photoUrl,
-                  radius: 21,
-                ),
+              child: _InitialsAvatar(
+                name: userName,
+                photoUrl: photoUrl,
+                background: p.limeSoft,
+                foreground: isDark ? AppPalette.lime : AppPalette.ink,
               ),
             ),
           ),
         ),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 52 on a normal phone, smaller on narrow screens.
+        final size = (constraints.maxWidth * 0.15).clamp(36.0, 52.0);
+        // Shorter date on narrow phones so the pill isn't cut off.
+        final date = DateFormat(
+          constraints.maxWidth < 330 ? 'd MMM' : 'EEE · d MMM',
+        ).format(DateTime.now()).toUpperCase();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: PillLabel(text: date),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                buttons,
+              ],
+            ),
+            const SizedBox(height: AppSpace.md),
+            Text(
+              'Yalla,\n${first.isEmpty ? 'walker' : first}!',
+              style: AppText.display(size, color: p.text, height: 0.98),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Initials (or photo) on a soft lime circle, as in the mock-up.
+class _InitialsAvatar extends StatelessWidget {
+  const _InitialsAvatar({
+    required this.name,
+    required this.photoUrl,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String name;
+  final String? photoUrl;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
+    return CircleAvatar(
+      radius: 21,
+      backgroundColor: background,
+      foregroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
+      onForegroundImageError: hasPhoto ? (_, _) {} : null,
+      child: Text(
+        UserAvatar.initialsFor(name),
+        style: AppText.body(16, color: foreground, weight: FontWeight.w800),
+      ),
     );
   }
 }
@@ -352,6 +397,7 @@ class _Header extends StatelessWidget {
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
+    required this.currentUid,
     required this.walk,
     required this.mode,
     required this.canStart,
@@ -359,6 +405,7 @@ class _HeroCard extends StatelessWidget {
     required this.actions,
   });
 
+  final String? currentUid;
   final WalkEvent walk;
   final HomeHeroMode mode;
   final bool canStart;
@@ -367,7 +414,7 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = currentUid;
     final needsConfirm =
         mode == HomeHeroMode.joinedActive &&
         (uid == null || walk.participantStates[uid] != 'confirmed');
@@ -409,9 +456,13 @@ class _HeroCard extends StatelessWidget {
 
     final people = _people(walk);
     final extra = (walk.joinedCount - people.take(3).length).clamp(0, 999);
-    final subtitle = mode == HomeHeroMode.hostUpcoming
-        ? '${_startsIn(walk.dateTime)} · ${_details(walk)}'
-        : _details(walk);
+    final countdown = mode == HomeHeroMode.hostUpcoming
+        ? _startsIn(walk.dateTime)
+        : '';
+    final subtitle = [
+      if (countdown.isNotEmpty) countdown,
+      if (_details(walk).isNotEmpty) _details(walk),
+    ].join(' · ');
 
     return AppCard(
       color: AppPalette.lime,
@@ -733,6 +784,7 @@ class _ComingUpRow extends StatelessWidget {
         background: AppPalette.lime,
         foreground: AppPalette.ink,
         tooltip: "You're in",
+        size: 48,
       );
     } else {
       trailing = RoundIconButton(
@@ -742,6 +794,7 @@ class _ComingUpRow extends StatelessWidget {
         background: isDark ? p.surfaceMuted : AppPalette.ink,
         foreground: AppPalette.lime,
         tooltip: 'Join',
+        size: 48,
       );
     }
 
@@ -754,8 +807,9 @@ class _ComingUpRow extends StatelessWidget {
             day: DateFormat('EEE').format(walk.dateTime).toUpperCase(),
             time: DateFormat('HH:mm').format(walk.dateTime),
             color: _chipColor(walk.dateTime),
+            size: 64,
           ),
-          const SizedBox(width: AppSpace.lg),
+          const SizedBox(width: AppSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,7 +817,7 @@ class _ComingUpRow extends StatelessWidget {
                 Text(
                   walk.title.isEmpty ? 'Untitled walk' : walk.title,
                   style: AppText.body(
-                    17,
+                    16,
                     color: p.text,
                     weight: FontWeight.w800,
                   ),

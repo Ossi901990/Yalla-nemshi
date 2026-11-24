@@ -251,13 +251,17 @@ class PillLabel extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          Text(
-            text,
-            style: AppText.body(
-              13,
-              color: foreground,
-              weight: FontWeight.w800,
-            ).copyWith(letterSpacing: 0.6),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body(
+                13,
+                color: foreground,
+                weight: FontWeight.w800,
+              ).copyWith(letterSpacing: 0.6),
+            ),
           ),
         ],
       ),

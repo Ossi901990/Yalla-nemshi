@@ -1732,6 +1732,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final (heroWalk, heroMode) = _homeHero();
     final authUser = FirebaseAuth.instance.currentUser;
     return HomeTab(
+      currentUid: authUser?.uid,
       userName: _userName,
       photoUrl: authUser?.photoURL,
       unreadCount: _unreadNotifCount,

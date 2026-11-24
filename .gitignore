@@ -57,3 +57,7 @@ secrets/
 # Stray archives / backups
 *.zip
 *.bak
+
+# Screenshots from test/home_tab_test.dart --update-goldens (review only)
+test/goldens/
+test/failures/
