@@ -41,6 +41,8 @@ We test in the web browser with two accounts (one normal window, one private win
 - The **Create Walk** screen crashed because of a leftover tab ("Free walk") that had
   been removed.
 - **Editing your profile** (name, bio) only saved on your own phone, so nobody else saw it.
+- **Starring a walk (☆ "interested") was never saved.** It disappeared every time the
+  app restarted. Now it's saved to your account and stays.
 - **The profile page never changed after a walk.** Walks you hosted or joined weren't
   counted once they ended, your total km and badges never updated, the host's rating
   didn't show, and the name said "Your name". Now each person's app records their
