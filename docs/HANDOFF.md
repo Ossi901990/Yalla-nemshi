@@ -193,7 +193,7 @@ bundled JDK 21 for that shell:
   events/calendar, profile, chat. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
 
-### Create walk redesigned (2026-11-24, branch `design/create-walk`, not merged yet)
+### Create walk redesigned and merged into `main` (2026-11-24)
 
 - Restyle, not a rewrite: `create_walk_screen.dart` keeps all form logic. New frame
   (back button, "New walk" headline, section headings Where / Who & pace / When /
