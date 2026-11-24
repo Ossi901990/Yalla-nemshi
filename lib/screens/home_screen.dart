@@ -1,16 +1,10 @@
-﻿// lib/screens/home_screen.dart
+// lib/screens/home_screen.dart
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io' show Platform, File;
 
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:pedometer/pedometer.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:intl/intl.dart';
 
 import '../models/walk_event.dart';
 import '../services/notification_service.dart';
@@ -21,12 +15,8 @@ import '../services/offline_service.dart';
 import '../services/walk_history_service.dart';
 import '../services/walk_control_service.dart';
 import '../services/gps_tracking_service.dart';
-import '../services/tag_recommendation_service.dart';
 import '../services/user_stats_service.dart';
 import '../utils/error_handler.dart';
-import '../services/profile_storage.dart';
-import '../models/user_profile.dart';
-import '../widgets/app_bottom_nav_bar.dart';
 
 import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
@@ -38,12 +28,14 @@ import 'active_walk_screen.dart';
 import '../services/notification_storage.dart';
 import '../screens/notifications_screen.dart';
 import '../providers/auth_provider.dart';
-import 'dart:math' as math;
 import 'package:flutter/services.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/notification_sender.dart';
+import 'home/home_tab.dart';
+import '../theme/app_palette.dart';
+import '../widgets/ui/floating_nav_bar.dart';
 
 // ===== Dark Theme (Neo/Night Forest) palette =====
 const kDarkBg = Color(0xFF071B26); // primary background
@@ -122,8 +114,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _walksPollingTimer?.cancel();
         return;
       }
-        final userCity = await AppPreferences.getUserCity();
-        final userCityNormalized =
+      final userCity = await AppPreferences.getUserCity();
+      final userCityNormalized =
           await AppPreferences.getUserCityNormalized() ??
           (userCity != null ? AppPreferences.normalizeCity(userCity) : null);
       if (!mounted) return;
@@ -139,9 +131,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       if ((userCityNormalized != null && userCityNormalized.isNotEmpty) ||
           (userCity != null && userCity.isNotEmpty)) {
-        debugPrint(
-          'Polling walks by city (including cityless): $userCity',
-        );
+        debugPrint('Polling walks by city (including cityless): $userCity');
         Filter? cityFilter;
         if (userCityNormalized != null && userCityNormalized.isNotEmpty) {
           cityFilter = Filter('cityNormalized', isEqualTo: userCityNormalized);
@@ -191,9 +181,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             .collection('walks')
             .where('cancelled', isEqualTo: false);
 
-        ownHostQuery = ownBase.where('hostUid', isEqualTo: currentUid).limit(
-          _walksPerPage,
-        );
+        ownHostQuery = ownBase
+            .where('hostUid', isEqualTo: currentUid)
+            .limit(_walksPerPage);
         ownJoinedQuery = ownBase
             .where('joinedUserUids', arrayContains: currentUid)
             .limit(_walksPerPage);
@@ -251,7 +241,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       OfflineService.instance.cacheWalks(merged);
 
-      final fromCache = upcomingSnap.metadata.isFromCache &&
+      final fromCache =
+          upcomingSnap.metadata.isFromCache &&
           activeSnap.metadata.isFromCache &&
           (ownHostSnap?.metadata.isFromCache ?? true) &&
           (ownJoinedSnap?.metadata.isFromCache ?? true);
@@ -287,8 +278,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     try {
-        final userCity = await AppPreferences.getUserCity();
-        final userCityNormalized =
+      final userCity = await AppPreferences.getUserCity();
+      final userCityNormalized =
           await AppPreferences.getUserCityNormalized() ??
           (userCity != null ? AppPreferences.normalizeCity(userCity) : null);
       final nowTimestamp = Timestamp.fromDate(DateTime.now());
@@ -363,18 +354,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
 
       final currentUid = FirebaseAuth.instance.currentUser?.uid;
-      final List<WalkEvent> newWalks =
-          _parseWalkDocs(combinedDocs, currentUid);
+      final List<WalkEvent> newWalks = _parseWalkDocs(combinedDocs, currentUid);
       final existingIds = _events.map((e) => e.firestoreId).toSet();
-      final List<WalkEvent> uniqueWalks =
-          newWalks.where((w) => !existingIds.contains(w.firestoreId)).toList();
+      final List<WalkEvent> uniqueWalks = newWalks
+          .where((w) => !existingIds.contains(w.firestoreId))
+          .toList();
 
       _logHomeFeedSummary(
         source: 'load_more',
         totalDocs: combinedDocs.length,
         parsedCount: newWalks.length,
         keptCount: uniqueWalks.length,
-        fromCache: upcomingSnap.metadata.isFromCache && activeSnap.metadata.isFromCache,
+        fromCache:
+            upcomingSnap.metadata.isFromCache &&
+            activeSnap.metadata.isFromCache,
       );
 
       setState(() {
@@ -597,8 +590,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
-  List<WalkEvent> _recommendations =
-      []; // For future UI recommendations section
   bool _isOffline = false;
   int _pendingActions = 0;
 
@@ -613,20 +604,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Loaded from saved profile (falls back to "Walker")
   String _userName = 'Walker';
-  UserProfile? _profile;
-
-  DateTime _selectedDay = DateTime.now();
-  DateTime _focusedDay = DateTime.now();
-
-  bool _hasUpcomingWalkOnDay(DateTime day) {
-    final now = DateTime.now();
-
-    return _events.any((e) {
-      if (e.cancelled) return false;
-      if (!e.dateTime.isAfter(now)) return false; // exclude past walks
-      return isSameDay(e.dateTime, day);
-    });
-  }
 
   // --- Step counter (Android, session-based for now) ---
   StreamSubscription<QuerySnapshot>? _walksSub;
@@ -634,24 +611,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   int _unreadNotifCount = 0;
 
-  StreamSubscription<StepCount>? _stepSubscription;
-  int _sessionSteps = 0;
-  int? _baselineSteps;
   Timer? _hostedCountdownTimer;
   WalkEvent? _nextHostedWalk;
-  Duration _hostedCountdownRemaining = Duration.zero;
   bool _isStartingHostedWalk = false;
   Timer? _participantCountdownTimer;
   WalkEvent? _nextParticipantWalk;
-  Duration _participantCountdownRemaining = Duration.zero;
   bool _isConfirmingParticipant = false;
-
-  String _greetingForTime() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  }
 
   // --- Derived views & helpers ---
 
@@ -748,26 +713,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (!mounted) {
       _nextHostedWalk = next;
-      _hostedCountdownRemaining = Duration.zero;
       return;
     }
 
     if (next == null) {
       setState(() {
         _nextHostedWalk = null;
-        _hostedCountdownRemaining = Duration.zero;
       });
       return;
     }
 
     void updateRemaining() {
       if (!mounted) return;
-      final remaining = next.dateTime.difference(DateTime.now());
       setState(() {
         _nextHostedWalk = next;
-        _hostedCountdownRemaining = remaining.isNegative
-            ? Duration.zero
-            : remaining;
       });
     }
 
@@ -787,26 +746,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (!mounted) {
       _nextParticipantWalk = next;
-      _participantCountdownRemaining = Duration.zero;
       return;
     }
 
     if (next == null) {
       setState(() {
         _nextParticipantWalk = null;
-        _participantCountdownRemaining = Duration.zero;
       });
       return;
     }
 
     void updateRemaining() {
       if (!mounted) return;
-      final remaining = next.dateTime.difference(DateTime.now());
       setState(() {
         _nextParticipantWalk = next;
-        _participantCountdownRemaining = remaining.isNegative
-            ? Duration.zero
-            : remaining;
       });
     }
 
@@ -820,16 +773,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  String _formatHostedCountdown(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    if (hours > 0) {
-      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-    }
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
   Future<void> _handleParticipantConfirm(WalkEvent walk) async {
     if (_isConfirmingParticipant) return;
     setState(() {
@@ -838,9 +781,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       await WalkHistoryService.instance.confirmParticipation(walk.firestoreId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Confirmation sent')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('✅ Confirmation sent')));
     } catch (e, st) {
       CrashService.recordError(
         e,
@@ -901,156 +844,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // Events that should show as dots on a specific calendar day
-  List<WalkEvent> _eventsForDay(DateTime day) {
-    final d0 = DateTime(day.year, day.month, day.day);
-
-    // ✅ Only walks that YOU host or joined and are not cancelled
-    return _events.where((e) {
-      if (e.cancelled) return false;
-      if (!(e.joined || e.isOwner)) return false;
-
-      final ed = DateTime(e.dateTime.year, e.dateTime.month, e.dateTime.day);
-      return ed.year == d0.year && ed.month == d0.month && ed.day == d0.day;
-    }).toList();
-  }
-
-  Widget _buildCalendarDayCell(
-    DateTime day,
-    bool isDark, {
-    bool forceSelected = false,
-  }) {
-    final bool isSelected = forceSelected || isSameDay(_selectedDay, day);
-    final bool isToday = isSameDay(day, DateTime.now());
-    final bool hasWalk = _hasUpcomingWalkOnDay(day);
-
-    // ✅ Single-letter labels to match your UI
-    String dowLetter(int weekday) {
-      // weekday: Mon=1 ... Sun=7
-      switch (weekday) {
-        case DateTime.monday:
-          return 'M';
-        case DateTime.tuesday:
-          return 'T';
-        case DateTime.wednesday:
-          return 'W';
-        case DateTime.thursday:
-          return 'T';
-        case DateTime.friday:
-          return 'F';
-        case DateTime.saturday:
-          return 'S';
-        case DateTime.sunday:
-        default:
-          return 'S';
-      }
-    }
-
-    // ✅ Priority: Selected > Walk day > Today > Normal
-    Color bg;
-    Color border;
-    Color labelColor;
-    Color numberColor;
-
-    if (isSelected) {
-      bg = isDark ? const Color(0xFF00D97E) : const Color(0xFF1ABFC4);
-      border = Colors.transparent;
-      labelColor = Colors.white.withAlpha((0.9 * 255).round());
-      numberColor = Colors.white;
-    } else if (hasWalk) {
-      bg = isDark ? const Color(0xFF00D97E) : const Color(0xFF00D97E);
-      border = Colors.transparent;
-      labelColor = isDark ? Colors.black87 : Colors.black87;
-      numberColor = Colors.black87;
-    } else if (isToday) {
-      // ✅ Today gets a subtle outline ONLY (different from walk highlight)
-      bg = Colors.transparent;
-      border = isDark ? Colors.white24 : Colors.black12;
-      labelColor = isDark ? Colors.white70 : Colors.black54;
-      numberColor = isDark ? Colors.white : Colors.black87;
-    } else {
-      bg = isDark ? Colors.white10 : Colors.white;
-      border = Colors.transparent;
-      labelColor = isDark ? Colors.white70 : Colors.black54;
-      numberColor = isDark ? Colors.white : Colors.black87;
-    }
-
-    // ✅ FIX: Force every cell to same size to prevent weird pills + overflow
-    const double cellSize = 44;
-
-    return Center(
-      child: SizedBox(
-        width: cellSize,
-        height: cellSize,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(kRadiusPill),
-
-            // ✅ Walk day indicator
-            // - if it has an upcoming walk and it's not selected → show a subtle border
-            // - if it's selected → keep selected clean (no extra border needed)
-            border: (hasWalk && !isSelected)
-                ? Border.all(
-                    color: isDark
-                        ? Colors.white.withAlpha((0.18 * 255).round())
-                        : const Color(
-                            0xFF00D97E,
-                          ).withAlpha((0.55 * 255).round()),
-                    width: 1.4,
-                  )
-                : Border.all(
-                    color:
-                        border, // your existing border logic (today/normal/selected)
-                    width: 1.0,
-                  ),
-          ),
-
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                dowLetter(day.weekday),
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  height: 1.0,
-                  color: labelColor,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${day.day}',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  height: 1.0,
-                  color: numberColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // --- Step counter setup (Android only for now) ---
 
   @override
   void initState() {
     super.initState();
     _currentTab = widget.initialTab;
-    
+
     // DEBUG: Print current user info
     final user = FirebaseAuth.instance.currentUser;
     debugPrint('🆔 HOME SCREEN - Current User ID: ${user?.uid}');
     debugPrint('🆔 HOME SCREEN - Current User Name: ${user?.displayName}');
-    
-    if (!kIsWeb) {
-      _initStepCounter();
-    }
 
     _offlineListener = () {
       if (!mounted) return;
@@ -1072,10 +876,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _pendingActions = OfflineService.instance.pendingActionCount.value;
 
     _loadUserName();
-    _loadProfile(); // ✅ load saved avatar
     _loadWeeklyGoal();
     _loadCachedWalks();
-    _loadRecommendations(); // ✅ Load tag-based recommendations
     _listenToWalks();
 
     // 🔹 Sync user profile to Firestore (if missing)
@@ -1084,10 +886,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
-      _participantCountdownTimer?.cancel();
+    _participantCountdownTimer?.cancel();
     _walksSub?.cancel();
     _walksPollingTimer?.cancel(); // Stop periodic polling
-    _stepSubscription?.cancel();
     _hostedCountdownTimer?.cancel();
 
     OfflineService.instance.isOffline.removeListener(_offlineListener);
@@ -1112,7 +913,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _loadCachedWalks() async {
-      _refreshParticipantCountdown();
+    _refreshParticipantCountdown();
     try {
       final cached = await OfflineService.instance.loadCachedWalks();
       if (!mounted || cached.isEmpty) return;
@@ -1123,18 +924,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     } catch (e, st) {
       CrashService.recordError(e, st, reason: 'HomeScreen.loadCachedWalks');
-    }
-  }
-
-  Future<void> _loadRecommendations() async {
-    try {
-      final recs = await TagRecommendationService.instance.getRecommendations();
-      if (!mounted) return;
-      setState(() {
-        _recommendations = recs; // Can be used for "Recommended" section in UI
-      });
-    } catch (e, st) {
-      CrashService.recordError(e, st, reason: 'HomeScreen.loadRecommendations');
     }
   }
 
@@ -1155,44 +944,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _weeklyGoalKm = newKm;
     });
     await AppPreferences.setWeeklyGoalKm(newKm);
-  }
-
-  Future<void> _initStepCounter() async {
-    if (kIsWeb) return; // Pedometer plugin is native-only
-
-    // Only try on Android
-    if (!Platform.isAndroid) return;
-
-    try {
-      final status = await Permission.activityRecognition.request();
-      if (!status.isGranted) {
-        debugPrint('⚠️ Activity recognition permission denied');
-        return;
-      }
-
-      _stepSubscription = Pedometer.stepCountStream.listen(
-        _onStepCount,
-        onError: (error, stackTrace) {
-          debugPrint('❌ Pedometer error: $error');
-          CrashService.recordError(error, stackTrace ?? StackTrace.current);
-        },
-        cancelOnError: false,
-      );
-    } catch (e, st) {
-      debugPrint('❌ Error initializing step counter: $e');
-      CrashService.recordError(e, st);
-      // Don't fail the entire app, just skip step counter
-    }
-  }
-
-  Future<void> _loadProfile() async {
-    try {
-      final p = await ProfileStorage.loadProfile();
-      if (!mounted) return;
-      setState(() => _profile = p);
-    } catch (_) {
-      // keep silent; header can fall back to default icon
-    }
   }
 
   Future<void> _loadUserName() async {
@@ -1218,18 +969,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         setState(() => _userName = 'Walker');
       }
     }
-  }
-
-  void _onStepCount(StepCount event) {
-    // Android pedometer gives "steps since reboot".
-    _baselineSteps ??= event.steps;
-
-    final steps = event.steps - (_baselineSteps ?? event.steps);
-    if (steps < 0) return;
-
-    setState(() {
-      _sessionSteps = steps;
-    });
   }
 
   // --- Actions ---
@@ -1338,7 +1077,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final userPhotoUrl = currentUser?.photoURL;
     final rawDisplayName = currentUser?.displayName?.trim();
     final userDisplayName =
-      (rawDisplayName != null && rawDisplayName.isNotEmpty)
+        (rawDisplayName != null && rawDisplayName.isNotEmpty)
         ? rawDisplayName
         : 'User ${uid.substring(0, 6)}';
 
@@ -1395,11 +1134,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // ✅ Get current user info for participant data
       final currentUser = FirebaseAuth.instance.currentUser;
       final userPhotoUrl = currentUser?.photoURL;
-        final rawDisplayName = currentUser?.displayName?.trim();
-        final userDisplayName =
+      final rawDisplayName = currentUser?.displayName?.trim();
+      final userDisplayName =
           (rawDisplayName != null && rawDisplayName.isNotEmpty)
-            ? rawDisplayName
-            : 'User ${uid.substring(0, 6)}';
+          ? rawDisplayName
+          : 'User ${uid.substring(0, 6)}';
 
       // ✅ Persist to Firestore with timeout
       final updateData = <String, dynamic>{
@@ -1410,8 +1149,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ? FieldValue.arrayUnion([uid])
             : FieldValue.arrayRemove([uid]),
         'joinedUserNames': willJoin
-          ? FieldValue.arrayUnion([userDisplayName])
-          : FieldValue.arrayRemove([userDisplayName]),
+            ? FieldValue.arrayUnion([userDisplayName])
+            : FieldValue.arrayRemove([userDisplayName]),
         'joinedCount': willJoin
             ? FieldValue.increment(1)
             : FieldValue.increment(-1),
@@ -1679,7 +1418,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted) return;
 
     await Navigator.pushNamed(context, NotificationsScreen.routeName);
-    
+
     // Refresh count when returning
     await _refreshNotificationsCount();
   }
@@ -1703,8 +1442,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
 
-    // ✅ When user returns from Profile, reload the saved profile (avatar)
-    await _loadProfile();
+    // The user may have changed their name or photo on the profile screen.
+    await _loadUserName();
   }
 
   // --- UI ---
@@ -1832,146 +1571,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  Widget _buildHostedWalkBanner(BuildContext context, bool isDark) {
-    final walk = _nextHostedWalk;
-    if (walk == null) {
-      return const SizedBox.shrink();
-    }
-
-    final theme = Theme.of(context);
-    final Color headlineColor = isDark ? Colors.white : const Color(0xFF0A3B3A);
-    final Color detailColor = isDark
-        ? Colors.white.withAlpha(220)
-        : const Color(0xFF0D5552).withValues(alpha: 0.85);
-    final Color chipColor = isDark ? Colors.white : const Color(0xFF0D5552);
-    final bool isActive = walk.status == 'active';
-    final countdownText = isActive
-        ? 'Walk in progress'
-        : 'Starts in ${_formatHostedCountdown(_hostedCountdownRemaining)}';
-    final subtitle = walk.meetingPlaceName != null
-        ? '${walk.meetingPlaceName} • ${DateFormat('MMM d, hh:mm a').format(walk.dateTime)}'
-        : DateFormat('MMM d, hh:mm a').format(walk.dateTime);
-
-    final primaryLabel = isActive ? 'Open Active Walk' : 'Start Walk';
-    final bool canStart = _canHostStartWalk(walk);
-    final bool isStartLoading = _isStartingHostedWalk && !isActive;
-    final VoidCallback? primaryAction = isActive
-        ? () => _openActiveWalk(walk)
-        : (canStart ? () => _handleHostedStart(walk) : null);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: isDark
-            ? const LinearGradient(
-                colors: [Color(0xFF0F2734), Color(0xFF143D4B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : const LinearGradient(
-                colors: [Color(0xFFE2FBF7), Color(0xFFC6EEE7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withAlpha(30)
-              : const Color(0xFF0A3B3A).withValues(alpha: 0.15),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.flag, size: 18, color: chipColor),
-              const SizedBox(width: 8),
-              Text(
-                'Your next hosted walk',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: chipColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            walk.title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: headlineColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(color: detailColor),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                isActive ? Icons.run_circle : Icons.timer_outlined,
-                color: chipColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                countdownText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: chipColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: isStartLoading ? null : primaryAction,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isDark
-                        ? Colors.white
-                        : const Color(0xFF0F8A7B),
-                    foregroundColor: isDark
-                        ? const Color(0xFF0F2734)
-                        : Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: isStartLoading
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark ? const Color(0xFF0F2734) : Colors.white,
-                            ),
-                          ),
-                        )
-                      : Text(primaryLabel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: () => _navigateToDetails(walk),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: chipColor,
-                  side: BorderSide(color: chipColor.withValues(alpha: 0.4)),
-                ),
-                child: const Text('View details'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // Listen to auth changes using provider - must be in build method
@@ -1986,13 +1585,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // ✅ Force the phone status-bar area to match our header color
+    // Status bar: transparent, icons readable on the page background.
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
-        // ✅ Match the TOP of your gradient bar: Color(0xFF1ABFC4)
-        statusBarColor: isDark ? Colors.transparent : const Color(0xFF1ABFC4),
-        statusBarIconBrightness: Brightness.light, // Android icons
-        statusBarBrightness: Brightness.dark, // iOS text/icons
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
     );
 
@@ -2043,19 +1641,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return Scaffold(
-      // ✅ Make status-bar area green in LIGHT mode too (matches Profile/Nearby)
-      backgroundColor: isDark ? kDarkBg : const Color(0xFF1ABFC4),
-
-      body: Column(
-        children: [
-          if (_isOffline) _buildOfflineBanner(),
-          if (_pendingActions > 0 && !_isOffline) _buildSyncingBanner(),
-          _buildEmailVerificationBanner(),
-          Expanded(child: body),
-        ],
-      ),
-      bottomNavigationBar: AppBottomNavBar(
+      backgroundColor: AppPalette.of(context).background,
+      // The floating bar overlays the page; pages leave room for it.
+      extendBody: true,
+      body: _currentTab == 0
+          ? body // Home shows the banners inside its own scroll view
+          : Column(
+              children: [
+                if (_isOffline) _buildOfflineBanner(),
+                if (_pendingActions > 0 && !_isOffline) _buildSyncingBanner(),
+                _buildEmailVerificationBanner(),
+                // Not redesigned yet: keep their content above the
+                // floating bar.
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: FloatingNavBar.reservedHeight - 24,
+                    ),
+                    child: body,
+                  ),
+                ),
+              ],
+            ),
+      bottomNavigationBar: FloatingNavBar(
+        // Bar: 0 home, 1 map (walks tab), 2 calendar (events tab), 3 profile
         currentIndex: _currentTab,
+        onCreate: _openCreateWalk,
         onTap: (index) {
           if (index == 3) {
             // Profile lives on its own screen; navigate to it directly
@@ -2079,906 +1690,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             });
           }
         },
-        onTabSpecificAction: (index) {
-          // Trigger specific actions for tabs
-          if (index == 0) {
-            _loadUserName();
-          }
-        },
       ),
     );
+  }
+
+  /// Which walk the big card at the top of Home shows, and in which mode.
+  (WalkEvent?, HomeHeroMode?) _homeHero() {
+    final hosted = _nextHostedWalk;
+    final joined = _nextParticipantWalk;
+    if (hosted != null && hosted.status == 'active') {
+      return (hosted, HomeHeroMode.hostActive);
+    }
+    if (joined != null && joined.status == 'active') {
+      return (joined, HomeHeroMode.joinedActive);
+    }
+    if (hosted != null &&
+        (joined == null || !joined.dateTime.isBefore(hosted.dateTime))) {
+      return (hosted, HomeHeroMode.hostUpcoming);
+    }
+    if (joined != null) return (joined, HomeHeroMode.joinedUpcoming);
+
+    // Nothing of mine planned: suggest the next open walk nearby.
+    final now = DateTime.now();
+    final open =
+        _events
+            .where(
+              (e) =>
+                  !e.cancelled &&
+                  !e.isOwner &&
+                  !e.joined &&
+                  e.status == 'scheduled' &&
+                  e.dateTime.isAfter(now),
+            )
+            .toList()
+          ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    if (open.isNotEmpty) return (open.first, HomeHeroMode.suggested);
+    return (null, null);
   }
 
   Widget _buildHomeTab(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Column(
-      children: [
-        // ===== HEADER =====
-        if (isDark)
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Left: logo + title
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withAlpha((0.1 * 255).round()),
-                        ),
-                        child: const Icon(
-                          Icons.directions_walk,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Transform.translate(
-                        offset: const Offset(0, -2),
-                        child: Text(
-                          'Yalla Nemshi',
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontFamily: 'Poppins',
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
-                              ) ??
-                              const TextStyle(
-                                fontFamily: 'Poppins',
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 20,
-                                letterSpacing: -0.2,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Right: search + notif + profile
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Semantics(
-                        label: 'Search walks',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: _openWalkSearch,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withAlpha(
-                                (0.1 * 255).round(),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.search,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Semantics(
-                        label: _unreadNotifCount > 0
-                            ? '$_unreadNotifCount unread notification${_unreadNotifCount == 1 ? '' : 's'}'
-                            : 'Notifications',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: _openNotificationsSheet,
-                          child: Transform.translate(
-                            offset: const Offset(0, -1),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white.withAlpha(
-                                        (0.1 * 255).round(),
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.notifications_none,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  if (_unreadNotifCount > 0)
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.red,
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 18,
-                                          minHeight: 18,
-                                        ),
-                                        child: Text(
-                                          _unreadNotifCount > 99
-                                              ? '99+'
-                                              : '$_unreadNotifCount',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                            height: 1.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Semantics(
-                        label: 'Profile',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: _openProfileQuickSheet,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withAlpha(
-                                  (0.2 * 255).round(),
-                                ),
-                                width: 2,
-                              ),
-                            ),
-                            child: _HeaderAvatar(
-                              profile: _profile,
-                              size: 40,
-                              isDark: true,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          Container(
-            height: 80,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white24,
-                          ),
-                          child: const Icon(
-                            Icons.directions_walk,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Transform.translate(
-                          offset: const Offset(0, -2),
-                          child: Text(
-                            'Yalla Nemshi',
-                            style:
-                                Theme.of(
-                                  context,
-                                ).textTheme.titleLarge?.copyWith(
-                                  fontFamily: 'Poppins',
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.2,
-                                ) ??
-                                const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 20,
-                                  letterSpacing: -0.2,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Semantics(
-                          label: 'Search walks',
-                          button: true,
-                          child: GestureDetector(
-                            onTap: _openWalkSearch,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white24,
-                              ),
-                              child: const Icon(
-                                Icons.search,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _openNotificationsSheet,
-                          child: Transform.translate(
-                            offset: const Offset(0, -1),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white24,
-                                    ),
-                                    child: const Icon(
-                                      Icons.notifications_none,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  if (_unreadNotifCount > 0)
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.red,
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 18,
-                                          minHeight: 18,
-                                        ),
-                                        child: Text(
-                                          _unreadNotifCount > 99
-                                              ? '99+'
-                                              : '$_unreadNotifCount',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                            height: 1.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _openProfileQuickSheet,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withAlpha(
-                                  (0.3 * 255).round(),
-                                ),
-                                width: 2,
-                              ),
-                            ),
-                            child: _HeaderAvatar(
-                              profile: _profile,
-                              size: 40,
-                              isDark: false,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-        // ===== MAIN CONTENT CARD (ROUNDED TOP, WITH OPTIONAL BG IMAGE) =====
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: isDark ? kDarkBg : const Color(0xFF1ABFC4),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(kRadiusCard),
-                topRight: Radius.circular(kRadiusCard),
-              ),
-            ),
-
-            // overlay so text stays readable on top of the photo
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(kRadiusCard),
-                  topRight: Radius.circular(kRadiusCard),
-                ),
-                gradient: isDark
-                    ? const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF071B26), // top
-                          Color(0xFF041016), // bottom
-                        ],
-                      )
-                    : null,
-                color: isDark ? null : const Color(0xFFF7F9F2),
-              ),
-
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        kSpace2,
-                        12,
-                        kSpace2,
-                        kSpace3,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (_nextHostedWalk != null) ...[
-                            _buildHostedWalkBanner(context, isDark),
-                            const SizedBox(height: 20),
-                          ],
-                          if (_nextParticipantWalk != null) ...[
-                            _buildParticipantWalkBanner(context, isDark),
-                            const SizedBox(height: 20),
-                          ],
-                          // Big inner card: greeting + calendar + "Your walks"
-                          Card(
-                            color: isDark ? kDarkSurface : kLightSurface,
-                            elevation: isDark
-                                ? kCardElevationDark
-                                : kCardElevationLight,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(kRadiusCard),
-                              side: BorderSide(
-                                color: (isDark ? Colors.white : Colors.black)
-                                    .withAlpha(
-                                      (kCardBorderAlpha * 255).round(),
-                                    ),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                kSpace2,
-                                kSpace2,
-                                kSpace2,
-                                20,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '${_greetingForTime()}, $_userName',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style:
-                                                  theme.textTheme.titleLarge
-                                                      ?.copyWith(
-                                                        fontFamily: 'Poppins',
-                                                        fontSize: 18,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        letterSpacing: -0.2,
-                                                        color: isDark
-                                                            ? kTextPrimary
-                                                            : const Color(
-                                                                0xFF1A2332,
-                                                              ),
-                                                      ) ??
-                                                  const TextStyle(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: -0.2,
-                                                    color: Color(0xFF1A2332),
-                                                  ),
-                                            ),
-
-                                            const SizedBox(height: 4),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      _StepsRing(
-                                        steps: _sessionSteps,
-                                        goal: 10000,
-                                        isDark: isDark,
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: kSpace2),
-
-                                  // Ready to walk + buttons
-                                  Text(
-                                    'Ready to walk?',
-                                    style:
-                                        theme.textTheme.headlineSmall?.copyWith(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.2,
-                                        ) ??
-                                        const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.2,
-                                        ),
-                                  ),
-                                  SizedBox(height: kSpace1),
-                                  Text(
-                                    'Start a walk now or join others nearby. Your steps, your pace.',
-                                    style:
-                                        theme.textTheme.bodyMedium?.copyWith(
-                                          fontFamily: 'Inter',
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.55,
-                                          color: const Color(0xFF2F2F2F),
-                                        ) ??
-                                        const TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.55,
-                                          color: Color(0xFF2F2F2F),
-                                        ),
-                                  ),
-                                  SizedBox(height: kSpace2),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 58,
-                                    child: FilledButton.icon(
-                                      onPressed: _openCreateWalk,
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF1ABFC4,
-                                        ),
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 16,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            kRadiusPill,
-                                          ),
-                                        ),
-                                        textStyle: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                          fontSize: 19,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: -0.2,
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.directions_walk_outlined,
-                                      ),
-                                      label: const Text('Create walk'),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 20),
-
-                                  // ===== Calendar (week swipe + no dots + fixed sizing) =====
-                                  TableCalendar(
-                                    firstDay: DateTime(2020, 1, 1),
-                                    lastDay: DateTime(2035, 12, 31),
-                                    focusedDay: _focusedDay,
-                                    calendarFormat: CalendarFormat.week,
-                                    headerVisible: false,
-                                    daysOfWeekVisible: false,
-                                    rowHeight:
-                                        (MediaQuery.of(
-                                              context,
-                                            ).textScaler.scale(1.0) >
-                                            1.15)
-                                        ? 72
-                                        : 60,
-
-                                    // ✅ smoother swipe between weeks
-                                    pageAnimationEnabled: true,
-                                    pageAnimationDuration: const Duration(
-                                      milliseconds: 220,
-                                    ),
-                                    pageAnimationCurve: Curves.easeOutCubic,
-
-                                    // ✅ IMPORTANT: keep outside days visible so the week row is consistent
-                                    calendarStyle: const CalendarStyle(
-                                      isTodayHighlighted: false,
-                                      outsideDaysVisible: true,
-                                    ),
-
-                                    onPageChanged: (focusedDay) {
-                                      setState(() => _focusedDay = focusedDay);
-                                    },
-
-                                    selectedDayPredicate: (day) =>
-                                        isSameDay(_selectedDay, day),
-
-                                    calendarBuilders: CalendarBuilders(
-                                      defaultBuilder:
-                                          (context, day, focusedDay) {
-                                            return _buildCalendarDayCell(
-                                              day,
-                                              isDark,
-                                              forceSelected: false,
-                                            );
-                                          },
-                                      selectedBuilder:
-                                          (context, day, focusedDay) {
-                                            return _buildCalendarDayCell(
-                                              day,
-                                              isDark,
-                                              forceSelected: true,
-                                            );
-                                          },
-                                      todayBuilder: (context, day, focusedDay) {
-                                        return _buildCalendarDayCell(
-                                          day,
-                                          isDark,
-                                          forceSelected: false,
-                                        );
-                                      },
-
-                                      // ✅ FIX: outside days were not using your pill builder
-                                      outsideBuilder:
-                                          (context, day, focusedDay) {
-                                            return _buildCalendarDayCell(
-                                              day,
-                                              isDark,
-                                              forceSelected: false,
-                                            );
-                                          },
-
-                                      // ✅ (optional safety) disabled days also use the same pill rendering
-                                      disabledBuilder:
-                                          (context, day, focusedDay) {
-                                            return _buildCalendarDayCell(
-                                              day,
-                                              isDark,
-                                              forceSelected: false,
-                                            );
-                                          },
-                                    ),
-
-                                    onDaySelected: (selectedDay, focusedDay) {
-                                      setState(() {
-                                        _selectedDay = selectedDay;
-                                        _focusedDay = focusedDay;
-                                      });
-                                    },
-                                  ),
-
-                                  // ===== End Calendar =====
-                                  const SizedBox(height: 20),
-
-                                  // Walks for selected date
-                                  Text(
-                                    DateFormat(
-                                      'MMMM d, y',
-                                    ).format(_selectedDay),
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  SizedBox(height: kSpace1),
-                                  if (_eventsForDay(_selectedDay).isEmpty)
-                                    Text(
-                                      'No walks scheduled for this date.',
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            color: isDark
-                                                ? Colors.white70
-                                                : Colors.black54,
-                                          ),
-                                    )
-                                  else
-                                    Column(
-                                      children: _eventsForDay(_selectedDay)
-                                          .map(
-                                            (e) => _WalkCard(
-                                              event: e,
-                                              onTap: () =>
-                                                  _navigateToDetails(e),
-                                            ),
-                                          )
-                                          .toList(),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: kSpace2),
-
-                          // ===== WEEKLY SUMMARY =====
-                          Text(
-                            'This week',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: kSpace1),
-                          _WeeklySummaryCard(
-                            walks: _weeklyWalkCount,
-                            kmSoFar: _weeklyKm,
-                            kmGoal: _weeklyGoalKm,
-                            streakDays: _streakDays,
-                          ),
-                          SizedBox(height: kSpace2),
-
-                          // ===== TAG-BASED RECOMMENDATIONS =====
-                          if (_recommendations.isNotEmpty) ...[
-                            Text(
-                              'Recommended for you',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: kSpace1),
-                            Text(
-                              'Based on walks you\'ve joined',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDark ? Colors.white70 : Colors.black54,
-                              ),
-                            ),
-                            SizedBox(height: kSpace2),
-                            SizedBox(
-                              height: 200,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _recommendations.length,
-                                itemBuilder: (context, index) {
-                                  final rec = _recommendations[index];
-                                  return Container(
-                                    width: 280,
-                                    margin: const EdgeInsets.only(right: 12),
-                                    child: _RecommendationCard(
-                                      event: rec,
-                                      onTap: () => _navigateToDetails(rec),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            SizedBox(height: kSpace2),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    final (heroWalk, heroMode) = _homeHero();
+    final authUser = FirebaseAuth.instance.currentUser;
+    return HomeTab(
+      userName: _userName,
+      photoUrl: authUser?.photoURL,
+      unreadCount: _unreadNotifCount,
+      walks: _events,
+      heroWalk: heroWalk,
+      heroMode: heroMode,
+      canStartHosted: heroWalk != null && _canHostStartWalk(heroWalk),
+      heroBusy: _isStartingHostedWalk || _isConfirmingParticipant,
+      streakDays: _streakDays,
+      weeklyKm: _weeklyKm,
+      weeklyGoalKm: _weeklyGoalKm,
+      banners: [
+        if (_isOffline) _buildOfflineBanner(),
+        if (_pendingActions > 0 && !_isOffline) _buildSyncingBanner(),
+        _buildEmailVerificationBanner(),
       ],
-    );
-  }
-
-  Widget _buildParticipantWalkBanner(BuildContext context, bool isDark) {
-    final walk = _nextParticipantWalk;
-    if (walk == null) {
-      return const SizedBox.shrink();
-    }
-
-    final theme = Theme.of(context);
-    final Color headlineColor = isDark ? Colors.white : const Color(0xFF0A3B3A);
-    final Color detailColor = isDark
-        ? Colors.white.withAlpha(220)
-        : const Color(0xFF0D5552).withValues(alpha: 0.85);
-    final Color chipColor = isDark ? Colors.white : const Color(0xFF0D5552);
-    final bool isActive = walk.status == 'active';
-    final countdownText = isActive
-        ? 'Walk in progress'
-        : 'Starts in ${_formatHostedCountdown(_participantCountdownRemaining)}';
-    final subtitle = walk.meetingPlaceName != null
-        ? '${walk.meetingPlaceName} • ${DateFormat('MMM d, hh:mm a').format(walk.dateTime)}'
-        : DateFormat('MMM d, hh:mm a').format(walk.dateTime);
-
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    final participantState = uid == null ? null : walk.participantStates[uid];
-    final bool needsConfirmation = isActive && participantState != 'confirmed';
-    final String primaryLabel = isActive
-        ? (needsConfirmation ? "Confirm I'm here" : 'Open Active Walk')
-        : 'Waiting for host';
-    final VoidCallback? primaryAction = isActive
-        ? (needsConfirmation
-            ? () => _handleParticipantConfirm(walk)
-            : () => _openActiveWalk(walk))
-        : null;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: isDark
-            ? const LinearGradient(
-                colors: [Color(0xFF12202A), Color(0xFF153D45)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : const LinearGradient(
-                colors: [Color(0xFFEAFBF7), Color(0xFFD7F2EC)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withAlpha(30)
-              : const Color(0xFF0A3B3A).withValues(alpha: 0.15),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.directions_walk, size: 18, color: chipColor),
-              const SizedBox(width: 8),
-              Text(
-                'Your next walk',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: chipColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            walk.title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: headlineColor,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(color: detailColor),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                isActive ? Icons.run_circle : Icons.timer_outlined,
-                color: chipColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                countdownText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: chipColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(
-                  onPressed: _isConfirmingParticipant ? null : primaryAction,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isDark
-                        ? Colors.white
-                        : const Color(0xFF0F8A7B),
-                    foregroundColor: isDark
-                        ? const Color(0xFF0F2734)
-                        : Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: _isConfirmingParticipant && needsConfirmation
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDark ? const Color(0xFF0F2734) : Colors.white,
-                            ),
-                          ),
-                        )
-                      : Text(primaryLabel),
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: isActive && needsConfirmation
-                    ? () => _openActiveWalk(walk)
-                    : () => _navigateToDetails(walk),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: chipColor,
-                  side: BorderSide(color: chipColor.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  isActive && needsConfirmation
-                      ? 'Open Active Walk'
-                      : 'View details',
-                ),
-              ),
-            ],
-          ),
-        ],
+      actions: HomeTabActions(
+        onOpenNotifications: _openNotificationsSheet,
+        onOpenProfile: _openProfileQuickSheet,
+        onSearch: _openWalkSearch,
+        onOpenWalk: _navigateToDetails,
+        onJoin: (walk) => _toggleJoin(walk),
+        onStartHosted: _handleHostedStart,
+        onConfirmHere: _handleParticipantConfirm,
+        onOpenActive: _openActiveWalk,
+        onCreateWalk: _openCreateWalk,
+        onBrowseWalks: () => setState(() => _currentTab = 1),
+        onRefresh: () async {
+          _listenToWalks();
+          await _refreshNotificationsCount();
+        },
       ),
     );
   }
@@ -2987,595 +1771,3 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 // ===== Smaller components =====
 
 // ===== RECOMMENDATION CARD (horizontal carousel card) =====
-class _RecommendationCard extends StatelessWidget {
-  final WalkEvent event;
-  final VoidCallback onTap;
-
-  const _RecommendationCard({required this.event, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Card(
-        color: isDark ? kDarkSurface : kLightSurface,
-        elevation: isDark ? kCardElevationDark : kCardElevationLight,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kRadiusCard),
-          side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withAlpha(
-              (kCardBorderAlpha * 255).round(),
-            ),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                event.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    theme.textTheme.bodyLarge?.copyWith(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? kTextPrimary : Colors.black87,
-                    ) ??
-                    const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${event.distanceKm} km • ${event.dateTime.month}/${event.dateTime.day}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: isDark ? kTextSecondary : Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (event.tags.isNotEmpty)
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: event.tags.take(2).map((tag) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.shade100,
-                        border: Border.all(color: Colors.teal, width: 1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        tag,
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.teal,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WeeklySummaryCard extends StatelessWidget {
-  final int walks;
-  final double kmSoFar;
-  final double kmGoal;
-  final int streakDays;
-
-  const _WeeklySummaryCard({
-    required this.walks,
-    required this.kmSoFar,
-    required this.kmGoal,
-    required this.streakDays,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final progress = (kmGoal <= 0)
-        ? 0.0
-        : (kmSoFar / kmGoal).clamp(0.0, 1.0).toDouble();
-
-    final titleColor = isDark
-        ? kTextPrimary
-        : (theme.textTheme.titleMedium?.color);
-    final bodyColor = isDark
-        ? kTextSecondary
-        : (theme.textTheme.bodySmall?.color);
-
-    String motivationText(double p) {
-      if (kmGoal <= 0) {
-        return 'Set a weekly goal in Settings to start tracking.';
-      }
-      if (p <= 0.01) return 'Let\'s get the first steps in!';
-      if (p < 0.25) return 'Nice start - keep the momentum going!';
-      if (p < 0.50) return 'You\'re building a habit - great progress!';
-      if (p < 0.75) return 'More than halfway - you\'ve got this!';
-      if (p < 1.00) return 'Almost there - one more push!';
-      return 'Goal reached! Amazing work this week!';
-    }
-
-    final percent = (progress * 100).round();
-
-    return Card(
-      color: isDark ? kDarkSurface : kLightSurface,
-      elevation: isDark ? kCardElevationDark : kCardElevationLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withAlpha(
-            (kCardBorderAlpha * 255).round(),
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, kSpace3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top line: stats + %
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '$walks walk${walks == 1 ? '' : 's'} • '
-                    '${kmSoFar.toStringAsFixed(1)} / ${kmGoal.toStringAsFixed(1)} km',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: titleColor,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? kDarkSurface2
-                        : Colors.black.withAlpha((0.06 * 255).round()),
-                    borderRadius: BorderRadius.circular(kRadiusPill),
-                  ),
-                  child: Text(
-                    kmGoal <= 0 ? '--' : '$percent%',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? kTextPrimary : const Color(0xFF1A2332),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // progress bar
-            LayoutBuilder(
-              builder: (context, c) {
-                final trackColor = isDark ? kDarkSurface2 : Colors.black12;
-                final fillColor = isDark
-                    ? const Color(0xFF1ABFC4)
-                    : const Color(0xFF1ABFC4);
-
-                return Container(
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: trackColor,
-                    borderRadius: BorderRadius.circular(kRadiusPill),
-                  ),
-                  child: Stack(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 350),
-                        curve: Curves.easeOut,
-                        width: c.maxWidth * (kmGoal <= 0 ? 0.0 : progress),
-                        decoration: BoxDecoration(
-                          color: fillColor,
-                          borderRadius: BorderRadius.circular(kRadiusPill),
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Opacity(
-                            opacity: isDark ? 0.10 : 0.08,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(
-                                  kRadiusPill,
-                                ),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.white, Colors.transparent],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 10),
-
-            // Motivational microcopy + streak
-            Text(
-              motivationText(progress),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isDark ? kTextPrimary : const Color(0xFF1A2332),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              streakDays > 0
-                  ? 'Streak: $streakDays day${streakDays == 1 ? '' : 's'} in a row'
-                  : 'Start a walk today to begin your streak!',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WalkCard extends StatelessWidget {
-  final WalkEvent event;
-  final VoidCallback onTap;
-
-  const _WalkCard({required this.event, required this.onTap});
-
-  String _formatDateTime(DateTime dt) {
-    final dd = dt.day.toString().padLeft(2, '0');
-    final mm = dt.month.toString().padLeft(2, '0');
-    final yyyy = dt.year.toString();
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final min = dt.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yyyy • $hh:$min';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      color: Theme.of(context).brightness == Brightness.dark
-          ? kDarkSurface
-          : kLightSurface,
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-      elevation: Theme.of(context).brightness == Brightness.dark
-          ? kCardElevationDark
-          : kCardElevationLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kRadiusControl),
-        side: BorderSide(
-          color:
-              (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : Colors.black)
-                  .withAlpha((kCardBorderAlpha * 255).round()),
-        ),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                event.title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (event.isRecurring && !event.isRecurringTemplate)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.repeat,
-                      size: 12,
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      'Recurring',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        subtitle: Text(_formatDateTime(event.dateTime)),
-        trailing: const Icon(Icons.chevron_right),
-      ),
-    );
-  }
-}
-
-class _StepsRing extends StatelessWidget {
-  final int steps;
-  final int goal;
-  final bool isDark;
-
-  const _StepsRing({
-    required this.steps,
-    required this.goal,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final double progress = (goal <= 0)
-        ? 0.0
-        : (steps / goal).clamp(0.0, 1.0).toDouble();
-
-    const double size = 120;
-    const double stroke = 14;
-
-    // Animate the ring smoothly when steps change
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: progress),
-      duration: const Duration(milliseconds: 650),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedProgress, _) {
-        // Base ring color at full progress
-        final Color base = isDark
-            ? const Color(0xFF1ABFC4)
-            : const Color(0xFF1ABFC4);
-
-        // Very light color at 0 progress (so the start is almost white)
-        final Color veryLight = isDark
-            ? Colors.white.withAlpha((0.16 * 255).round())
-            : const Color(0xFFE8F1EA); // ✅ light green tint (not white)
-
-        // End color gets darker as progress increases
-        final Color endColor = Color.lerp(veryLight, base, animatedProgress)!;
-
-        return SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CustomPaint(
-                size: const Size(size, size),
-                painter: _GradientRingPainter(
-                  progress: animatedProgress,
-                  strokeWidth: stroke,
-                  trackColor: isDark
-                      ? Colors.white.withAlpha((0.10 * 255).round())
-                      : const Color(
-                          0xFFD7E2D7,
-                        ), // ✅ slightly darker track so ring feels consistent
-                  // ✅ start ALWAYS very light
-                  startColor: veryLight,
-                  // ✅ end darkens with progress
-                  endColor: endColor,
-                ),
-              ),
-
-              // Text in the middle
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$steps',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? kTextPrimary : Colors.black87,
-                      height: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Steps',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isDark ? kTextSecondary : Colors.black54,
-                      height: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _GradientRingPainter extends CustomPainter {
-  final double progress; // 0..1
-  final double strokeWidth;
-  final Color trackColor;
-  final Color startColor;
-  final Color endColor;
-
-  const _GradientRingPainter({
-    required this.progress,
-    required this.strokeWidth,
-    required this.trackColor,
-    required this.startColor,
-    required this.endColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = progress.clamp(0.0, 1.0);
-
-    final inset = strokeWidth / 2;
-    final ringRect = Rect.fromLTWH(
-      inset,
-      inset,
-      size.width - strokeWidth,
-      size.height - strokeWidth,
-    );
-
-    const startAngle = -math.pi / 2; // top
-
-    // Slightly shorten at 100% so rounded caps don't overlap visually
-    final safeP = (p >= 1.0) ? 0.999 : p;
-    final sweepAngle = 2 * math.pi * safeP;
-
-    // Track (full circle)
-    final trackPaint = Paint()
-      ..color = trackColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-
-    canvas.drawArc(ringRect, 0, 2 * math.pi, false, trackPaint);
-
-    if (p <= 0) return;
-
-    // Gradient on the progress arc
-    final gradient = SweepGradient(
-      // ✅ end with startColor again → seam becomes light (no dark tick at top)
-      colors: [startColor, endColor, startColor],
-      stops: const [0.0, 0.85, 1.0],
-      transform: const GradientRotation(-math.pi / 2),
-    );
-
-    final progressPaint = Paint()
-      ..shader = gradient.createShader(ringRect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
-
-    canvas.drawArc(ringRect, startAngle, sweepAngle, false, progressPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _GradientRingPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.strokeWidth != strokeWidth ||
-        oldDelegate.trackColor != trackColor ||
-        oldDelegate.startColor != startColor ||
-        oldDelegate.endColor != endColor;
-  }
-}
-
-class _HeaderAvatar extends StatelessWidget {
-  final UserProfile? profile;
-  final double size;
-  final bool isDark;
-
-  const _HeaderAvatar({
-    required this.profile,
-    required this.size,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final p = profile;
-
-    ImageProvider? img;
-
-    // Prefer Auth photo (Google sign-in) if present
-    final authUrl = FirebaseAuth.instance.currentUser?.photoURL;
-    if (authUrl != null && authUrl.trim().isNotEmpty) {
-      img = NetworkImage(authUrl);
-    }
-
-    // Base64 avatar (web testing)
-    final base64Str = p?.profileImageBase64;
-    if (img == null && base64Str != null && base64Str.trim().isNotEmpty) {
-      try {
-        final bytes = base64Decode(base64Str);
-        img = MemoryImage(bytes);
-      } catch (_) {
-        // ignore
-      }
-    }
-
-    // Local file avatar path (mobile only)
-    if (img == null && !kIsWeb) {
-      final path = p?.profileImagePath;
-      if (path != null && path.trim().isNotEmpty) {
-        final f = File(path);
-        if (f.existsSync()) {
-          img = FileImage(f);
-        }
-      }
-    }
-
-    // 4) Final fallback: icon
-    if (img == null) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isDark
-              ? Colors.white.withAlpha((0.08 * 255).round())
-              : Colors.white,
-        ),
-        child: Icon(
-          Icons.person,
-          size: size * 0.55,
-          color: isDark ? Colors.white : Colors.black87,
-        ),
-      );
-    }
-
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: isDark
-          ? Colors.white.withAlpha((0.08 * 255).round())
-          : Colors.white,
-      // foregroundImage so the icon shows through if the image fails to load.
-      foregroundImage: img,
-      onForegroundImageError: (_, _) {},
-      child: Icon(
-        Icons.person,
-        size: size * 0.55,
-        color: isDark ? Colors.white : Colors.black87,
-      ),
-    );
-  }
-}
