@@ -120,12 +120,16 @@ class PillButton extends StatelessWidget {
                       Icon(icon, size: 18, color: fg),
                       const SizedBox(width: 6),
                     ],
-                    Text(
-                      label,
-                      style: AppText.body(
-                        16,
-                        color: fg,
-                        weight: FontWeight.w800,
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.body(
+                          16,
+                          color: fg,
+                          weight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
@@ -200,6 +204,7 @@ class RoundIconButton extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(
                   badgeCount > 9 ? '9+' : '$badgeCount',
+                  textScaler: TextScaler.noScaling,
                   style: AppText.body(
                     11,
                     color: AppPalette.ink,
@@ -294,27 +299,33 @@ class TimeChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpace.radiusChip),
       ),
       alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            day,
-            style: AppText.body(
-              12,
-              color: AppPalette.ink,
-              weight: FontWeight.w700,
+      padding: const EdgeInsets.all(6),
+      // Shrinks with large text settings instead of overflowing the square.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              day,
+              style: AppText.body(
+                12,
+                color: AppPalette.ink,
+                weight: FontWeight.w700,
+              ),
             ),
-          ),
-          Text(
-            time,
-            style: AppText.display(
-              20,
-              color: AppPalette.ink,
-              weight: 800,
-              height: 1.1,
+            Text(
+              time,
+              textScaler: AppText.headlineScaler(context),
+              style: AppText.display(
+                20,
+                color: AppPalette.ink,
+                weight: 800,
+                height: 1.1,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -360,6 +371,7 @@ class AvatarStack extends StatelessWidget {
           AppPalette.ink,
           Text(
             '+$extra',
+            textScaler: TextScaler.noScaling,
             style: AppText.body(
               size * 0.36,
               color: Colors.white,
@@ -388,6 +400,7 @@ class AvatarStack extends StatelessWidget {
       fill,
       Text(
         initials(person.name),
+        textScaler: TextScaler.noScaling,
         style: AppText.body(
           size * 0.34,
           color: AppPalette.ink,

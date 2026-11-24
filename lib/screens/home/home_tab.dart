@@ -334,24 +334,34 @@ class _Header extends StatelessWidget {
         final date = DateFormat(
           constraints.maxWidth < 330 ? 'd MMM' : 'EEE · d MMM',
         ).format(DateTime.now()).toUpperCase();
+        // Buttons take ~176pt; the pill needs ~120pt at normal text size.
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final pillFits = constraints.maxWidth - 176 >= 120 * scale;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: PillLabel(text: date),
+            if (pillFits)
+              Row(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: PillLabel(text: date),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpace.sm),
-                buttons,
-              ],
-            ),
+                  const SizedBox(width: AppSpace.sm),
+                  buttons,
+                ],
+              )
+            else ...[
+              Align(alignment: Alignment.centerRight, child: buttons),
+              const SizedBox(height: AppSpace.md),
+              PillLabel(text: date),
+            ],
             const SizedBox(height: AppSpace.md),
             Text(
               'Yalla,\n${first.isEmpty ? 'walker' : first}!',
+              textScaler: AppText.headlineScaler(context),
               style: AppText.display(size, color: p.text, height: 0.98),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -471,13 +481,18 @@ class _HeroCard extends StatelessWidget {
       onTap: () => actions.onOpenWalk(walk),
       child: Stack(
         children: [
-          const Positioned(
-            right: -6,
-            top: -6,
-            width: 150,
-            height: 120,
-            child: IgnorePointer(child: CustomPaint(painter: _TrailPainter())),
-          ),
+          // Decorative trail; hidden on very narrow phones where it would
+          // sit on top of the title.
+          if (MediaQuery.sizeOf(context).width >= 340)
+            const Positioned(
+              right: -6,
+              top: -6,
+              width: 150,
+              height: 120,
+              child: IgnorePointer(
+                child: CustomPaint(painter: _TrailPainter()),
+              ),
+            ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -503,18 +518,27 @@ class _HeroCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpace.lg),
-              Padding(
-                padding: const EdgeInsets.only(right: 40),
-                child: Text(
-                  walk.title.isEmpty ? 'Untitled walk' : walk.title,
-                  style: AppText.display(
-                    34,
-                    color: AppPalette.ink,
-                    height: 1.05,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // 34pt on normal phones, smaller on narrow ones so long
+                  // words don't break mid-word.
+                  final narrow = constraints.maxWidth < 280;
+                  final size = (constraints.maxWidth * 0.11).clamp(24.0, 34.0);
+                  return Padding(
+                    padding: EdgeInsets.only(right: narrow ? 0 : 40),
+                    child: Text(
+                      walk.title.isEmpty ? 'Untitled walk' : walk.title,
+                      textScaler: AppText.headlineScaler(context),
+                      style: AppText.display(
+                        size,
+                        color: AppPalette.ink,
+                        height: 1.05,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                },
               ),
               if (subtitle.isNotEmpty) ...[
                 const SizedBox(height: AppSpace.sm),
@@ -623,6 +647,7 @@ class _EmptyHero extends StatelessWidget {
           const SizedBox(height: AppSpace.lg),
           Text(
             'Where are we\nwalking next?',
+            textScaler: AppText.headlineScaler(context),
             style: AppText.display(34, color: AppPalette.ink, height: 1.05),
           ),
           const SizedBox(height: AppSpace.sm),
@@ -682,8 +707,8 @@ class _NearbyMapCard extends StatelessWidget {
       color: isDark ? p.surface : p.surfaceMuted,
       padding: EdgeInsets.zero,
       onTap: onTap,
-      child: SizedBox(
-        height: 150,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 150),
         child: Stack(
           children: [
             Positioned.fill(
@@ -696,6 +721,7 @@ class _NearbyMapCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
+                    textScaler: AppText.headlineScaler(context),
                     style: AppText.display(28, color: p.text, weight: 750),
                   ),
                   const SizedBox(height: AppSpace.sm),
@@ -851,12 +877,13 @@ class _EmptyNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
+    // Text and button wrap onto two lines when there isn't room for both.
     return AppCard(
-      child: Row(
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpace.sm,
         children: [
-          Expanded(
-            child: Text(text, style: AppText.body(15, color: p.textMuted)),
-          ),
+          Text(text, style: AppText.body(15, color: p.textMuted)),
           if (actionLabel != null)
             TextButton(
               onPressed: onAction,
@@ -931,6 +958,7 @@ class _WeekStrip extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${d.day}',
+                            textScaler: AppText.headlineScaler(context),
                             style: AppText.display(
                               22,
                               color: isToday ? AppPalette.ink : p.text,
@@ -973,28 +1001,32 @@ class _StatCards extends StatelessWidget {
       String unit,
       String note,
     ) {
-      return Expanded(
-        child: AppCard(
-          color: color,
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: AppText.body(
-                  15,
-                  color: AppPalette.ink,
-                  weight: FontWeight.w700,
-                ),
+      return AppCard(
+        color: color,
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: AppText.body(
+                15,
+                color: AppPalette.ink,
+                weight: FontWeight.w700,
               ),
-              const SizedBox(height: 6),
-              Row(
+            ),
+            const SizedBox(height: 6),
+            // Shrinks on narrow phones / large text instead of overflowing.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
                     value,
+                    textScaler: AppText.headlineScaler(context),
                     style: AppText.display(48, color: AppPalette.ink),
                   ),
                   if (unit.isNotEmpty) ...[
@@ -1010,42 +1042,63 @@ class _StatCards extends StatelessWidget {
                   ],
                 ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                note,
-                style: AppText.body(
-                  13,
-                  color: AppPalette.ink,
-                  weight: FontWeight.w600,
-                ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              note,
+              style: AppText.body(
+                13,
+                color: AppPalette.ink,
+                weight: FontWeight.w600,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          card(
-            AppPalette.coral,
-            'Streak',
-            '$streakDays',
-            streakDays == 1 ? 'day' : 'days',
-            streakDays == 0 ? 'Join a walk to start one' : 'Keep it going!',
+    final streak = card(
+      AppPalette.coral,
+      'Streak',
+      '$streakDays',
+      streakDays == 1 ? 'day' : 'days',
+      streakDays == 0 ? 'Join a walk to start one' : 'Keep it going!',
+    );
+    final people = card(
+      AppPalette.blue,
+      'Walking with',
+      '$walkingWith',
+      walkingWith == 1 ? 'person' : 'people',
+      walkingWith == 0 ? 'Join a walk to meet people' : 'this week',
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Side by side only if each card gets ~150pt of (scaled) text room;
+        // otherwise stack them so words don't break mid-word.
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final perCard = (constraints.maxWidth - AppSpace.md) / 2;
+        if (perCard < 150 * scale) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              streak,
+              const SizedBox(height: AppSpace.md),
+              people,
+            ],
+          );
+        }
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: streak),
+              const SizedBox(width: AppSpace.md),
+              Expanded(child: people),
+            ],
           ),
-          const SizedBox(width: AppSpace.md),
-          card(
-            AppPalette.blue,
-            'Walking with',
-            '$walkingWith',
-            walkingWith == 1 ? 'person' : 'people',
-            walkingWith == 0 ? 'Join a walk to meet people' : 'this week',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -1064,17 +1117,13 @@ class _WeeklyGoal extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: AppSpace.md,
             children: [
-              Expanded(
-                child: Text(
-                  'Weekly goal',
-                  style: AppText.body(
-                    15,
-                    color: p.text,
-                    weight: FontWeight.w700,
-                  ),
-                ),
+              Text(
+                'Weekly goal',
+                style: AppText.body(15, color: p.text, weight: FontWeight.w700),
               ),
               Text(
                 '${_km(km)} / ${_km(goalKm)} km',

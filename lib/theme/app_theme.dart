@@ -10,6 +10,12 @@ import 'app_palette.dart';
 class AppText {
   AppText._();
 
+  /// Big display headlines are already large, so they follow the user's
+  /// text-size setting only up to 115% (like iOS large titles); body text
+  /// still scales fully.
+  static TextScaler headlineScaler(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.15);
+
   static TextStyle display(
     double size, {
     Color? color,

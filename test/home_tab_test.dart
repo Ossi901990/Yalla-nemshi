@@ -233,39 +233,110 @@ void main() {
     }
   }
 
-  testWidgets('small phone (320 wide) has no overflow', (tester) async {
-    tester.view.physicalSize = const Size(320 * 2, 1400 * 2);
-    tester.view.devicePixelRatio = 2;
-    addTearDown(tester.view.reset);
-    final (walks, heroMode) = scenarios['suggested']!;
-    await tester.pumpWidget(
-      _app(
-        HomeTab(
-          currentUid: _me,
-          userName: 'Maximilian Alexander',
-          photoUrl: null,
-          unreadCount: 12,
-          walks: walks,
-          heroWalk: walks.first,
-          heroMode: heroMode,
-          canStartHosted: false,
-          heroBusy: false,
-          streakDays: 12,
-          weeklyKm: 12.5,
-          weeklyGoalKm: 10,
-          actions: _noActions(),
-        ),
-        ThemeMode.light,
-      ),
-    );
-    await tester.pumpAndSettle();
-    final error = tester.takeException();
-    if (autoUpdateGoldenFiles) {
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('goldens/home_small_phone.png'),
-      );
+  // Every common phone size x text-size setting. Reports the exact widget and
+  // source line of any overflow, so failures are easy to fix.
+  const devices = <(String, double, double)>[
+    ('galaxy_fold', 280, 653),
+    ('iphone_se1', 320, 568),
+    ('android_360', 360, 740),
+    ('iphone_se3', 375, 667),
+    ('iphone_14', 390, 844),
+    ('pixel_7', 412, 915),
+    ('iphone_pro_max', 430, 932),
+  ];
+  const textScales = [1.0, 1.3, 1.6];
+  const states = [
+    'suggested',
+    'hosting',
+    'in_progress',
+    'long_title_no_people',
+    'empty',
+  ];
+
+  for (final (device, w, h) in devices) {
+    for (final scale in textScales) {
+      for (final state in states) {
+        for (final mode in [ThemeMode.light, ThemeMode.dark]) {
+          final name = '${device}_x${scale}_${state}_${mode.name}';
+          testWidgets('fits: $name', (tester) async {
+            tester.view.physicalSize = Size(w * 3, h * 3);
+            tester.view.devicePixelRatio = 3;
+            tester.platformDispatcher.textScaleFactorTestValue = scale;
+            addTearDown(tester.view.reset);
+            addTearDown(
+              tester.platformDispatcher.clearTextScaleFactorTestValue,
+            );
+
+            // Collect layout errors with full details (widget + source line).
+            final errors = <FlutterErrorDetails>[];
+            final previous = FlutterError.onError;
+            FlutterError.onError = errors.add;
+
+            final (walks, heroMode) = scenarios[state]!;
+            try {
+              await tester.pumpWidget(
+                _app(
+                  HomeTab(
+                    currentUid: _me,
+                    userName: 'Maximilian Alexander',
+                    photoUrl: null,
+                    unreadCount: 12,
+                    walks: walks,
+                    heroWalk: heroMode == null ? null : walks.first,
+                    heroMode: heroMode,
+                    canStartHosted: state == 'hosting',
+                    heroBusy: false,
+                    streakDays: 12,
+                    weeklyKm: 12.5,
+                    weeklyGoalKm: 10,
+                    actions: _noActions(),
+                  ),
+                  mode,
+                ),
+              );
+              await tester.pumpAndSettle();
+              if (autoUpdateGoldenFiles &&
+                  name.startsWith('galaxy_fold_x1.6')) {
+                await expectLater(
+                  find.byType(MaterialApp),
+                  matchesGoldenFile('goldens/top_$name.png'),
+                );
+              }
+              // Scroll to the bottom so every section gets laid out.
+              await tester.drag(find.byType(ListView), const Offset(0, -4000));
+              await tester.pumpAndSettle();
+            } finally {
+              FlutterError.onError = previous;
+            }
+
+            // Screenshots of failures, plus the most extreme case for a visual check.
+            if (autoUpdateGoldenFiles &&
+                (errors.isNotEmpty || name.startsWith('galaxy_fold_x1.6'))) {
+              await expectLater(
+                find.byType(MaterialApp),
+                matchesGoldenFile('goldens/fail_$name.png'),
+              );
+            }
+            expect(
+              errors.map((e) => _describe(e)).toList(),
+              isEmpty,
+              reason: 'Layout errors on $name',
+            );
+          });
+        }
+      }
     }
-    expect(error, isNull);
-  });
+  }
+}
+
+/// Overflow message plus the widget that caused it (with its source line).
+String _describe(FlutterErrorDetails e) {
+  final text = e.toString();
+  final message = e.exceptionAsString().split('\n').first;
+  final match = RegExp(
+    r'The relevant error-causing widget was:\s*\n\s*(.+)\n\s*(.+)',
+  ).firstMatch(text);
+  return match == null
+      ? message
+      : '$message  <-  ${match.group(1)} ${match.group(2)}';
 }
