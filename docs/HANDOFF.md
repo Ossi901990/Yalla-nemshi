@@ -1,6 +1,6 @@
 # Handoff: continue work here
 
-**Last updated:** 2026-11-23
+**Last updated:** 2026-11-24
 **Branch:** everything up to `607294a` is **merged into `main`** (2026-11-23, after CI passed).
 Start new work (e.g. the design overhaul) on a **new branch** from `main`.
 **Firebase plan:** Spark (free) for now. **The owner will pay for Blaze when the app is
@@ -142,47 +142,47 @@ bundled JDK 21 for that shell:
 
 ## Next up
 
-**Design overhaul: start with the HOME SCREEN** (agreed 2026-11-23, to do next session).
+### Design overhaul: home screen DONE (2026-11-24), owner review pending
 
-- **Branch:** `design/home-redesign` (created from `main` at `0fc2c2c`; no commits yet
-  besides these docs). Work there; merge into `main` when the owner approves.
-- **Mock-ups (owner's):** [`design/home-dark.png`](design/home-dark.png) and
-  [`design/home-light.png`](design/home-light.png). Only the home screen is designed;
-  the owner asked Claude to design the other screens later in the same style.
-- **Look:** near-black background (dark) / off-white (light); accents lime `~#C8F03C`,
-  coral `~#FF8A5C`, periwinkle `~#8FB3FF` (sample exact values from the PNGs); big
-  rounded cards (~24 px radius); chunky bold grotesque headlines ("Yalla, Osaid!");
-  pill buttons; avatar stacks; floating bottom bar with a raised lime + in the middle
-  (the bar stays dark in light mode too).
-- **Decisions:** support **both** light and dark mode with the same accents (swap only
-  backgrounds, surfaces and text). In light mode **lime is a background only, never a
-  text colour** (e.g. "See all" is black).
-- **Home order (from the mock-up):** date pill + greeting + bell (badge) + avatar →
-  next-walk hero card → "N walks near you" map card → "Coming up" rows (day/time
-  chip, name, place · N going, + join) → "This week" day strip (dots on days with
-  walks) → Streak and second stat card → bottom bar (home, map, +, calendar,
-  profile).
-- **Things to handle (raised in review):** bottom padding so the floating bar doesn't
-  cover content; give the chip colours a meaning (e.g. lime = today/soon, blue = this
-  week, coral = weekend) or keep them consistent; friendly empty/zero states ("Join
-  your first walk to start a streak"); hero-card variants: not joined ("I'm in"),
-  joined ("You're in ✓"), hosting ("Start walk" when in the start window), nothing
-  upcoming (create/browse); brighten grey secondary text on dark cards for contrast;
-  use the offset coral shadow only on the hero card.
-- **Data:** "New people met this week" isn't tracked; plan is to show "people you
-  walked with" (from finished walks' participants) or drop the card. Map card needs
-  walk locations (already in walk docs).
-- **Font:** propose bundling **Bricolage Grotesque** (free, Google Fonts) for headlines,
-  keep Inter for body text. Needs adding the .ttf files to `assets/fonts/` + pubspec.
-- **Plan (~2–3 h, with owner check-ins):**
-  1. Design system: tokens + `ThemeData` for light/dark in `lib/design_tokens.dart`
-     (or a new `lib/theme/`), plus shared widgets (cards, pill buttons, time chips,
-     avatar stack, bottom bar). ~30–45 min.
-  2. Rebuild the home screen with real data, splitting `home_screen.dart` (~3.5k
-     lines) into smaller widgets. ~1.5–2 h.
-  3. Check both modes, edge cases, and that join/notifications still work. ~30 min.
-- Later: apply the system to every other screen; move from
-  `package:flutter/material.dart` to `package:material_ui` (the ~40 analyzer infos).
+- **Branch:** `design/home-redesign` (not merged, not pushed as of `cd9227b`). Merge into
+  `main` after the owner approves the look in the browser.
+- **Mock-ups:** [`design/home-dark.png`](design/home-dark.png),
+  [`design/home-light.png`](design/home-light.png).
+- **Design system** (reuse for every screen):
+  - `lib/theme/app_palette.dart`: `AppPalette` light/dark (ThemeExtension, use
+    `AppPalette.of(context)`); accents lime `#C6F432`, coral `#FF8A5B`, blue `#8AB4FF`,
+    teal `#58B8B6`, ink `#0D171B`; `AppSpace` spacing/radii (cards 24).
+  - `lib/theme/app_theme.dart`: `AppTheme.light/dark`, `AppText.display()` (Bricolage
+    Grotesque, variable font via `FontVariation('wght', …)`) and `AppText.body()` (Inter).
+    Old text sizes kept so un-redesigned screens don't shift.
+  - `lib/theme/theme_controller.dart`: Light/Dark/System saved on the device. **Default
+    is Light** until every screen is redesigned; then switch `_defaultMode` to
+    `ThemeMode.system`. Selector: Settings → Appearance. (Dark mode never existed
+    before; screens had `isDark` branches that could never run.)
+  - `lib/widgets/ui/ui_kit.dart`: `AppCard` (optional coral offset shadow),
+    `PillButton`, `RoundIconButton` (badge), `PillLabel`, `TimeChip`, `AvatarStack`,
+    `SectionHeader`. `lib/widgets/ui/floating_nav_bar.dart`: `FloatingNavBar`
+    (Home, Map → Walks tab, raised + → create walk, Calendar → Events tab, Profile);
+    pages leave `FloatingNavBar.reservedHeight` at the bottom.
+- **Home:** `lib/screens/home/home_tab.dart` is pure UI; `home_screen.dart` keeps state
+  and logic (3,554 → ~1,900 lines). Hero card modes: hosting (Start walk in the start
+  window / Details), joined ("You're in"), in progress (I'm here / Open walk),
+  suggested next open walk ("I'm in" = join), nothing planned (Create / Browse).
+  Chip colours: lime = today/tomorrow, blue = other weekdays, coral = weekend.
+  "Walking with" card = distinct people in your walks this week (replaces the
+  mock-up's untracked "New people"). Added a search button in the header.
+- **Removed with the old home UI:** old banners, calendar, tag-based recommendations
+  section, Android step-counter ring (the `pedometer`/`table_calendar` packages may now
+  be unused elsewhere; check before removing them from pubspec).
+- **Tests:** `test/home_tab_test.dart` renders Home at 390 px (light + dark, all hero
+  states) and 320 px; fails on overflow. `flutter test test/home_tab_test.dart
+  --update-goldens` saves screenshots to `test/goldens/` (git-ignored) for review.
+- **To check in the browser (owner):** both modes (Settings → Appearance); join from
+  "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
+  profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
+- **Next screens** (same style, Claude designs them): walk details, create walk,
+  walks/map tab, events/calendar, profile, chat. Then switch the default to System and
+  move from `package:flutter/material.dart` to `package:material_ui`.
 
 ## Backlog (rough priority)
 

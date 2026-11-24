@@ -1,6 +1,6 @@
 # Yalla Nemshi: where we are (short version)
 
-*Last updated: 23 November 2026. This is the simple version of `HANDOFF.md`.*
+*Last updated: 24 November 2026. This is the simple version of `HANDOFF.md`.*
 
 ## In one paragraph
 
@@ -82,9 +82,10 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
 1. **Make invite links work.** Hosts can share an invite link, but tapping it doesn't
    open anything yet. Typing the invite code by hand works fine.
 2. ✅ **All this work is now saved into the main version** of the app (23 November).
-3. **New design for the app (next session):** we picked the new look (dark and
-   light versions of the home screen, saved in `docs/design/`). We'll build the home
-   screen first (about 2–3 hours), then restyle the other screens to match.
+3. **New design for the app:** the **home screen is built** in the new style, with a
+   light and a dark version (there's now an Appearance switch in Settings). It's
+   waiting for a final look-over before it goes into the main version. Next, the
+   other screens get the same style.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
 6. Decide what blocking should do for **walks** (for example, hide your walks from
