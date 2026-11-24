@@ -142,10 +142,10 @@ bundled JDK 21 for that shell:
 
 ## Next up
 
-### Design overhaul: home screen DONE (2026-11-24), owner review pending
+### Design overhaul: home screen DONE and merged into `main` (2026-11-24)
 
-- **Branch:** `design/home-redesign` (not merged, not pushed as of `cd9227b`). Merge into
-  `main` after the owner approves the look in the browser.
+- **Branch:** `design/home-redesign`, approved by the owner and fast-forwarded into
+  `main` at `1a598f0` after CI passed. Start the next screen on a new branch from `main`.
 - **Mock-ups:** [`design/home-dark.png`](design/home-dark.png),
   [`design/home-light.png`](design/home-light.png).
 - **Design system** (reuse for every screen):
