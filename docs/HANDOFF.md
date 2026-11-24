@@ -174,9 +174,18 @@ bundled JDK 21 for that shell:
 - **Removed with the old home UI:** old banners, calendar, tag-based recommendations
   section, Android step-counter ring (the `pedometer`/`table_calendar` packages may now
   be unused elsewhere; check before removing them from pubspec).
-- **Tests:** `test/home_tab_test.dart` renders Home at 390 px (light + dark, all hero
-  states) and 320 px; fails on overflow. `flutter test test/home_tab_test.dart
-  --update-goldens` saves screenshots to `test/goldens/` (git-ignored) for review.
+- **Tests:** `test/home_tab_test.dart` renders Home in light + dark for every hero state,
+  plus a **fit grid**: 7 phone sizes (Galaxy Fold 280, iPhone SE 320/375, Android 360,
+  iPhone 14 390, Pixel 7 412, Pro Max 430) × text size 100/130/160% × 5 states × 2
+  modes = 210 layouts, failing on any overflow with the widget + source line.
+  `flutter test test/home_tab_test.dart --update-goldens` saves screenshots (incl.
+  failures and the Galaxy Fold 160% extreme) to `test/goldens/` (git-ignored).
+  **Use this grid for every redesigned screen**: Chrome's F12 device view can't
+  simulate the phone's text-size setting, which caused most overflows.
+- **Responsive rules used:** big headlines follow text size only up to 115%
+  (`AppText.headlineScaler`); greeting and walk title also size to the width; numbers
+  and chips shrink to fit (`FittedBox`); cards stack when two don't fit side by side;
+  badges and avatar initials don't scale; no fixed heights on cards with text.
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.

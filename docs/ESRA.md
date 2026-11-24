@@ -83,8 +83,10 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    open anything yet. Typing the invite code by hand works fine.
 2. ✅ **All this work is now saved into the main version** of the app (23 November).
 3. **New design for the app:** the **home screen is built** in the new style, with a
-   light and a dark version (there's now an Appearance switch in Settings). It's
-   waiting for a final look-over before it goes into the main version. Next, the
+   light and a dark version (there's now an Appearance switch in Settings). We also
+   tested it on 7 phone sizes, from the smallest to the biggest, and with larger
+   text settings, and fixed everything that didn't fit. It's waiting for a final
+   look-over before it goes into the main version. Next, the
    other screens get the same style.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
