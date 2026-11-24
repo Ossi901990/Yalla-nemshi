@@ -212,6 +212,11 @@ bundled JDK 21 for that shell:
   once ("I'm in" ↔ "Group chat") and the live walk update confirms it; if it doesn't
   within 10 s the button falls back to the real state. ☆ flips instantly with a
   "Added to / Removed from interested" message.
+- **☆ is now saved** (it used to be in-memory only and reset on restart):
+  `users/{uid}/interested/{walkId}` = `{walkId, createdAt}`, owner-only rule (3 rules
+  tests, 83 total). `InterestedService` (watch ids / set); `HomeScreen` listens and
+  marks walks while parsing; toggling saves and reverts with a message on failure.
+  **Rule needs deploying** with `firebase deploy --only firestore:rules`.
 - Tests: `test/walk_details_test.dart` (9 situations × 7 phones × 3 text sizes × 2
   modes = 378 layouts + main-button check). Shared grid helper:
   `test/support/layout_kit.dart` (`fitGrid`); `--update-goldens` also saves an
@@ -219,10 +224,6 @@ bundled JDK 21 for that shell:
 
 ## Backlog (rough priority)
 
-0. **"Interested" (☆) isn't saved anywhere.** It's only an in-memory flag on the home
-   list, so it resets when the app restarts and isn't shared across devices. Save it
-   (e.g. `users/{uid}/interested/{walkId}` with an owner-only rule, or device storage)
-   if it should matter; otherwise consider removing the feature.
 0. **Blocks don't cover walks yet.** A blocked user can still join the blocker's public
    walks and chat there. Decide the behaviour (hide the blocker's walks from them? refuse
    the join in rules?) before building.

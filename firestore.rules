@@ -207,6 +207,15 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Walks the user starred as "interested" (private to the user).
+      match /interested/{walkId} {
+        allow read, delete: if isAuth(userId);
+        allow create, update: if isAuth(userId)
+          && request.resource.data.keys().hasOnly(['walkId', 'createdAt'])
+          && request.resource.data.walkId == walkId
+          && request.resource.data.createdAt is timestamp;
+      }
+
       // FCM tokens for notifications
       match /fcmTokens/{tokenId} {
         allow read, write: if isAuth(userId);

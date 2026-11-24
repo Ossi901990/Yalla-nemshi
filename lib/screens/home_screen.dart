@@ -36,6 +36,7 @@ import '../services/notification_sender.dart';
 import 'home/home_tab.dart';
 import '../theme/app_palette.dart';
 import '../widgets/ui/floating_nav_bar.dart';
+import '../services/interested_service.dart';
 
 // ===== Dark Theme (Neo/Night Forest) palette =====
 const kDarkBg = Color(0xFF071B26); // primary background
@@ -467,6 +468,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final joinedUids =
           (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
       data['joined'] = currentUid != null && joinedUids.contains(currentUid);
+      data['interested'] = _interestedIds.contains(doc.id);
 
       final walk = WalkEvent.fromMap(data);
       if (walk.cancelled) {
@@ -590,6 +592,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
+
+  /// Walks the user starred (saved in users/{uid}/interested).
+  Set<String> _interestedIds = {};
+  StreamSubscription<Set<String>>? _interestedSub;
   bool _isOffline = false;
   int _pendingActions = 0;
 
@@ -879,6 +885,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _loadWeeklyGoal();
     _loadCachedWalks();
     _listenToWalks();
+    _listenToInterested();
 
     // 🔹 Sync user profile to Firestore (if missing)
     FirestoreSyncService.syncCurrentUser();
@@ -886,6 +893,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _interestedSub?.cancel();
     _participantCountdownTimer?.cancel();
     _walksSub?.cancel();
     _walksPollingTimer?.cancel(); // Stop periodic polling
@@ -919,6 +927,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!mounted || cached.isEmpty) return;
       if (_events.isEmpty) {
         setState(() {
+          for (final e in cached) {
+            e.interested = _interestedIds.contains(_walkKey(e));
+          }
           _events.addAll(cached);
         });
       }
@@ -1271,13 +1282,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  void _toggleInterested(WalkEvent event) {
-    setState(() {
-      final index = _events.indexWhere((e) => e.id == event.id);
-      if (index == -1) return;
-      final current = _events[index];
-      _events[index] = current.copyWith(interested: !current.interested);
-    });
+  String _walkKey(WalkEvent e) =>
+      e.firestoreId.isNotEmpty ? e.firestoreId : e.id;
+
+  void _listenToInterested() {
+    _interestedSub?.cancel();
+    _interestedSub = InterestedService.instance.watchIds().listen(
+      (ids) {
+        if (!mounted) return;
+        setState(() {
+          _interestedIds = ids;
+          for (final e in _events) {
+            e.interested = ids.contains(_walkKey(e));
+          }
+        });
+      },
+      onError: (Object e, StackTrace st) => CrashService.recordError(
+        e,
+        st,
+        reason: 'HomeScreen.listenToInterested',
+      ),
+    );
+  }
+
+  /// Star / unstar a walk: update at once, save to the user's account, and
+  /// put it back if saving fails.
+  Future<void> _toggleInterested(WalkEvent event) async {
+    final key = _walkKey(event);
+    final target = !_interestedIds.contains(key);
+    void apply(bool value) {
+      setState(() {
+        _interestedIds = {..._interestedIds}..remove(key);
+        if (value) _interestedIds.add(key);
+        for (final e in _events) {
+          if (_walkKey(e) == key) e.interested = value;
+        }
+      });
+    }
+
+    apply(target);
+    try {
+      await InterestedService.instance.set(key, target);
+    } catch (_) {
+      if (!mounted) return;
+      apply(!target);
+      ErrorHandler.showErrorSnackBar(
+        context,
+        "Couldn't save that. Please try again.",
+      );
+    }
   }
 
   void _cancelHostedWalk(WalkEvent event) {
@@ -1577,6 +1630,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen(authProvider, (previous, next) {
       next.whenData((user) {
         _listenToWalks();
+        _listenToInterested();
         _refreshNotificationsCount();
       });
     });

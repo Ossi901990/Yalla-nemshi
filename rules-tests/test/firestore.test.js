@@ -456,6 +456,30 @@ describe("blocks, reports, DMs", () => {
 });
 
 // ---------------------------------------------------------------------------
+describe("interested walks (star)", () => {
+  const star = (walkId) => ({ walkId, createdAt: serverTimestamp() });
+
+  it("users can star and unstar walks for themselves", async () => {
+    await assertSucceeds(setDoc(doc(db(ALICE), "users/alice/interested/open1"), star("open1")));
+    await assertSucceeds(getDocs(collection(db(ALICE), "users/alice/interested")));
+    await assertSucceeds(deleteDoc(doc(db(ALICE), "users/alice/interested/open1")));
+  });
+
+  it("nobody else can see or change a user's stars", async () => {
+    await seed((f) => setDoc(doc(f, "users/alice/interested/open1"), { walkId: "open1", createdAt: Timestamp.now() }));
+    await assertFails(getDocs(collection(db(MALLORY), "users/alice/interested")));
+    await assertFails(setDoc(doc(db(MALLORY), "users/alice/interested/open2"), star("open2")));
+    await assertFails(deleteDoc(doc(db(MALLORY), "users/alice/interested/open1")));
+  });
+
+  it("star records hold only the walk id and time", async () => {
+    await assertFails(setDoc(doc(db(ALICE), "users/alice/interested/open1"), star("other")));
+    await assertFails(setDoc(doc(db(ALICE), "users/alice/interested/open1"),
+      { ...star("open1"), note: "x" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe("client-side walk completion (Spark)", () => {
   const hist = (uid) => ({
     walkId: "open1", userId: uid, joinedAt: Timestamp.now(), completed: true,
