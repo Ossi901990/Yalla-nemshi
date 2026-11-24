@@ -23,6 +23,9 @@ import '../utils/error_handler.dart';
 import '../utils/invite_utils.dart';
 import '../utils/search_utils.dart';
 import '../config/app_features.dart';
+import '../theme/app_palette.dart';
+import '../theme/app_theme.dart';
+import '../widgets/ui/ui_kit.dart';
 
 // ===== Design tokens (match Home / Profile) =====
 const double kRadiusCard = 24;
@@ -788,7 +791,20 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     }
   }
 
+  /// True while a walk is being created (blocks double taps).
+  bool _isSubmitting = false;
+
   Future<void> _submit() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      await _submitWalk();
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _submitWalk() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
@@ -840,8 +856,9 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final LatLng? effectiveMeeting = effectiveStart ?? _meetingLatLng;
 
     // Effective distance: loops use loopDistanceKm; point-to-point has none.
-    final double? effectiveDistanceKm =
-        walkType == 'loop' ? _loopDistanceKm : null;
+    final double? effectiveDistanceKm = walkType == 'loop'
+        ? _loopDistanceKm
+        : null;
 
     // ✅ Ensure walk has a city (critical for visibility to other users!)
     // Fall back to user's saved city if auto-detect failed
@@ -1036,15 +1053,12 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                   }
                   transaction.set(docRef, payload);
                   // Host-only invite doc; never stored on the walk itself.
-                  transaction.set(
-                    docRef.collection('private').doc('invite'),
-                    {
-                      'walkId': docRef.id,
-                      'hostUid': uid,
-                      'shareCode': _privateShareCode,
-                      'shareCodeExpiresAt': shareCodeExpiresAt,
-                    },
-                  );
+                  transaction.set(docRef.collection('private').doc('invite'), {
+                    'walkId': docRef.id,
+                    'hostUid': uid,
+                    'shareCode': _privateShareCode,
+                    'shareCodeExpiresAt': shareCodeExpiresAt,
+                  });
                   // Public lookup by code (get-only; rules verify redemption).
                   transaction.set(codeRef, {
                     'walkId': docRef.id,
@@ -1201,743 +1215,691 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final p = AppPalette.of(context);
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: isDark
-          ? const Color(0xFF071B26)
-          : const Color(0xFF1ABFC4),
-      body: Column(
-        children: [
-          // ===== HOME-STYLE HEADER (no bar) =====
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const _HeaderLogo(),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Yalla Nemshi',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 32),
-                ],
-              ),
-            ),
+      backgroundColor: p.background,
+      bottomNavigationBar: _buildSubmitBar(context),
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            AppSpace.page,
+            AppSpace.md,
+            AppSpace.page,
+            AppSpace.xxl + MediaQuery.of(context).viewInsets.bottom,
           ),
-
-          // ===== MAIN AREA =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  gradient: isDark
-                      ? const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xFF071B26), Color(0xFF041016)],
-                        )
-                      : null,
-                  color: isDark ? null : const Color(0xFFF7F9F2),
-                ),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    kSpace2,
-                    kSpace2,
-                    kSpace2,
-                    kSpace3 +
-                        MediaQuery.of(context).viewInsets.bottom +
-                        MediaQuery.of(context).padding.bottom,
-                  ),
-                  child: Card(
-                    color: isDark ? const Color(0xFF0C2430) : kLightSurface,
-                    elevation: isDark
-                        ? kCardElevationDark
-                        : kCardElevationLight,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusCard),
-                      side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black).withAlpha(
-                          (kCardBorderAlpha * 255).round(),
-                        ),
-                      ),
+          child: Theme(
+            data: _formTheme(theme, p, isDark),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    RoundIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: () => Navigator.maybePop(context),
+                      tooltip: 'Back',
+                      size: 48,
                     ),
-                    child: Theme(
-                      data: theme.copyWith(
-                        inputDecorationTheme: InputDecorationTheme(
-                          filled: true,
-                          fillColor: isDark
-                              ? Colors.white.withAlpha((0.06 * 255).round())
-                              : Colors.white,
-                          labelStyle: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                          hintStyle: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white54 : Colors.black54,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(kRadiusControl),
-                            borderSide: BorderSide(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withAlpha((0.12 * 255).round()),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(kRadiusControl),
-                            borderSide: BorderSide(
-                              color: (isDark ? Colors.white : Colors.black)
-                                  .withAlpha((0.12 * 255).round()),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(kRadiusControl),
-                            borderSide: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withAlpha((0.35 * 255).round())
-                                  : const Color(0xFF1A2332),
-                              width: 1.2,
-                            ),
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          kSpace2,
-                          kSpace3,
-                          kSpace2,
-                          kSpace3,
-                        ),
+                  ],
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Text(
+                  'New walk',
+                  textScaler: AppText.headlineScaler(context),
+                  style: AppText.display(44, color: p.text),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pick a route type, where and when. People nearby can join.',
+                  style: AppText.body(15, color: p.textMuted),
+                ),
+                const SizedBox(height: AppSpace.xl),
+                DefaultTabController(
+                  length: 2,
+                  initialIndex: 0,
+                  child: Builder(
+                    builder: (context) {
+                      return Form(
+                        key: _formKey,
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Create walk',
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w700,
+                            // Tabs
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: p.surface,
+                                borderRadius: BorderRadius.circular(
+                                  AppSpace.radiusPill,
+                                ),
+                                border: Border.all(color: p.border),
+                              ),
+                              child: TabBar(
+                                onTap: (index) {
+                                  if (index == _walkTypeIndex) {
+                                    return;
+                                  }
+                                  setState(() => _walkTypeIndex = index);
+                                },
+                                dividerColor: Colors.transparent,
+                                indicatorSize: TabBarIndicatorSize.tab,
+                                indicator: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    AppSpace.radiusPill,
+                                  ),
+                                  color: AppPalette.lime,
+                                ),
+                                labelColor: AppPalette.ink,
+                                unselectedLabelColor: p.textMuted,
+                                labelStyle: AppText.body(
+                                  15,
+                                  weight: FontWeight.w800,
+                                ),
+                                unselectedLabelStyle: AppText.body(
+                                  15,
+                                  weight: FontWeight.w600,
+                                ),
+                                tabs: const [
+                                  Tab(text: 'Point to point'),
+                                  Tab(text: 'Loop'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Title
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: 'Title',
+                              ),
+                              onSaved: (val) => _title = (val ?? '').trim(),
+                              validator: (val) =>
+                                  (val == null || val.trim().isEmpty)
+                                  ? 'Required'
+                                  : null,
+                            ),
+                            const SizedBox(height: 12),
+
+                            _sectionLabel(context, 'Where'),
+                            // Shared starting point (single place only)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
                                 color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF1A2332),
+                                    ? Colors.white.withAlpha(
+                                        (0.06 * 255).round(),
+                                      )
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withAlpha((0.12 * 255).round()),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Set your walk details and invite others to join.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white70 : Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            DefaultTabController(
-                              length: 2,
-                              initialIndex: 0,
-                              child: Builder(
-                                builder: (context) {
-                                  return Form(
-                                    key: _formKey,
-                                    child: Column(
-                                      children: [
-                                        // Tabs
-                                        Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.my_location,
+                                    size: 18,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF1A2332),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _startLatLng == null
+                                          ? 'Starting from: My current location'
+                                          : 'Starting from: Custom location selected',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            fontFamily: 'Inter',
+                                            fontWeight: FontWeight.w700,
                                             color: isDark
-                                                ? Colors.white.withAlpha(
-                                                    (0.06 * 255).round(),
-                                                  )
-                                                : Colors.black.withAlpha(
-                                                    (0.04 * 255).round(),
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  (isDark
-                                                          ? Colors.white
-                                                          : Colors.black)
-                                                      .withAlpha(
-                                                        (0.08 * 255).round(),
-                                                      ),
-                                            ),
-                                          ),
-                                          child: TabBar(
-                                            onTap: (index) {
-                                              if (index == _walkTypeIndex) {
-                                                return;
-                                              }
-                                              setState(
-                                                () => _walkTypeIndex = index,
-                                              );
-                                            },
-                                            dividerColor: Colors.transparent,
-                                            indicatorSize:
-                                                TabBarIndicatorSize.tab,
-                                            indicator: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              color: isDark
-                                                  ? Colors.white.withAlpha(
-                                                      (0.10 * 255).round(),
-                                                    )
-                                                  : Colors.white,
-                                            ),
-                                            labelColor: isDark
                                                 ? Colors.white
-                                                : const Color(0xFF1A2332),
-                                            unselectedLabelColor: isDark
-                                                ? Colors.white70
-                                                : Colors.black54,
-                                            labelStyle: const TextStyle(
-                                              fontFamily: 'Poppins',
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                            ),
-                                            unselectedLabelStyle:
-                                                const TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                ),
-                                            tabs: const [
-                                              Tab(text: 'Point to point'),
-                                              Tab(text: 'Loop'),
-                                            ],
+                                                : Colors.black87,
                                           ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _pickOnMap,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF1A2332),
+                                    ),
+                                    child: const Text('Change'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // ===== TYPE-SPECIFIC SECTION =====
+                            if (_walkTypeIndex == 0) ...[
+                              // Point-to-point
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Route',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1A2332),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Visibility (Open / Private)
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Visibility',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1A2332),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ChoiceChip(
+                                      label: const Text('Open'),
+                                      selected: !_isPrivatePointToPoint,
+                                      onSelected: (_) {
+                                        setState(() {
+                                          _isPrivatePointToPoint = false;
+                                          _resetPrivateInviteState();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ChoiceChip(
+                                      label: const Text('Private'),
+                                      selected: _isPrivatePointToPoint,
+                                      onSelected: (_) {
+                                        setState(() {
+                                          _isPrivatePointToPoint = true;
+                                          _preparePrivateInviteState();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _isPrivatePointToPoint
+                                      ? 'Hidden from Nearby walks. Share a link or QR to invite.'
+                                      : 'Visible in Nearby walks. Others can request to join.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              if (_isPrivatePointToPoint) ...[
+                                _buildInviteCodeCard(theme, isDark),
+                                const SizedBox(height: 16),
+                              ],
+
+                              // Map picker handled by the top 'Change' button
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _endLatLng == null
+                                      ? 'Destination pin not selected yet'
+                                      : 'Destination selected on map',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ] else ...[
+                              // Loop
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Loop walk',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1A2332),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              TextFormField(
+                                controller: _loopMinutesCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Duration (minutes)',
+                                  hintText: 'e.g. 30',
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (val) {
+                                  final v = int.tryParse((val ?? '').trim());
+                                  if (v == null) {
+                                    return 'Enter minutes';
+                                  }
+                                  if (v <= 0) {
+                                    return 'Must be greater than 0';
+                                  }
+                                  if (v > 600) {
+                                    return 'Try under 600 minutes';
+                                  }
+                                  return null;
+                                },
+                                onSaved: (val) {
+                                  final v = int.tryParse((val ?? '').trim());
+                                  if (v != null) _loopMinutes = v;
+                                },
+                              ),
+                              const SizedBox(height: 12),
+
+                              TextFormField(
+                                controller: _loopDistanceCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Distance (km)',
+                                  hintText: 'e.g. 3.0',
+                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                validator: (val) {
+                                  final v = double.tryParse((val ?? '').trim());
+                                  if (v == null) {
+                                    return 'Enter distance';
+                                  }
+                                  if (v <= 0) {
+                                    return 'Must be greater than 0';
+                                  }
+                                  if (v > 100) {
+                                    return 'Try under 100 km';
+                                  }
+                                  return null;
+                                },
+                                onSaved: (val) {
+                                  final v = double.tryParse((val ?? '').trim());
+                                  if (v != null) {
+                                    _loopDistanceKm = v;
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 6),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Duration and distance update each other automatically.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Private walk option for loop
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Visibility',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1A2332),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ChoiceChip(
+                                      label: const Text('Open'),
+                                      selected: !_isPrivateLoop,
+                                      onSelected: (_) {
+                                        setState(() {
+                                          _isPrivateLoop = false;
+                                          _resetPrivateInviteState();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ChoiceChip(
+                                      label: const Text('Private'),
+                                      selected: _isPrivateLoop,
+                                      onSelected: (_) {
+                                        setState(() {
+                                          _isPrivateLoop = true;
+                                          _preparePrivateInviteState();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  _isPrivateLoop
+                                      ? 'Hidden from Nearby walks. Share a link or QR to invite.'
+                                      : 'Visible in Nearby walks. Others can request to join.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontFamily: 'Inter',
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              if (_isPrivateLoop) ...[
+                                _buildInviteCodeCard(theme, isDark),
+                                const SizedBox(height: 16),
+                              ],
+                            ],
+
+                            _sectionLabel(context, 'Who & pace'),
+                            // Gender
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: _gender,
+                              decoration: const InputDecoration(
+                                labelText: 'Who can join?',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'Mixed',
+                                  child: Text('Mixed'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Women only',
+                                  child: Text('Women only'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Men only',
+                                  child: Text('Men only'),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _gender = val);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Pace
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: _pace,
+                              decoration: const InputDecoration(
+                                labelText: 'Walking pace',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'Relaxed',
+                                  child: Text('Relaxed (2-3 km/h)'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Normal',
+                                  child: Text('Normal (3-4 km/h)'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Brisk',
+                                  child: Text('Brisk (4+ km/h)'),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _pace = val);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            _sectionLabel(context, 'When'),
+                            // Date & time
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                'Date & time',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1A2332),
+                                ),
+                              ),
+                              subtitle: Text(
+                                _formatDateTime(_dateTime),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(
+                                  Icons.calendar_today,
+                                  color: isDark ? Colors.white70 : Colors.white,
+                                ),
+                                onPressed: _pickDateTime,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            _sectionLabel(context, 'Details'),
+                            // Description
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: 'Description (optional)',
+                              ),
+                              minLines: 3,
+                              maxLines: MediaQuery.of(context).size.height < 700
+                                  ? 3
+                                  : 5,
+                              onSaved: (val) =>
+                                  _description = (val ?? '').trim(),
+                            ),
+                            const SizedBox(height: 24),
+
+                            Text(
+                              'Tags & vibe',
+                              style:
+                                  theme.textTheme.titleMedium?.copyWith(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1A2332),
+                                  ) ??
+                                  TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF1A2332),
+                                  ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _walkTagOptions.map((tag) {
+                                final selected = _selectedTags.contains(tag);
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (selected) {
+                                        _selectedTags.remove(tag);
+                                      } else {
+                                        _selectedTags.add(tag);
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? AppPalette.lime
+                                          : p.surface,
+                                      border: Border.all(
+                                        color: selected
+                                            ? AppPalette.lime
+                                            : p.border,
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpace.radiusPill,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      tag,
+                                      style: TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: selected
+                                            ? AppPalette.ink
+                                            : p.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 16),
+
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: _comfortLevel,
+                              decoration: const InputDecoration(
+                                labelText: 'Comfort vibe',
+                              ),
+                              items: _comfortOptions
+                                  .map(
+                                    (option) => DropdownMenuItem(
+                                      value: option,
+                                      child: Text(option),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _comfortLevel = val);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 12),
+
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: _experienceLevel,
+                              decoration: const InputDecoration(
+                                labelText: 'Experience level',
+                              ),
+                              items: _experienceOptions
+                                  .map(
+                                    (option) => DropdownMenuItem(
+                                      value: option,
+                                      child: Text(option),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => _experienceLevel = val);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // ===== Photo Picker Section (needs Storage / Blaze) =====
+                            if (AppFeatures.photoUploads) ...[
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withAlpha(
+                                          (0.04 * 255).round(),
+                                        )
+                                      : Colors.grey.withAlpha(
+                                          (0.05 * 255).round(),
                                         ),
-                                        const SizedBox(height: 16),
-
-                                        // Title
-                                        TextFormField(
-                                          decoration: const InputDecoration(
-                                            labelText: 'Title',
-                                          ),
-                                          onSaved: (val) =>
-                                              _title = (val ?? '').trim(),
-                                          validator: (val) =>
-                                              (val == null ||
-                                                  val.trim().isEmpty)
-                                              ? 'Required'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        // Shared starting point (single place only)
-                                        Container(
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 12,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? Colors.white.withAlpha(
-                                                    (0.06 * 255).round(),
-                                                  )
-                                                : Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  (isDark
-                                                          ? Colors.white
-                                                          : Colors.black)
-                                                      .withAlpha(
-                                                        (0.12 * 255).round(),
-                                                      ),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.my_location,
-                                                size: 18,
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : const Color(0xFF1A2332),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  _startLatLng == null
-                                                      ? 'Starting from: My current location'
-                                                      : 'Starting from: Custom location selected',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: theme
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.copyWith(
-                                                        fontFamily: 'Inter',
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: isDark
-                                                            ? Colors.white
-                                                            : Colors.black87,
-                                                      ),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: _pickOnMap,
-                                                style: TextButton.styleFrom(
-                                                  foregroundColor: isDark
-                                                      ? Colors.white70
-                                                      : const Color(0xFF1A2332),
-                                                ),
-                                                child: const Text('Change'),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        // ===== TYPE-SPECIFIC SECTION =====
-                                        if (_walkTypeIndex == 0) ...[
-                                          // Point-to-point
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Route',
-                                              style: theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1A2332,
-                                                          ),
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-
-                                          // Visibility (Open / Private)
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Visibility',
-                                              style: theme.textTheme.titleSmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1A2332,
-                                                          ),
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: ChoiceChip(
-                                                  label: const Text('Open'),
-                                                  selected:
-                                                      !_isPrivatePointToPoint,
-                                                  onSelected: (_) {
-                                                    setState(() {
-                                                      _isPrivatePointToPoint =
-                                                          false;
-                                                      _resetPrivateInviteState();
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: ChoiceChip(
-                                                  label: const Text('Private'),
-                                                  selected:
-                                                      _isPrivatePointToPoint,
-                                                  onSelected: (_) {
-                                                    setState(() {
-                                                      _isPrivatePointToPoint =
-                                                          true;
-                                                      _preparePrivateInviteState();
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              _isPrivatePointToPoint
-                                                  ? 'Hidden from Nearby walks. Share a link or QR to invite.'
-                                                  : 'Visible in Nearby walks. Others can request to join.',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : Colors.black54,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-
-                                          if (_isPrivatePointToPoint) ...[
-                                            _buildInviteCodeCard(theme, isDark),
-                                            const SizedBox(height: 16),
-                                          ],
-
-                                          // Map picker handled by the top 'Change' button
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              _endLatLng == null
-                                                  ? 'Destination pin not selected yet'
-                                                  : 'Destination selected on map',
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark
-                                                        ? Colors.white54
-                                                        : Colors.black54,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                        ] else ...[
-                                          // Loop
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Loop walk',
-                                              style: theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1A2332,
-                                                          ),
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-
-                                          TextFormField(
-                                            controller: _loopMinutesCtrl,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Duration (minutes)',
-                                              hintText: 'e.g. 30',
-                                            ),
-                                            keyboardType: TextInputType.number,
-                                            validator: (val) {
-                                              final v = int.tryParse(
-                                                (val ?? '').trim(),
-                                              );
-                                              if (v == null) {
-                                                return 'Enter minutes';
-                                              }
-                                              if (v <= 0) {
-                                                return 'Must be greater than 0';
-                                              }
-                                              if (v > 600) {
-                                                return 'Try under 600 minutes';
-                                              }
-                                              return null;
-                                            },
-                                            onSaved: (val) {
-                                              final v = int.tryParse(
-                                                (val ?? '').trim(),
-                                              );
-                                              if (v != null) _loopMinutes = v;
-                                            },
-                                          ),
-                                          const SizedBox(height: 12),
-
-                                          TextFormField(
-                                            controller: _loopDistanceCtrl,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Distance (km)',
-                                              hintText: 'e.g. 3.0',
-                                            ),
-                                            keyboardType:
-                                                const TextInputType.numberWithOptions(
-                                                  decimal: true,
-                                                ),
-                                            validator: (val) {
-                                              final v = double.tryParse(
-                                                (val ?? '').trim(),
-                                              );
-                                              if (v == null) {
-                                                return 'Enter distance';
-                                              }
-                                              if (v <= 0) {
-                                                return 'Must be greater than 0';
-                                              }
-                                              if (v > 100) {
-                                                return 'Try under 100 km';
-                                              }
-                                              return null;
-                                            },
-                                            onSaved: (val) {
-                                              final v = double.tryParse(
-                                                (val ?? '').trim(),
-                                              );
-                                              if (v != null) {
-                                                _loopDistanceKm = v;
-                                              }
-                                            },
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Duration and distance update each other automatically.',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : Colors.black54,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-
-                                          // Private walk option for loop
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              'Visibility',
-                                              style: theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1A2332,
-                                                          ),
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: ChoiceChip(
-                                                  label: const Text('Open'),
-                                                  selected: !_isPrivateLoop,
-                                                  onSelected: (_) {
-                                                    setState(() {
-                                                      _isPrivateLoop = false;
-                                                      _resetPrivateInviteState();
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: ChoiceChip(
-                                                  label: const Text('Private'),
-                                                  selected: _isPrivateLoop,
-                                                  onSelected: (_) {
-                                                    setState(() {
-                                                      _isPrivateLoop = true;
-                                                      _preparePrivateInviteState();
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              _isPrivateLoop
-                                                  ? 'Hidden from Nearby walks. Share a link or QR to invite.'
-                                                  : 'Visible in Nearby walks. Others can request to join.',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w600,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : Colors.black54,
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-
-                                          if (_isPrivateLoop) ...[
-                                            _buildInviteCodeCard(theme, isDark),
-                                            const SizedBox(height: 16),
-                                          ],
-                                        ],
-
-                                        // Gender
-                                        DropdownButtonFormField<String>(
-                                          initialValue: _gender,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Who can join?',
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'Mixed',
-                                              child: Text('Mixed'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'Women only',
-                                              child: Text('Women only'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'Men only',
-                                              child: Text('Men only'),
-                                            ),
-                                          ],
-                                          onChanged: (val) {
-                                            if (val != null) {
-                                              setState(() => _gender = val);
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        // Pace
-                                        DropdownButtonFormField<String>(
-                                          initialValue: _pace,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Walking pace',
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'Relaxed',
-                                              child: Text('Relaxed (2-3 km/h)'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'Normal',
-                                              child: Text('Normal (3-4 km/h)'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'Brisk',
-                                              child: Text('Brisk (4+ km/h)'),
-                                            ),
-                                          ],
-                                          onChanged: (val) {
-                                            if (val != null) {
-                                              setState(() => _pace = val);
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        // Date & time
-                                        ListTile(
-                                          contentPadding: EdgeInsets.zero,
-                                          title: Text(
-                                            'Date & time',
-                                            style: theme.textTheme.titleMedium
-                                                ?.copyWith(
-                                                  fontFamily: 'Poppins',
-                                                  fontWeight: FontWeight.w700,
-                                                  color: isDark
-                                                      ? Colors.white
-                                                      : const Color(0xFF1A2332),
-                                                ),
-                                          ),
-                                          subtitle: Text(
-                                            _formatDateTime(_dateTime),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodySmall
-                                                ?.copyWith(
-                                                  fontFamily: 'Inter',
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark
-                                                      ? Colors.white70
-                                                      : Colors.black54,
-                                                ),
-                                          ),
-                                          trailing: IconButton(
-                                            icon: Icon(
-                                              Icons.calendar_today,
-                                              color: isDark
-                                                  ? Colors.white70
-                                                  : Colors.white,
-                                            ),
-                                            onPressed: _pickDateTime,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        // Description
-                                        TextFormField(
-                                          decoration: const InputDecoration(
-                                            labelText: 'Description (optional)',
-                                          ),
-                                          minLines: 3,
-                                          maxLines:
-                                              MediaQuery.of(
-                                                    context,
-                                                  ).size.height <
-                                                  700
-                                              ? 3
-                                              : 5,
-                                          onSaved: (val) =>
-                                              _description = (val ?? '').trim(),
-                                        ),
-                                        const SizedBox(height: 24),
-
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color:
+                                        (isDark ? Colors.white : Colors.black)
+                                            .withAlpha((0.12 * 255).round()),
+                                  ),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
                                         Text(
-                                          'Tags & vibe',
-                                          style:
-                                              theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontWeight: FontWeight.w700,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(
-                                                            0xFF1A2332,
-                                                          ),
-                                                  ) ??
-                                              TextStyle(
+                                          'Photos (Optional)',
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
                                                 fontFamily: 'Poppins',
                                                 fontWeight: FontWeight.w700,
                                                 color: isDark
@@ -1945,599 +1907,460 @@ class _CreateWalkScreenState extends State<CreateWalkScreen> {
                                                     : const Color(0xFF1A2332),
                                               ),
                                         ),
-                                        const SizedBox(height: 12),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 8,
-                                          children: _walkTagOptions.map((tag) {
-                                            final selected = _selectedTags
-                                                .contains(tag);
-                                            return GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  if (selected) {
-                                                    _selectedTags.remove(tag);
-                                                  } else {
-                                                    _selectedTags.add(tag);
-                                                  }
-                                                });
-                                              },
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6,
+                                        if (_selectedPhotos.isNotEmpty)
+                                          Text(
+                                            '${_selectedPhotos.length}/10',
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                                  fontFamily: 'Inter',
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.grey,
+                                                ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Photo grid
+                                    if (_selectedPhotos.isEmpty)
+                                      Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(24),
+                                          child: Column(
+                                            children: [
+                                              Icon(
+                                                Icons.image_outlined,
+                                                size: 40,
+                                                color: Colors.grey[600],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Add walk photos',
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      fontFamily: 'Inter',
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.grey[600],
                                                     ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      GridView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        gridDelegate:
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                              crossAxisCount: 3,
+                                              crossAxisSpacing: 8,
+                                              mainAxisSpacing: 8,
+                                            ),
+                                        itemCount: _selectedPhotos.length,
+                                        itemBuilder: (ctx, idx) {
+                                          final photo = _selectedPhotos[idx];
+                                          return Stack(
+                                            children: [
+                                              Container(
                                                 decoration: BoxDecoration(
-                                                  color: selected
-                                                      ? Colors.teal.shade100
-                                                      : Colors.transparent,
-                                                  border: Border.all(
-                                                    color: selected
-                                                        ? Colors.teal
-                                                        : Colors.grey.shade400,
-                                                    width: 1,
-                                                  ),
                                                   borderRadius:
                                                       BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  tag,
-                                                  style: TextStyle(
-                                                    fontFamily: 'Inter',
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: selected
-                                                        ? Colors.teal
-                                                        : Colors.grey.shade700,
+                                                  image: DecorationImage(
+                                                    image: photo.imageProvider,
+                                                    fit: BoxFit.cover,
                                                   ),
                                                 ),
                                               ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        DropdownButtonFormField<String>(
-                                          initialValue: _comfortLevel,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Comfort vibe',
-                                          ),
-                                          items: _comfortOptions
-                                              .map(
-                                                (option) => DropdownMenuItem(
-                                                  value: option,
-                                                  child: Text(option),
-                                                ),
-                                              )
-                                              .toList(),
-                                          onChanged: (val) {
-                                            if (val != null) {
-                                              setState(
-                                                () => _comfortLevel = val,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(height: 12),
-
-                                        DropdownButtonFormField<String>(
-                                          initialValue: _experienceLevel,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Experience level',
-                                          ),
-                                          items: _experienceOptions
-                                              .map(
-                                                (option) => DropdownMenuItem(
-                                                  value: option,
-                                                  child: Text(option),
-                                                ),
-                                              )
-                                              .toList(),
-                                          onChanged: (val) {
-                                            if (val != null) {
-                                              setState(
-                                                () => _experienceLevel = val,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(height: 24),
-
-                                        // ===== Photo Picker Section (needs Storage / Blaze) =====
-                                        if (AppFeatures.photoUploads) ...[
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? Colors.white.withAlpha(
-                                                    (0.04 * 255).round(),
-                                                  )
-                                                : Colors.grey.withAlpha(
-                                                    (0.05 * 255).round(),
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  (isDark
-                                                          ? Colors.white
-                                                          : Colors.black)
-                                                      .withAlpha(
-                                                        (0.12 * 255).round(),
-                                                      ),
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.all(16),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    'Photos (Optional)',
-                                                    style: theme
-                                                        .textTheme
-                                                        .titleSmall
-                                                        ?.copyWith(
-                                                          fontFamily: 'Poppins',
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: isDark
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF1A2332,
-                                                                ),
-                                                        ),
-                                                  ),
-                                                  if (_selectedPhotos
-                                                      .isNotEmpty)
-                                                    Text(
-                                                      '${_selectedPhotos.length}/10',
-                                                      style: theme
-                                                          .textTheme
-                                                          .labelSmall
-                                                          ?.copyWith(
-                                                            fontFamily: 'Inter',
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            color: Colors.grey,
+                                              Positioned(
+                                                top: 4,
+                                                right: 4,
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _removePhoto(idx),
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red
+                                                          .withAlpha(
+                                                            (0.8 * 255).round(),
                                                           ),
+                                                      shape: BoxShape.circle,
                                                     ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 12),
-                                              // Photo grid
-                                              if (_selectedPhotos.isEmpty)
-                                                Center(
-                                                  child: Padding(
                                                     padding:
-                                                        const EdgeInsets.all(
-                                                          24,
-                                                        ),
-                                                    child: Column(
-                                                      children: [
-                                                        Icon(
-                                                          Icons.image_outlined,
-                                                          size: 40,
-                                                          color:
-                                                              Colors.grey[600],
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 8,
-                                                        ),
-                                                        Text(
-                                                          'Add walk photos',
-                                                          style: theme
-                                                              .textTheme
-                                                              .bodySmall
-                                                              ?.copyWith(
-                                                                fontFamily:
-                                                                    'Inter',
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Colors
-                                                                    .grey[600],
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                )
-                                              else
-                                                GridView.builder(
-                                                  shrinkWrap: true,
-                                                  physics:
-                                                      const NeverScrollableScrollPhysics(),
-                                                  gridDelegate:
-                                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                                        crossAxisCount: 3,
-                                                        crossAxisSpacing: 8,
-                                                        mainAxisSpacing: 8,
-                                                      ),
-                                                  itemCount:
-                                                      _selectedPhotos.length,
-                                                  itemBuilder: (ctx, idx) {
-                                                    final photo =
-                                                        _selectedPhotos[idx];
-                                                    return Stack(
-                                                      children: [
-                                                        Container(
-                                                          decoration: BoxDecoration(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  12,
-                                                                ),
-                                                            image: DecorationImage(
-                                                              image: photo
-                                                                  .imageProvider,
-                                                              fit: BoxFit.cover,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        Positioned(
-                                                          top: 4,
-                                                          right: 4,
-                                                          child: GestureDetector(
-                                                            onTap: () =>
-                                                                _removePhoto(
-                                                                  idx,
-                                                                ),
-                                                            child: Container(
-                                                              decoration: BoxDecoration(
-                                                                color: Colors
-                                                                    .red
-                                                                    .withAlpha(
-                                                                      (0.8 * 255)
-                                                                          .round(),
-                                                                    ),
-                                                                shape: BoxShape
-                                                                    .circle,
-                                                              ),
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    2,
-                                                                  ),
-                                                              child: const Icon(
-                                                                Icons.close,
-                                                                color: Colors
-                                                                    .white,
-                                                                size: 14,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    );
-                                                  },
-                                                ),
-                                              if (_selectedPhotos.length < 10)
-                                                const SizedBox(height: 12),
-                                              if (_selectedPhotos.length < 10)
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: _pickPhotos,
-                                                    icon: const Icon(
-                                                      Icons.add_photo_alternate,
-                                                    ),
-                                                    label: Text(
-                                                      _selectedPhotos.isEmpty
-                                                          ? 'Pick Photos'
-                                                          : 'Add More Photos',
+                                                        const EdgeInsets.all(2),
+                                                    child: const Icon(
+                                                      Icons.close,
+                                                      color: Colors.white,
+                                                      size: 14,
                                                     ),
                                                   ),
                                                 ),
+                                              ),
                                             ],
+                                          );
+                                        },
+                                      ),
+                                    if (_selectedPhotos.length < 10)
+                                      const SizedBox(height: 12),
+                                    if (_selectedPhotos.length < 10)
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          onPressed: _pickPhotos,
+                                          icon: const Icon(
+                                            Icons.add_photo_alternate,
+                                          ),
+                                          label: Text(
+                                            _selectedPhotos.isEmpty
+                                                ? 'Pick Photos'
+                                                : 'Add More Photos',
                                           ),
                                         ),
-                                        const SizedBox(height: 24),
-                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                            ],
 
-                                        // ===== Recurring Walk Section =====
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: isDark
-                                                ? Colors.white.withAlpha(
-                                                    (0.04 * 255).round(),
-                                                  )
-                                                : Colors.grey.withAlpha(
-                                                    (0.05 * 255).round(),
-                                                  ),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  (isDark
-                                                          ? Colors.white
-                                                          : Colors.black)
-                                                      .withAlpha(
-                                                        (0.08 * 255).round(),
-                                                      ),
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.all(16),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.repeat,
-                                                    size: 20,
-                                                    color: isDark
-                                                        ? Colors.white70
-                                                        : Colors.black87,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Recurring Walk',
-                                                    style: theme
-                                                        .textTheme
-                                                        .titleSmall
-                                                        ?.copyWith(
-                                                          fontFamily: 'Poppins',
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: isDark
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF1A2332,
-                                                                ),
-                                                        ),
-                                                  ),
-                                                  const Spacer(),
-                                                  Switch(
-                                                    value: _isRecurring,
-                                                    onChanged: (val) {
-                                                      setState(() {
-                                                        _isRecurring = val;
-                                                      });
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                              if (_isRecurring) ...[
-                                                const SizedBox(height: 16),
-                                                // Frequency selector
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: SegmentedButton<RecurrenceType>(
-                                                        segments: const [
-                                                          ButtonSegment(
-                                                            value:
-                                                                RecurrenceType
-                                                                    .weekly,
-                                                            label: Text(
-                                                              'Weekly',
-                                                            ),
-                                                          ),
-                                                          ButtonSegment(
-                                                            value:
-                                                                RecurrenceType
-                                                                    .monthly,
-                                                            label: Text(
-                                                              'Monthly',
-                                                            ),
-                                                          ),
-                                                        ],
-                                                        selected: {
-                                                          _recurrenceType,
-                                                        },
-                                                        onSelectionChanged:
-                                                            (
-                                                              Set<
-                                                                RecurrenceType
-                                                              >
-                                                              newSelection,
-                                                            ) {
-                                                              setState(() {
-                                                                _recurrenceType =
-                                                                    newSelection
-                                                                        .first;
-                                                              });
-                                                            },
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 12),
-                                                // Weekly: Day selection
-                                                if (_recurrenceType ==
-                                                    RecurrenceType.weekly) ...[
-                                                  Text(
-                                                    'Select days:',
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodySmall
-                                                        ?.copyWith(
-                                                          fontFamily: 'Inter',
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: isDark
-                                                              ? Colors.white70
-                                                              : Colors.black87,
-                                                        ),
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Wrap(
-                                                    spacing: 8,
-                                                    runSpacing: 8,
-                                                    children: [
-                                                      for (var day in [
-                                                        (1, 'Mon'),
-                                                        (2, 'Tue'),
-                                                        (3, 'Wed'),
-                                                        (4, 'Thu'),
-                                                        (5, 'Fri'),
-                                                        (6, 'Sat'),
-                                                        (7, 'Sun'),
-                                                      ])
-                                                        FilterChip(
-                                                          label: Text(day.$2),
-                                                          selected:
-                                                              _selectedWeekDays
-                                                                  .contains(
-                                                                    day.$1,
-                                                                  ),
-                                                          onSelected: (val) {
-                                                            setState(() {
-                                                              if (val) {
-                                                                _selectedWeekDays
-                                                                    .add(
-                                                                      day.$1,
-                                                                    );
-                                                              } else {
-                                                                _selectedWeekDays
-                                                                    .remove(
-                                                                      day.$1,
-                                                                    );
-                                                              }
-                                                            });
-                                                          },
-                                                        ),
-                                                    ],
-                                                  ),
-                                                ],
-                                                // Monthly: Show info
-                                                if (_recurrenceType ==
-                                                    RecurrenceType.monthly)
-                                                  Text(
-                                                    'Repeats on the ${_dateTime.day}${_getDaySuffix(_dateTime.day)} of each month',
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodySmall
-                                                        ?.copyWith(
-                                                          fontFamily: 'Inter',
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: isDark
-                                                              ? Colors.white70
-                                                              : Colors.black87,
-                                                        ),
-                                                  ),
-                                                const SizedBox(height: 12),
-                                                // End date (optional)
-                                                ListTile(
-                                                  contentPadding:
-                                                      EdgeInsets.zero,
-                                                  title: Text(
-                                                    'End date (optional)',
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodyMedium
-                                                        ?.copyWith(
-                                                          fontFamily: 'Poppins',
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: isDark
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF1A2332,
-                                                                ),
-                                                        ),
-                                                  ),
-                                                  subtitle: Text(
-                                                    _recurringEndDate != null
-                                                        ? '${_recurringEndDate!.day}/${_recurringEndDate!.month}/${_recurringEndDate!.year}'
-                                                        : 'No end date',
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodySmall
-                                                        ?.copyWith(
-                                                          color: isDark
-                                                              ? Colors.white60
-                                                              : Colors.black54,
-                                                        ),
-                                                  ),
-                                                  trailing: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      if (_recurringEndDate !=
-                                                          null)
-                                                        IconButton(
-                                                          icon: const Icon(
-                                                            Icons.clear,
-                                                          ),
-                                                          onPressed: () {
-                                                            setState(() {
-                                                              _recurringEndDate =
-                                                                  null;
-                                                            });
-                                                          },
-                                                        ),
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.calendar_today,
-                                                        ),
-                                                        onPressed:
-                                                            _pickRecurringEndDate,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 24),
-
-                                        // Submit
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: FilledButton(
-                                            onPressed: _submit,
-                                            style: FilledButton.styleFrom(
-                                              minimumSize:
-                                                  const Size.fromHeight(52),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                              ),
-                                              backgroundColor: const Color(
-                                                0xFF1A2332,
-                                              ),
-                                              foregroundColor: Colors.white,
-                                            ),
-                                            child: Text(
-                                              _walkTypeIndex == 0
-                                                  ? 'Create walk'
-                                                  : 'Create loop walk',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
+                            // ===== Recurring Walk Section =====
+                            Container(
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withAlpha(
+                                        (0.04 * 255).round(),
+                                      )
+                                    : Colors.grey.withAlpha(
+                                        (0.05 * 255).round(),
+                                      ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: (isDark ? Colors.white : Colors.black)
+                                      .withAlpha((0.08 * 255).round()),
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.repeat,
+                                        size: 20,
+                                        color: isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Recurring Walk',
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
                                                 fontFamily: 'Poppins',
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: 16,
+                                                color: isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF1A2332),
                                               ),
-                                            ),
-                                          ),
+                                        ),
+                                      ),
+                                      Switch(
+                                        value: _isRecurring,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _isRecurring = val;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  if (_isRecurring) ...[
+                                    const SizedBox(height: 16),
+                                    // Frequency selector
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child:
+                                              SegmentedButton<RecurrenceType>(
+                                                segments: const [
+                                                  ButtonSegment(
+                                                    value:
+                                                        RecurrenceType.weekly,
+                                                    label: Text('Weekly'),
+                                                  ),
+                                                  ButtonSegment(
+                                                    value:
+                                                        RecurrenceType.monthly,
+                                                    label: Text('Monthly'),
+                                                  ),
+                                                ],
+                                                selected: {_recurrenceType},
+                                                onSelectionChanged:
+                                                    (
+                                                      Set<RecurrenceType>
+                                                      newSelection,
+                                                    ) {
+                                                      setState(() {
+                                                        _recurrenceType =
+                                                            newSelection.first;
+                                                      });
+                                                    },
+                                              ),
                                         ),
                                       ],
                                     ),
-                                  );
-                                },
+                                    const SizedBox(height: 12),
+                                    // Weekly: Day selection
+                                    if (_recurrenceType ==
+                                        RecurrenceType.weekly) ...[
+                                      Text(
+                                        'Select days:',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontFamily: 'Inter',
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : Colors.black87,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          for (var day in [
+                                            (1, 'Mon'),
+                                            (2, 'Tue'),
+                                            (3, 'Wed'),
+                                            (4, 'Thu'),
+                                            (5, 'Fri'),
+                                            (6, 'Sat'),
+                                            (7, 'Sun'),
+                                          ])
+                                            FilterChip(
+                                              label: Text(day.$2),
+                                              selected: _selectedWeekDays
+                                                  .contains(day.$1),
+                                              onSelected: (val) {
+                                                setState(() {
+                                                  if (val) {
+                                                    _selectedWeekDays.add(
+                                                      day.$1,
+                                                    );
+                                                  } else {
+                                                    _selectedWeekDays.remove(
+                                                      day.$1,
+                                                    );
+                                                  }
+                                                });
+                                              },
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                    // Monthly: Show info
+                                    if (_recurrenceType ==
+                                        RecurrenceType.monthly)
+                                      Text(
+                                        'Repeats on the ${_dateTime.day}${_getDaySuffix(_dateTime.day)} of each month',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontFamily: 'Inter',
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : Colors.black87,
+                                            ),
+                                      ),
+                                    const SizedBox(height: 12),
+                                    // End date (optional)
+                                    ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        'End date (optional)',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontFamily: 'Poppins',
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF1A2332),
+                                            ),
+                                      ),
+                                      subtitle: Text(
+                                        _recurringEndDate != null
+                                            ? '${_recurringEndDate!.day}/${_recurringEndDate!.month}/${_recurringEndDate!.year}'
+                                            : 'No end date',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? Colors.white60
+                                                  : Colors.black54,
+                                            ),
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (_recurringEndDate != null)
+                                            IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _recurringEndDate = null;
+                                                });
+                                              },
+                                            ),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.calendar_today,
+                                            ),
+                                            onPressed: _pickRecurringEndDate,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
+                            const SizedBox(height: 24),
                           ],
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  /// Form controls in the redesign style: fields, chips, switches and the
+  /// repeat-frequency selector (scoped to this form).
+  ThemeData _formTheme(ThemeData theme, AppPalette p, bool isDark) {
+    final onSelected = AppPalette.ink;
+    return theme.copyWith(
+      inputDecorationTheme: _fieldTheme(p, isDark),
+      chipTheme: theme.chipTheme.copyWith(
+        backgroundColor: p.surface,
+        selectedColor: AppPalette.lime,
+        checkmarkColor: onSelected,
+        side: BorderSide(color: p.border),
+        shape: const StadiumBorder(),
+        labelStyle: AppText.body(15, color: p.text, weight: FontWeight.w700),
+        secondaryLabelStyle: AppText.body(
+          15,
+          color: onSelected,
+          weight: FontWeight.w800,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? onSelected : p.textMuted,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppPalette.lime
+              : p.surfaceMuted,
+        ),
+        trackOutlineColor: WidgetStateProperty.all(p.border),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) =>
+                s.contains(WidgetState.selected) ? AppPalette.lime : p.surface,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? onSelected : p.text,
+          ),
+          side: WidgetStateProperty.all(BorderSide(color: p.border)),
+          textStyle: WidgetStateProperty.all(
+            AppText.body(14, weight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Rounded, filled fields in the redesign palette (scoped to this form).
+  InputDecorationTheme _fieldTheme(AppPalette p, bool isDark) {
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(color: c, width: w),
+    );
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: p.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      labelStyle: AppText.body(15, color: p.textMuted, weight: FontWeight.w600),
+      floatingLabelStyle: AppText.body(
+        15,
+        color: p.text,
+        weight: FontWeight.w700,
+      ),
+      hintStyle: AppText.body(15, color: p.textMuted),
+      helperStyle: AppText.body(13, color: p.textMuted),
+      border: border(p.border),
+      enabledBorder: border(p.border),
+      focusedBorder: border(isDark ? AppPalette.lime : AppPalette.ink, 2),
+      errorBorder: border(const Color(0xFFE5484D)),
+      focusedErrorBorder: border(const Color(0xFFE5484D), 2),
+    );
+  }
+
+  /// Section heading inside the form ("Where", "When", ...).
+  Widget _sectionLabel(BuildContext context, String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.md),
+      child: Text(
+        text,
+        textScaler: AppText.headlineScaler(context),
+        style: AppText.display(
+          24,
+          color: AppPalette.of(context).text,
+          weight: 750,
+        ),
+      ),
+    );
+  }
+
+  /// Sticky "Create walk" bar at the bottom of the screen.
+  Widget _buildSubmitBar(BuildContext context) {
+    final p = AppPalette.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: p.surface,
+        border: Border(top: BorderSide(color: p.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.page,
+            12,
+            AppSpace.page,
+            12,
+          ),
+          child: PillButton(
+            label: _walkTypeIndex == 0 ? 'Create walk' : 'Create loop walk',
+            icon: Icons.check_rounded,
+            onPressed: _submit,
+            busy: _isSubmitting,
+            dark: !isDark,
+            expand: true,
+          ),
+        ),
       ),
     );
   }
@@ -2555,23 +2378,5 @@ class _SelectedPhoto {
       return FileImage(file!);
     }
     return MemoryImage(bytes!);
-  }
-}
-
-// Small reusable header logo (matches other screens)
-class _HeaderLogo extends StatelessWidget {
-  const _HeaderLogo();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white24,
-      ),
-      child: const Icon(Icons.directions_walk, size: 18, color: Colors.white),
-    );
   }
 }

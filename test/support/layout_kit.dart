@@ -77,13 +77,15 @@ String describeLayoutError(FlutterErrorDetails e) {
 
 /// Registers one test per device x text scale x state x theme.
 ///
-/// [build] returns the screen for a state. [scroll] finds the scrollable to
-/// drag to the bottom so every section is laid out.
+/// [build] returns the screen for a state. [prepare] can interact with it
+/// first (e.g. switch a tab). [scroll] finds the scrollable to drag to the
+/// bottom so every section is laid out.
 void fitGrid({
   required String screen,
   required List<String> states,
   required Widget Function(String state) build,
   required Finder Function() scroll,
+  Future<void> Function(WidgetTester tester, String state)? prepare,
 }) {
   for (final (device, w, h) in phoneDevices) {
     for (final scale in textScales) {
@@ -108,6 +110,10 @@ void fitGrid({
             try {
               await tester.pumpWidget(themedApp(build(state), mode));
               await tester.pumpAndSettle();
+              if (prepare != null) {
+                await prepare(tester, state);
+                await tester.pumpAndSettle();
+              }
               if (autoUpdateGoldenFiles && (extreme || preview)) {
                 await expectLater(
                   find.byType(MaterialApp),
@@ -120,7 +126,8 @@ void fitGrid({
               FlutterError.onError = previous;
             }
 
-            if (autoUpdateGoldenFiles && (errors.isNotEmpty || extreme)) {
+            if (autoUpdateGoldenFiles &&
+                (errors.isNotEmpty || extreme || preview)) {
               await expectLater(
                 find.byType(MaterialApp),
                 matchesGoldenFile('goldens/bottom_$name.png'),
