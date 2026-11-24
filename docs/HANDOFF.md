@@ -193,7 +193,7 @@ bundled JDK 21 for that shell:
   events/calendar, profile, chat. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
 
-### Walk details redesigned (2026-11-24, branch `design/walk-details`, not merged yet)
+### Walk details redesigned and merged into `main` (2026-11-24)
 
 - `lib/screens/walk_details/walk_details_view.dart` (pure UI) +
   `event_details_screen.dart` (logic, 2,265 → ~1,400 lines). Designed by Claude in the
@@ -216,7 +216,7 @@ bundled JDK 21 for that shell:
   `users/{uid}/interested/{walkId}` = `{walkId, createdAt}`, owner-only rule (3 rules
   tests, 83 total). `InterestedService` (watch ids / set); `HomeScreen` listens and
   marks walks while parsing; toggling saves and reverts with a message on failure.
-  **Rule needs deploying** with `firebase deploy --only firestore:rules`.
+  Rule deployed 2026-11-24.
 - Tests: `test/walk_details_test.dart` (9 situations × 7 phones × 3 text sizes × 2
   modes = 378 layouts + main-button check). Shared grid helper:
   `test/support/layout_kit.dart` (`fitGrid`); `--update-goldens` also saves an

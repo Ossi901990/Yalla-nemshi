@@ -89,7 +89,7 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    tested it on 7 phone sizes, from the smallest to the biggest, and with larger
    text settings, and fixed everything that didn't fit. It's now in the
    main version of the app. The **walk page** (what you see when you open a walk) is
-   now also redesigned and waiting for a look-over. Next: create walk, the map,
+   now also redesigned and in the main version. Next: create walk, the map,
    events, profile and chat.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
