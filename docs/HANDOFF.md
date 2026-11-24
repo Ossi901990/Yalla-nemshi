@@ -189,9 +189,31 @@ bundled JDK 21 for that shell:
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
-- **Next screens** (same style, Claude designs them): walk details, create walk,
-  walks/map tab, events/calendar, profile, chat. Then switch the default to System and
-  move from `package:flutter/material.dart` to `package:material_ui`.
+- **Next screens** (same style, Claude designs them): create walk, walks/map tab,
+  events/calendar, profile, chat. Then switch the default to System and move from
+  `package:flutter/material.dart` to `package:material_ui`.
+
+### Walk details redesigned (2026-11-24, branch `design/walk-details`, not merged yet)
+
+- `lib/screens/walk_details/walk_details_view.dart` (pure UI) +
+  `event_details_screen.dart` (logic, 2,265 → ~1,400 lines). Designed by Claude in the
+  home style (no mock-up).
+- Layout: top bar (back, ☆ interested, ⋯ → Report); lime hero (status pill, date,
+  title, place, who's going); fact chips (km, duration, pace, who can join, private,
+  repeats); Meeting point, Host (+rating), Who's going, Photos, About, Repeats; Host
+  tools (checked-in count when active, private invite tools, cancel walk / this date
+  / whole series).
+- Sticky action bar, main button by situation: visitor "I'm in"; joined "Group chat"
+  (+ Leave); active not checked in "I'm here" (+ Not coming); checked in "Open walk";
+  host "Start walk" / active "End walk" (+ Open walk); cancelled/ended greyed out.
+  Chat round button next to it. Secondary action moves to its own line on narrow
+  phones / large text.
+- Behaviour unchanged from before: Join, Leave and the ☆ toggle still close the
+  screen afterwards (the interested flag isn't live-updated on this screen).
+- Tests: `test/walk_details_test.dart` (9 situations × 7 phones × 3 text sizes × 2
+  modes = 378 layouts + main-button check). Shared grid helper:
+  `test/support/layout_kit.dart` (`fitGrid`); `--update-goldens` also saves an
+  iPhone 14 preview of every situation for design review.
 
 ## Backlog (rough priority)
 
