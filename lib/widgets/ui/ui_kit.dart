@@ -87,6 +87,7 @@ class PillButton extends StatelessWidget {
     this.dark = true,
     this.icon,
     this.busy = false,
+    this.expand = false,
   });
 
   final String label;
@@ -94,6 +95,9 @@ class PillButton extends StatelessWidget {
   final bool dark;
   final IconData? icon;
   final bool busy;
+
+  /// Fill the available width (label centred), e.g. in a bottom action bar.
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -105,35 +109,52 @@ class PillButton extends StatelessWidget {
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: busy ? null : onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
-          child: busy
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: fg),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: 18, color: fg),
-                      const SizedBox(width: 6),
-                    ],
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(
-                          16,
-                          color: fg,
-                          weight: FontWeight.w800,
-                        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Very narrow (e.g. a tight row on a small phone): drop the icon
+            // and use less padding so the label still fits.
+            final tight = constraints.maxWidth < 140;
+            final showIcon = icon != null && !tight;
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: tight ? 12 : 24,
+                vertical: 15,
+              ),
+              child: busy
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: fg,
                       ),
+                    )
+                  : Row(
+                      mainAxisSize: expand
+                          ? MainAxisSize.max
+                          : MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (showIcon) ...[
+                          Icon(icon, size: 18, color: fg),
+                          const SizedBox(width: 6),
+                        ],
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.body(
+                              16,
+                              color: fg,
+                              weight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+            );
+          },
         ),
       ),
     );

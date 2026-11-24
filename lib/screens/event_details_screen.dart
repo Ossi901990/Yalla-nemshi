@@ -16,6 +16,8 @@ import '../services/gps_tracking_service.dart';
 import '../utils/invite_utils.dart';
 import '../widgets/participants_row.dart';
 import '../widgets/user_avatar.dart';
+import 'walk_details/walk_details_view.dart';
+import '../theme/app_palette.dart';
 
 class EventDetailsScreen extends StatefulWidget {
   final WalkEvent event;
@@ -627,10 +629,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   }
 
   void _initWalkStream() {
-    final walkId = widget.event.firestoreId.isNotEmpty 
-        ? widget.event.firestoreId 
+    final walkId = widget.event.firestoreId.isNotEmpty
+        ? widget.event.firestoreId
         : widget.event.id;
-    
+
     if (walkId.isEmpty) {
       _walkStream = null;
       return;
@@ -643,41 +645,35 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         .doc(walkId)
         .snapshots()
         .map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) {
-        return null;
-      }
-      try {
-        final data = Map<String, dynamic>.from(snapshot.data()!);
-        data['firestoreId'] = snapshot.id;
-        data['id'] ??= snapshot.id;
+          if (!snapshot.exists || snapshot.data() == null) {
+            return null;
+          }
+          try {
+            final data = Map<String, dynamic>.from(snapshot.data()!);
+            data['firestoreId'] = snapshot.id;
+            data['id'] ??= snapshot.id;
 
-        final hostUid = data['hostUid'] as String?;
-        data['isOwner'] = currentUid != null && hostUid == currentUid;
+            final hostUid = data['hostUid'] as String?;
+            data['isOwner'] = currentUid != null && hostUid == currentUid;
 
-        final joinedUids = (data['joinedUids'] as List?)?.whereType<String>().toList() ?? [];
-        data['joined'] = currentUid != null && joinedUids.contains(currentUid);
+            final joinedUids =
+                (data['joinedUids'] as List?)?.whereType<String>().toList() ??
+                [];
+            data['joined'] =
+                currentUid != null && joinedUids.contains(currentUid);
 
-        return WalkEvent.fromMap(data);
-      } catch (e) {
-        debugPrint('Error parsing walk update: $e');
-        return null;
-      }
-    });
+            return WalkEvent.fromMap(data);
+          } catch (e) {
+            debugPrint('Error parsing walk update: $e');
+            return null;
+          }
+        });
   }
 
   bool _isCurrentUserConfirmed(WalkEvent event) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return false;
     return event.participantStates[uid] == 'confirmed';
-  }
-
-  String _formatDateTime(DateTime dt) {
-    final dd = dt.day.toString().padLeft(2, '0');
-    final mm = dt.month.toString().padLeft(2, '0');
-    final yyyy = dt.year.toString();
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final min = dt.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yyyy • $hh:$min';
   }
 
   void _openPhotoViewer(List<String> urls, int initialIndex) {
@@ -728,26 +724,27 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                         fit: BoxFit.contain,
                                         loadingBuilder:
                                             (context, child, loadingProgress) {
-                                          if (loadingProgress == null) {
-                                            return child;
-                                          }
-                                          return const SizedBox(
-                                            height: 40,
-                                            width: 40,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 3,
-                                              color: Colors.white,
-                                            ),
-                                          );
-                                        },
+                                              if (loadingProgress == null) {
+                                                return child;
+                                              }
+                                              return const SizedBox(
+                                                height: 40,
+                                                width: 40,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 3,
+                                                      color: Colors.white,
+                                                    ),
+                                              );
+                                            },
                                         errorBuilder:
                                             (context, error, stackTrace) {
-                                          return const Icon(
-                                            Icons.broken_image_outlined,
-                                            size: 48,
-                                            color: Colors.white70,
-                                          );
-                                        },
+                                              return const Icon(
+                                                Icons.broken_image_outlined,
+                                                size: 48,
+                                                color: Colors.white70,
+                                              );
+                                            },
                                       ),
                                     ),
                                   );
@@ -771,9 +768,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                               duration: const Duration(
                                                 milliseconds: 180,
                                               ),
-                                              margin: const EdgeInsets.symmetric(
-                                                horizontal: 3,
-                                              ),
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 3,
+                                                  ),
                                               width: isActive ? 8 : 6,
                                               height: isActive ? 8 : 6,
                                               decoration: BoxDecoration(
@@ -804,11 +802,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     );
   }
 
-  Widget _buildWalkPhotoGallery(
-    WalkEvent event,
-    ThemeData theme,
-    bool isDark,
-  ) {
+  Widget _buildWalkPhotoGallery(WalkEvent event, ThemeData theme, bool isDark) {
     if (event.photoUrls.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -881,58 +875,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   }
 
   // ✅ Match Nearby/Home “pill” style
-  Widget _eventPill({
-    required bool isDark,
-    required ThemeData theme,
-    required IconData icon,
-    required String label,
-    bool danger = false,
-    Color? iconColorOverride,
-  }) {
-    final bg = danger
-        ? theme.colorScheme.error.withAlpha(
-            (isDark ? 0.14 : 0.10 * 255).round(),
-          )
-        : (isDark
-              ? Colors.white.withAlpha((0.06 * 255).round())
-              : theme.colorScheme.surface);
-
-    final border = danger
-        ? theme.colorScheme.error.withAlpha(
-            (isDark ? 0.45 : 0.35 * 255).round(),
-          )
-        : (isDark
-              ? Colors.white.withAlpha((0.18 * 255).round())
-              : Colors.black.withAlpha((0.12 * 255).round()));
-
-    final fg = danger
-        ? theme.colorScheme.error
-        : (isDark ? Colors.white : Colors.black87);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: border, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: iconColorOverride ?? fg),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Build host rating badge for walk cards
   Widget _buildHostRatingBadge(BuildContext context, String hostUid) {
     final theme = Theme.of(context);
@@ -1191,144 +1133,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   // ===== CP-4: Host Control Methods =====
 
   /// Build host control buttons (Start/End walk)
-  Widget _buildHostControlButtons(
-    BuildContext context,
-    WalkEvent event,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    return Column(
-      children: [
-        // Show start button if walk hasn't started
-        if (event.status == 'scheduled') ...[
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _startWalk(context, event),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                backgroundColor: const Color(0xFF00D97E),
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Start Walk'),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-
-        // Show end button if walk is starting or in progress
-        if (event.status == 'active') ...[
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => _endWalk(context, event),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                backgroundColor: Colors.orange[600],
-                foregroundColor: Colors.white,
-              ),
-              icon: const Icon(Icons.stop_circle_outlined),
-              label: const Text('End Walk'),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-
-        // Show participant count if walk has started
-        if (event.status == 'active') ...[
-          FutureBuilder<int>(
-            future: WalkControlService.instance.getActiveParticipantCount(
-              event.firestoreId,
-            ),
-            builder: (context, snapshot) {
-              final count = snapshot.data ?? 0;
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withAlpha((0.06 * 255).round())
-                      : Colors.black.withAlpha((0.05 * 255).round()),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withAlpha((0.18 * 255).round())
-                        : Colors.black.withAlpha((0.12 * 255).round()),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.group, color: const Color(0xFF00D97E), size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$count participants registered',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? Colors.white70 : Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-      ],
-    );
-  }
-
   /// Build participant confirmation button (shown when walk starts)
-  Widget _buildParticipantConfirmationButton(
-    BuildContext context,
-    WalkEvent event,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: () => _confirmParticipation(context, event),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              backgroundColor: const Color(0xFF00D97E),
-              foregroundColor: Colors.white,
-            ),
-            icon: const Icon(Icons.check_circle),
-            label: const Text('Register - I\'m Joining Now'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _declineParticipation(context, event),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            icon: const Icon(Icons.cancel_outlined),
-            label: const Text('Decline - I\'m Not Coming'),
-          ),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
   // ===== CP-4: Walk Control Actions =====
 
   Future<void> _startWalk(BuildContext context, WalkEvent event) async {
@@ -1476,22 +1281,28 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       builder: (context, snapshot) {
         // Use the latest data from stream, or fall back to initial event
         final event = snapshot.data ?? widget.event;
-        
+
         // If walk was deleted, show a message
-        if (snapshot.hasData && snapshot.data == null && snapshot.connectionState != ConnectionState.waiting) {
+        if (snapshot.hasData &&
+            snapshot.data == null &&
+            snapshot.connectionState != ConnectionState.waiting) {
           return Scaffold(
-            backgroundColor: isDark ? const Color(0xFF071B26) : const Color(0xFF1ABFC4),
+            backgroundColor: AppPalette.of(context).background,
             body: SafeArea(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 64, color: isDark ? Colors.white70 : Colors.white),
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: AppPalette.of(context).textMuted,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'This walk is no longer available',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: isDark ? Colors.white : Colors.white,
+                        color: AppPalette.of(context).text,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -1511,755 +1322,79 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
     );
   }
 
-  Widget _buildContent(BuildContext context, WalkEvent event, ThemeData theme, bool isDark) {
-    // Shortcuts to avoid widget. prefix everywhere
-    final onToggleJoin = widget.onToggleJoin;
-    final onToggleInterested = widget.onToggleInterested;
-
+  Widget _buildContent(
+    BuildContext context,
+    WalkEvent event,
+    ThemeData theme,
+    bool isDark,
+  ) {
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
-    final participantState = currentUid != null
-        ? event.participantStates[currentUid]
-        : null;
-    final bool isConfirmed =
-        _didConfirmParticipation || participantState == 'confirmed';
+    final isConfirmed =
+        _didConfirmParticipation ||
+        (currentUid != null &&
+            event.participantStates[currentUid] == 'confirmed');
 
-    final canJoin = !event.isOwner && !event.cancelled;
-    final joinText = event.joined
-        ? (event.status == 'active' ? 'Leave Walk' : 'Cancel Join')
-        : 'Join walk';
-
-    final canInterested = !event.isOwner && !event.cancelled;
-    final interestedText = event.interested
-        ? 'Remove from interested'
-        : 'Mark as interested';
-
-    return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF071B26)
-          : const Color(0xFF1ABFC4),
-      body: Column(
-        children: [
-          // ===== HEADER (match Home/Nearby sizing) =====
-          if (isDark)
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      splashRadius: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        event.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Container(
-              height: 64,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        splashRadius: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          event.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // ===== MAIN AREA (same structure as other screens) =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  gradient: isDark
-                      ? const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF071B26), // top (dark blue)
-                            Color(0xFF041016), // bottom (almost black)
-                          ],
-                        )
-                      : null,
-                  color: isDark ? null : const Color(0xFFF7F9F2),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-
-                  child: Card(
-                    color: isDark
-                        ? const Color(0xFF0C2430)
-                        : const Color(0xFFFBFEF8),
-                    elevation: isDark ? 0.0 : 0.6,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black).withAlpha(
-                          (0.06 * 255).round(),
-                        ),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title inside card
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  event.title,
-                                  style: theme.textTheme.headlineSmall
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark
-                                            ? Colors.white
-                                            : const Color(0xFF111827),
-                                      ),
-                                ),
-                              ),
-                              if (event.interested)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withAlpha(
-                                      (0.15 * 255).round(),
-                                    ),
-                                    borderRadius: BorderRadius.circular(999),
-                                    border: Border.all(
-                                      color: Colors.amber.withAlpha(
-                                        (0.35 * 255).round(),
-                                      ),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.star,
-                                        size: 14,
-                                        color: Colors.amber,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Interested',
-                                        style:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.labelSmall?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.amber,
-                                            ) ??
-                                            const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.amber,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Date & time
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today,
-                                size: 18,
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _formatDateTime(event.dateTime),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isDark
-                                      ? Colors.white70
-                                      : Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // ✅ Pills (match Nearby look)
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              _eventPill(
-                                isDark: isDark,
-                                theme: theme,
-                                icon: Icons.straighten,
-                                label:
-                                    '${event.distanceKm.toStringAsFixed(1)} km',
-                                iconColorOverride: isDark
-                                    ? Colors.white70
-                                    : Colors.black54,
-                              ),
-                              _eventPill(
-                                isDark: isDark,
-                                theme: theme,
-                                icon: Icons.directions_walk,
-                                label: event.pace,
-                                iconColorOverride: isDark
-                                    ? Colors.white70
-                                    : Colors.black54,
-                              ),
-                              _eventPill(
-                                isDark: isDark,
-                                theme: theme,
-                                icon: Icons.person,
-                                label: event.gender,
-                                iconColorOverride: isDark
-                                    ? Colors.white70
-                                    : Colors.black54,
-                              ),
-                              if (event.isOwner)
-                                _eventPill(
-                                  isDark: isDark,
-                                  theme: theme,
-                                  icon: Icons.star,
-                                  label: 'You are hosting',
-                                  iconColorOverride: isDark
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                ),
-                              if (event.cancelled)
-                                _eventPill(
-                                  isDark: isDark,
-                                  theme: theme,
-                                  icon: Icons.error_outline,
-                                  label: 'Cancelled',
-                                  danger: true,
-                                ),
-                              if (event.isRecurring &&
-                                  !event.isRecurringTemplate)
-                                _eventPill(
-                                  isDark: isDark,
-                                  theme: theme,
-                                  icon: Icons.repeat,
-                                  label: 'Recurring',
-                                  iconColorOverride: theme.colorScheme.primary,
-                                ),
-                            ],
-                          ),
-
-                          if (event.isRecurring &&
-                              !event.isRecurringTemplate &&
-                              event.recurrence != null) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer
-                                    .withAlpha((0.3 * 255).round()),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: theme.colorScheme.primary.withAlpha(
-                                    (0.3 * 255).round(),
-                                  ),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.repeat,
-                                        size: 18,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Part of a recurring series',
-                                        style: theme.textTheme.titleSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : theme.colorScheme.primary,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    event.recurrence!.getDescription(),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: isDark
-                                          ? Colors.white70
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          const SizedBox(height: 16),
-
-                          // Meeting point
-                          Text(
-                            'Meeting point',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF111827),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          if (event.meetingPlaceName != null &&
-                              event.meetingPlaceName!.trim().isNotEmpty)
-                            Text(
-                              event.meetingPlaceName!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
-                            )
-                          else if (event.startLat != null &&
-                              event.startLng != null &&
-                              event.endLat != null &&
-                              event.endLng != null)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Start: ${event.startLat!.toStringAsFixed(5)}, ${event.startLng!.toStringAsFixed(5)}',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.black87,
-                                  ),
-                                ),
-                                Text(
-                                  'End: ${event.endLat!.toStringAsFixed(5)}, ${event.endLng!.toStringAsFixed(5)}',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Text(
-                              event.meetingLat != null &&
-                                      event.meetingLng != null
-                                  ? 'Lat: ${event.meetingLat!.toStringAsFixed(5)}, '
-                                        'Lng: ${event.meetingLng!.toStringAsFixed(5)}'
-                                  : 'Custom location (no coordinates)',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
-                            ),
-
-                          const SizedBox(height: 16),
-
-                          // ===== HOSTED BY CARD =====
-                          Text(
-                            'Hosted by',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF111827),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withAlpha((0.05 * 255).round())
-                                  : Colors.black.withAlpha(
-                                      (0.03 * 255).round(),
-                                    ),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: (isDark ? Colors.white : Colors.black)
-                                    .withAlpha((0.08 * 255).round()),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                UserAvatar(
-                                  radius: 24,
-                                  name: event.hostName ?? '',
-                                  photoUrl: event.hostPhotoUrl,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        event.hostName ??
-                                            'Host ${event.hostUid.substring(0, 6)}',
-                                        style: theme.textTheme.bodyLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : Colors.black87,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      _buildHostRatingBadge(
-                                        context,
-                                        event.hostUid,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // ===== PEOPLE JOINING =====
-                          Text(
-                            'People joining',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF111827),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ParticipantsRow(
-                            userIds: event.joinedUserUids,
-                            fallbackNames: event.joinedUserNames,
-                            isDark: isDark,
-                          ),
-
-                          const SizedBox(height: 16),
-
-                            _buildWalkPhotoGallery(event, theme, isDark),
-
-                          // Description
-                          if (event.description != null &&
-                              event.description!.trim().isNotEmpty) ...[
-                            Text(
-                              'Description',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF111827),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              event.description!,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: isDark ? Colors.white70 : Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // Join / leave button
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.icon(
-                              onPressed: canJoin
-                                  ? () {
-                                      onToggleJoin(event);
-                                      Navigator.pop(context);
-                                    }
-                                  : null,
-                              style: FilledButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                backgroundColor: const Color(0xFF00D97E),
-                                foregroundColor: Colors.white,
-                              ),
-                              icon: Icon(
-                                event.joined
-                                    ? Icons.check_circle_outline
-                                    : Icons.directions_walk,
-                              ),
-                              label: Text(
-                                event.isOwner
-                                    ? "You're the host"
-                                    : (event.cancelled
-                                          ? 'Walk cancelled'
-                                          : joinText),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-
-                          // Group chat button
-                          if ((event.joined || event.isOwner) &&
-                              event.firestoreId.isNotEmpty) ...[
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  debugPrint(
-                                    'OPEN WALK CHAT: walk_${event.id}',
-                                  );
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => WalkChatScreen(
-                                        walkId: event.firestoreId,
-                                        walkTitle: event.title,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(52),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.forum_outlined),
-                                label: const Text('Chat with participants'),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // CP-4: Host walk control buttons (start/end walk)
-                          if (event.isOwner && !event.cancelled) ...[
-                            _buildHostControlButtons(
-                              context,
-                              event,
-                              theme,
-                              isDark,
-                            ),
-                          ],
-
-                          if (event.status == 'active' &&
-                              (event.isOwner ||
-                                  (currentUid != null &&
-                                      event.participantStates.containsKey(
-                                        currentUid,
-                                      )))) ...[
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () =>
-                                    _openActiveWalkScreen(context, event),
-                                icon: const Icon(Icons.directions_walk),
-                                label: const Text('Open Active Walk'),
-                              ),
-                            ),
-                          ],
-
-                          if (event.isOwner &&
-                              !event.cancelled &&
-                              event.isPrivate) ...[
-                            const SizedBox(height: 16),
-                            _PrivateInviteManagement(event: event),
-                          ],
-
-                          // CP-4: Participant confirmation button (shown when walk is starting)
-                          if (!event.isOwner &&
-                              event.joined &&
-                              !event.cancelled &&
-                              event.status == 'active' &&
-                              !isConfirmed) ...[
-                            _buildParticipantConfirmationButton(
-                              context,
-                              event,
-                              theme,
-                              isDark,
-                            ),
-                          ],
-
-                          const SizedBox(height: 24),
-
-                          // Host-only cancel button(s)
-                          if (event.isOwner && !event.cancelled) ...[
-                            if (event.isRecurring &&
-                                !event.isRecurringTemplate &&
-                                event.recurringGroupId != null) ...[
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(52),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    foregroundColor: theme.colorScheme.error,
-                                    side: BorderSide(
-                                      color: theme.colorScheme.error,
-                                    ),
-                                  ),
-                                  onPressed: () =>
-                                      _confirmCancelSingle(context),
-                                  icon: const Icon(Icons.cancel_outlined),
-                                  label: const Text('Cancel this occurrence'),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(52),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    foregroundColor: theme.colorScheme.error,
-                                    side: BorderSide(
-                                      color: theme.colorScheme.error,
-                                    ),
-                                  ),
-                                  onPressed: () =>
-                                      _confirmCancelAllFuture(context),
-                                  icon: const Icon(Icons.event_busy),
-                                  label: const Text('Cancel all future walks'),
-                                ),
-                              ),
-                            ] else
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(52),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    foregroundColor: theme.colorScheme.error,
-                                    side: BorderSide(
-                                      color: theme.colorScheme.error,
-                                    ),
-                                  ),
-                                  onPressed: () => _confirmCancel(context),
-                                  icon: const Icon(Icons.cancel_outlined),
-                                  label: const Text('Cancel this walk'),
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-                          ],
-
-                          // Interested button
-                          SizedBox(
-                            width: double.infinity,
-                            child: TextButton.icon(
-                              onPressed: canInterested
-                                  ? () {
-                                      onToggleInterested(event);
-                                      Navigator.pop(context);
-                                    }
-                                  : null,
-                              icon: Icon(
-                                event.interested
-                                    ? Icons.star
-                                    : Icons.star_border_outlined,
-                                color: event.interested ? Colors.amber : null,
-                              ),
-                              label: Text(interestedText),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Report
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () => _openReportDialog(context),
-                              icon: const Icon(Icons.flag_outlined),
-                              label: const Text('Report'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+    Widget view(int? activeCount) => WalkDetailsView(
+      walk: event,
+      currentUid: currentUid,
+      isConfirmed: isConfirmed,
+      activeCount: activeCount,
+      hostRating: _buildHostRatingBadge(context, event.hostUid),
+      participants: ParticipantsRow(
+        userIds: event.joinedUserUids,
+        fallbackNames: event.joinedUserNames,
+        isDark: isDark,
+      ),
+      photos: event.photoUrls.isEmpty
+          ? null
+          : _buildWalkPhotoGallery(event, theme, isDark),
+      inviteTools: event.isOwner && !event.cancelled && event.isPrivate
+          ? _PrivateInviteManagement(event: event)
+          : null,
+      actions: WalkDetailsActions(
+        onBack: () => Navigator.of(context).pop(),
+        onJoin: () {
+          widget.onToggleJoin(event);
+          Navigator.pop(context);
+        },
+        onLeave: () {
+          widget.onToggleJoin(event);
+          Navigator.pop(context);
+        },
+        onChat: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WalkChatScreen(
+              walkId: event.firestoreId,
+              walkTitle: event.title,
             ),
           ),
-        ],
+        ),
+        onStart: () => _startWalk(context, event),
+        onEnd: () => _endWalk(context, event),
+        onOpenActive: () => _openActiveWalkScreen(context, event),
+        onConfirmHere: () => _confirmParticipation(context, event),
+        onDecline: () => _declineParticipation(context, event),
+        onToggleInterested: () {
+          widget.onToggleInterested(event);
+          Navigator.pop(context);
+        },
+        onReport: () => _openReportDialog(context),
+        onCancel: () => _confirmCancel(context),
+        onCancelOccurrence: () => _confirmCancelSingle(context),
+        onCancelSeries: () => _confirmCancelAllFuture(context),
       ),
     );
+
+    // Host of an active walk: show how many walkers checked in.
+    if (event.isOwner && event.status == 'active') {
+      return FutureBuilder<int>(
+        future: WalkControlService.instance.getActiveParticipantCount(
+          event.firestoreId,
+        ),
+        builder: (context, snapshot) => view(snapshot.data),
+      );
+    }
+    return view(null);
   }
 }
