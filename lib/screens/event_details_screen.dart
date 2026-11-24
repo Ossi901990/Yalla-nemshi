@@ -616,6 +616,41 @@ class _InviteeListTile extends StatelessWidget {
 
 class _EventDetailsScreenState extends State<EventDetailsScreen> {
   bool _didConfirmParticipation = false;
+
+  /// "Interested" only lives in memory on the home list (not in Firestore),
+  /// so this screen keeps its own copy and flips it instantly.
+  late bool _interested = widget.event.interested;
+
+  /// Join/leave the user just tapped, shown until the live walk update
+  /// confirms it (or for at most 10 s, e.g. if the request failed).
+  bool? _pendingJoined;
+
+  void _toggleJoinHere(WalkEvent event) {
+    final target = !event.joined;
+    setState(() => _pendingJoined = target);
+    widget.onToggleJoin(event);
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted && _pendingJoined == target) {
+        setState(() => _pendingJoined = null);
+      }
+    });
+  }
+
+  void _toggleInterestedHere(WalkEvent event) {
+    setState(() => _interested = !_interested);
+    widget.onToggleInterested(event);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            _interested ? 'Added to interested' : 'Removed from interested',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   Stream<WalkEvent?>? _walkStream;
 
   static const double _photoThumbSize = 78;
@@ -1334,8 +1369,17 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         (currentUid != null &&
             event.participantStates[currentUid] == 'confirmed');
 
+    // Show the user's own latest choices right away.
+    if (_pendingJoined != null && event.joined == _pendingJoined) {
+      _pendingJoined = null; // the live update caught up
+    }
+    final shown = event.copyWith(
+      interested: _interested,
+      joined: _pendingJoined ?? event.joined,
+    );
+
     Widget view(int? activeCount) => WalkDetailsView(
-      walk: event,
+      walk: shown,
       currentUid: currentUid,
       isConfirmed: isConfirmed,
       activeCount: activeCount,
@@ -1353,14 +1397,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           : null,
       actions: WalkDetailsActions(
         onBack: () => Navigator.of(context).pop(),
-        onJoin: () {
-          widget.onToggleJoin(event);
-          Navigator.pop(context);
-        },
-        onLeave: () {
-          widget.onToggleJoin(event);
-          Navigator.pop(context);
-        },
+        // Stay on the screen: the button flips to "Group chat" / "I'm in".
+        onJoin: () => _toggleJoinHere(shown),
+        onLeave: () => _toggleJoinHere(shown),
         onChat: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -1375,10 +1414,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         onOpenActive: () => _openActiveWalkScreen(context, event),
         onConfirmHere: () => _confirmParticipation(context, event),
         onDecline: () => _declineParticipation(context, event),
-        onToggleInterested: () {
-          widget.onToggleInterested(event);
-          Navigator.pop(context);
-        },
+        onToggleInterested: () => _toggleInterestedHere(event),
         onReport: () => _openReportDialog(context),
         onCancel: () => _confirmCancel(context),
         onCancelOccurrence: () => _confirmCancelSingle(context),

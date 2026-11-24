@@ -208,8 +208,10 @@ bundled JDK 21 for that shell:
   host "Start walk" / active "End walk" (+ Open walk); cancelled/ended greyed out.
   Chat round button next to it. Secondary action moves to its own line on narrow
   phones / large text.
-- Behaviour unchanged from before: Join, Leave and the ☆ toggle still close the
-  screen afterwards (the interested flag isn't live-updated on this screen).
+- Join, Leave and ☆ now **stay on the screen** (owner's choice): the button flips at
+  once ("I'm in" ↔ "Group chat") and the live walk update confirms it; if it doesn't
+  within 10 s the button falls back to the real state. ☆ flips instantly with a
+  "Added to / Removed from interested" message.
 - Tests: `test/walk_details_test.dart` (9 situations × 7 phones × 3 text sizes × 2
   modes = 378 layouts + main-button check). Shared grid helper:
   `test/support/layout_kit.dart` (`fitGrid`); `--update-goldens` also saves an
@@ -217,6 +219,10 @@ bundled JDK 21 for that shell:
 
 ## Backlog (rough priority)
 
+0. **"Interested" (☆) isn't saved anywhere.** It's only an in-memory flag on the home
+   list, so it resets when the app restarts and isn't shared across devices. Save it
+   (e.g. `users/{uid}/interested/{walkId}` with an owner-only rule, or device storage)
+   if it should matter; otherwise consider removing the feature.
 0. **Blocks don't cover walks yet.** A blocked user can still join the blocker's public
    walks and chat there. Decide the behaviour (hide the blocker's walks from them? refuse
    the join in rules?) before building.
