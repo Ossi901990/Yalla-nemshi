@@ -93,7 +93,7 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    redesigned too and in the main version. The **walks list** (your walks and
    walks nearby) is redesigned too and in the main version; "My walks" now also
    shows walks you joined, not only ones you host. There's now also a **map of walks**
-   (switch between list and map), using free OpenStreetMap maps instead of Google
+   (switch between list and map; it also shows the walks you host), using free OpenStreetMap maps instead of Google
    (Google would need a credit card on the account). It's waiting for a look-over. Next: events, profile and
    chat.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.

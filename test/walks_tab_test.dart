@@ -109,4 +109,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byTooltip('Show map'), findsOneWidget);
   });
+
+  testWidgets('the map shows your own hosted walks too', (tester) async {
+    await tester.pumpWidget(themedApp(_screen('nearby'), ThemeMode.light));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nearby'));
+    await tester.pumpAndSettle();
+    // Not in the Nearby list...
+    expect(find.text(_hosted.first.title), findsNothing);
+    await tester.tap(find.byTooltip('Show map'));
+    await tester.pumpAndSettle();
+    // ...but pinned on the map (pins are labelled with the walk title).
+    expect(find.bySemanticsLabel(_hosted.first.title), findsOneWidget);
+    expect(find.bySemanticsLabel(_others[1].title), findsOneWidget);
+  });
 }

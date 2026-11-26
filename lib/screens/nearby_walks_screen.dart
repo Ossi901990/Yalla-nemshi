@@ -68,6 +68,9 @@ class NearbyWalksScreen extends StatefulWidget {
   /// Open in map mode (e.g. from Home's "Open the map").
   final bool startOnMap;
 
+  /// Walks the user hosts: shown on the map (coral pins), not in the list.
+  final List<WalkEvent> ownWalks;
+
   const NearbyWalksScreen({
     super.key,
     required this.events,
@@ -88,6 +91,7 @@ class NearbyWalksScreen extends StatefulWidget {
     required this.isLoadingMore,
     required this.onLoadMore,
     this.startOnMap = false,
+    this.ownWalks = const [],
   });
 
   @override
@@ -180,6 +184,18 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
     _logNearbySummary(total: widget.events.length, kept: upcoming.length);
 
+    // The map also shows the user's own upcoming walks (same date/distance
+    // filters); the list stays "other people's walks".
+    final ownOnMap = widget.ownWalks.where(
+      (w) =>
+          !w.cancelled &&
+          w.dateTime.isAfter(now) &&
+          _matchDateFilter(w) &&
+          _matchDistanceFilter(w) &&
+          !_interestedOnly,
+    );
+    final mapWalks = [...upcoming, ...ownOnMap];
+
     final p = AppPalette.of(context);
     return Scaffold(
       backgroundColor: p.background,
@@ -198,7 +214,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                       horizontal: AppSpace.page,
                     ),
                     child: WalksMapView(
-                      walks: upcoming,
+                      walks: mapWalks,
                       onOpen: widget.onTapEvent,
                       onJoin: widget.onToggleJoin,
                     ),

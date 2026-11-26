@@ -207,6 +207,7 @@ class _WalksScreenState extends State<WalksScreen>
                     isLoadingMore: widget.isLoadingMore,
                     onLoadMore: widget.onLoadMore,
                     startOnMap: widget.openNearbyMap,
+                    ownWalks: widget.myWalks,
                   ),
                 ],
               ),

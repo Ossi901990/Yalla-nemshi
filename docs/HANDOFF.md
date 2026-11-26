@@ -205,7 +205,8 @@ bundled JDK 21 for that shell:
 - **Map (2026-11-26, branch `design/walks-map`, not merged yet):** List / Map switch on
   Nearby (`lib/screens/walks/walks_map_view.dart`). Pins at each walk's meeting point
   (lime = open, coral = joined/hosting), camera fits pins, dark map style, tap pin →
-  walk row → walk details. Same filtered walks as the list. Home's "Open the map →"
+  walk row → walk details. Same filtered walks as the list, **plus your own hosted
+  walks** (owner's choice; they stay out of the Nearby list). Home's "Open the map →"
   opens straight into it (`openNearbyMap`).
 - **Maps use OpenStreetMap, not Google (owner's choice "C", 2026-11-26).** Google Maps
   needs billing on the Cloud project (the key answers "You must enable Billing"), and
