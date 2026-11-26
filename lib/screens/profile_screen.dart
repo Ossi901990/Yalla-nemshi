@@ -1,4 +1,4 @@
-﻿// lib/screens/profile_screen.dart
+// lib/screens/profile_screen.dart
 import 'dart:convert';
 import 'dart:io' show File;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -20,20 +20,21 @@ import '../services/walk_completion_service.dart';
 import '../services/walk_export_service.dart';
 import '../models/profile_badge.dart';
 import '../models/badge.dart';
-import '../widgets/app_bottom_nav_bar.dart';
 
 import 'badges_info_screen.dart';
 import 'edit_profile_screen.dart';
 import 'safety_tips_screen.dart';
 import 'login_screen.dart'; // for routeName
 import 'settings_screen.dart';
-import 'home_screen.dart';
 import 'badge_leaderboard_screen.dart';
 import 'analytics_screen.dart';
 import '../services/app_preferences.dart';
 import '../services/profile_cache_service.dart';
 import '../services/offline_service.dart';
 import '../screens/notifications_screen.dart';
+import '../theme/app_palette.dart';
+import 'profile/profile_view.dart';
+import '../widgets/ui/ui_kit.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 const double kRadiusCard = 24;
@@ -106,7 +107,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _profile;
   bool _loading = true;
-  final int _currentTab = 3; // Profile tab is index 3
 
   late double _weeklyGoalKmLocal;
   bool _isOffline = false;
@@ -132,11 +132,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     final currentUser = FirebaseAuth.instance.currentUser;
-    debugPrint('👤👤👤 PROFILE_SCREEN.initState - Current User: ${currentUser?.uid}');
-    debugPrint('👤👤👤 PROFILE_SCREEN.initState - Display Name: ${currentUser?.displayName}');
-    
+    debugPrint(
+      '👤👤👤 PROFILE_SCREEN.initState - Current User: ${currentUser?.uid}',
+    );
+    debugPrint(
+      '👤👤👤 PROFILE_SCREEN.initState - Display Name: ${currentUser?.displayName}',
+    );
+
     _weeklyGoalKmLocal = widget.weeklyGoalKm;
 
     _offlineListener = () {
@@ -423,23 +427,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Build host rating widget
   Widget _buildHostRatingCard(BuildContext context, String userId) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return FutureBuilder<Map<String, dynamic>>(
       future: HostRatingService.instance.getHostRating(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Card(
-            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-            elevation: isDark ? 0.0 : 0.5,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black).withAlpha(
-                  (0.08 * 255).round(),
-                ),
-              ),
-            ),
+          return AppCard(
+            padding: EdgeInsets.zero,
             child: const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(
@@ -464,17 +458,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const SizedBox.shrink();
         }
 
-        return Card(
-          color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-          elevation: isDark ? 0.0 : 0.5,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: (isDark ? Colors.white : Colors.black).withAlpha(
-                (0.08 * 255).round(),
-              ),
-            ),
-          ),
+        return AppCard(
+          padding: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -539,23 +524,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// CP-4: Build walk statistics section showing lifetime stats
   Widget _buildWalkStatsSection(BuildContext context, String userId) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return FutureBuilder<Map<String, dynamic>>(
       future: WalkHistoryService.instance.getUserWalkStats(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Card(
-            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-            elevation: isDark ? 0.0 : 0.5,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black).withAlpha(
-                  (0.08 * 255).round(),
-                ),
-              ),
-            ),
+          return AppCard(
+            padding: EdgeInsets.zero,
             child: const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(
@@ -580,17 +555,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             : '${totalMinutes}m';
 
         if (totalWalks == 0) {
-          return Card(
-            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-            elevation: isDark ? 0.0 : 0.5,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black).withAlpha(
-                  (0.08 * 255).round(),
-                ),
-              ),
-            ),
+          return AppCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -606,17 +572,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Card(
-              color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-              elevation: isDark ? 0.0 : 0.5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: (isDark ? Colors.white : Colors.black).withAlpha(
-                    (0.08 * 255).round(),
-                  ),
-                ),
-              ),
+            AppCard(
+              padding: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -703,17 +660,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Card(
-            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-            elevation: isDark ? 0.0 : 0.5,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black).withAlpha(
-                  (0.08 * 255).round(),
-                ),
-              ),
-            ),
+          return AppCard(
+            padding: EdgeInsets.zero,
             child: const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(
@@ -727,17 +675,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final walks = snapshot.data ?? [];
 
         if (walks.isEmpty) {
-          return Card(
-            color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-            elevation: isDark ? 0.0 : 0.5,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: (isDark ? Colors.white : Colors.black).withAlpha(
-                  (0.08 * 255).round(),
-                ),
-              ),
-            ),
+          return AppCard(
+            padding: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -750,17 +689,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        return Card(
-          color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-          elevation: isDark ? 0.0 : 0.5,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: (isDark ? Colors.white : Colors.black).withAlpha(
-                (0.08 * 255).round(),
-              ),
-            ),
-          ),
+        return AppCard(
+          padding: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -779,7 +709,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Icon(
                           Icons.check_circle,
                           size: 20,
-                          color: const Color(0xFF00D97E),
+                          color: AppPalette.lime,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -834,24 +764,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Badges',
-          style:
-              theme.textTheme.titleMedium?.copyWith(
-                fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-                color: isDark ? Colors.white : Colors.black,
-              ) ??
-              const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.2,
-              ),
-        ),
-        const SizedBox(height: 8),
+        const SectionHeader(title: 'Badges'),
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
@@ -861,17 +774,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting &&
                 !snapshot.hasData) {
-              return Card(
-                color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-                elevation: isDark ? 0.0 : 0.5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: (isDark ? Colors.white : Colors.black).withAlpha(
-                      (0.08 * 255).round(),
-                    ),
-                  ),
-                ),
+              return AppCard(
+                padding: EdgeInsets.zero,
                 child: const Padding(
                   padding: EdgeInsets.all(16),
                   child: SizedBox(
@@ -922,17 +826,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 )
                 .toList();
 
-            return Card(
-              color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-              elevation: isDark ? 0.0 : 0.5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: (isDark ? Colors.white : Colors.black).withAlpha(
-                    (0.08 * 255).round(),
-                  ),
-                ),
-              ),
+            return AppCard(
+              padding: EdgeInsets.zero,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 child: Column(
@@ -1234,7 +1129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         googleProvider.addScope('email');
         googleProvider.addScope('profile');
         await FirebaseAuth.instance.signInWithPopup(googleProvider);
-        
+
         if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
@@ -1242,16 +1137,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final GoogleSignIn googleSignIn = GoogleSignIn(
           scopes: ['email', 'profile'],
         );
-        
+
         final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-        
+
         if (googleUser == null) {
           // User cancelled - go to login screen
           if (!mounted) return;
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            LoginScreen.routeName,
-            (route) => false,
-          );
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
           return;
         }
 
@@ -1272,10 +1166,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       debugPrint('Error switching account: $e');
       if (!mounted) return;
       // On error, go to login screen
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        LoginScreen.routeName,
-        (route) => false,
-      );
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(LoginScreen.routeName, (route) => false);
     }
   }
 
@@ -1283,996 +1176,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushNamed(context, NotificationsScreen.routeName);
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    final wg = await AppPreferences.getWeeklyGoalKm();
+    if (!mounted) return;
+    setState(() => _weeklyGoalKmLocal = wg);
+    widget.onWeeklyGoalChanged?.call(wg);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: AppPalette.of(context).background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     final profile = _profile;
-
-    final double weeklyProgress = _weeklyGoalKmLocal <= 0
-        ? 0
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final weeklyProgress = _weeklyGoalKmLocal <= 0
+        ? 0.0
         : (_weeklyKm / _weeklyGoalKmLocal).clamp(0.0, 1.0);
 
-    return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF071B26)
-          : const Color(0xFF1ABFC4),
-      body: Column(
-        children: [
-          if (_buildStaleDataBanner() != null) _buildStaleDataBanner()!,
-          // ===== HEADER (match Home/Nearby) =====
-          if (isDark)
-            // ✅ Dark: NO BAR, floating header (same as Home)
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Left: logo + title
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withAlpha((0.1 * 255).round()),
-                          ),
-                          child: const Icon(
-                            Icons.directions_walk,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Transform.translate(
-                          offset: const Offset(0, -2),
-                          child: Text(
-                            'Yalla Nemshi',
-                            style:
-                                Theme.of(
-                                  context,
-                                ).textTheme.titleLarge?.copyWith(
-                                  fontFamily: 'Poppins',
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.2,
-                                ) ??
-                                const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 20,
-                                  letterSpacing: -0.2,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Right: friends, notif, settings
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.people_outline),
-                          tooltip: 'My Friends',
-                          onPressed: () {
-                            Navigator.of(context).pushNamed('/friends');
-                          },
-                        ),
-                        Semantics(
-                          label: 'Notifications',
-                          button: true,
-                          child: GestureDetector(
-                            onTap: _showNotificationsSheet,
-                            child: Transform.translate(
-                              offset: const Offset(0, -1),
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withAlpha(
-                                      (0.1 * 255).round(),
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.notifications_none,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // ✅ Settings icon (40x40)
-                        Semantics(
-                          label: 'Settings',
-                          button: true,
-                          child: GestureDetector(
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
-                              final wg = await AppPreferences.getWeeklyGoalKm();
-                              if (!mounted) return;
-                              setState(() => _weeklyGoalKmLocal = wg);
-                              widget.onWeeklyGoalChanged?.call(wg);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withAlpha(
-                                    (0.1 * 255).round(),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.settings,
-                                  size: 22,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            // ✅ Light: gradient bar (same as Home)
-            Container(
-              height: 80,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1ABFC4), Color(0xFF1DB8C0)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 18, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white24,
-                            ),
-                            child: const Icon(
-                              Icons.directions_walk,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Transform.translate(
-                            offset: const Offset(0, -2),
-                            child: Text(
-                              'Yalla Nemshi',
-                              style:
-                                  Theme.of(
-                                    context,
-                                  ).textTheme.titleLarge?.copyWith(
-                                    fontFamily: 'Poppins',
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                  ) ??
-                                  const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 20,
-                                    letterSpacing: -0.2,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.people_outline),
-                            tooltip: 'My Friends',
-                            onPressed: () {
-                              Navigator.of(context).pushNamed('/friends');
-                            },
-                          ),
-                          Semantics(
-                            label: 'Notifications',
-                            button: true,
-                            child: GestureDetector(
-                              onTap: _showNotificationsSheet,
-                              child: Transform.translate(
-                                offset: const Offset(0, -1),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white24,
-                                    ),
-                                    child: const Icon(
-                                      Icons.notifications_none,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Semantics(
-                            label: 'Settings',
-                            button: true,
-                            child: GestureDetector(
-                              onTap: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const SettingsScreen(),
-                                  ),
-                                );
-                                final wg =
-                                    await AppPreferences.getWeeklyGoalKm();
-                                if (!mounted) return;
-                                setState(() => _weeklyGoalKmLocal = wg);
-                                widget.onWeeklyGoalChanged?.call(wg);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white24,
-                                  ),
-                                  child: const Icon(
-                                    Icons.settings,
-                                    size: 22,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // ===== MAIN AREA =====
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  gradient: isDark
-                      ? const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF071B26), // top (dark blue)
-                            Color(0xFF041016), // bottom (almost black)
-                          ],
-                        )
-                      : null,
-                  color: isDark ? null : const Color(0xFFF7F9F2),
-                ),
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    kSpace2,
-                    kSpace2,
-                    kSpace2,
-                    kSpace3 + MediaQuery.of(context).padding.bottom,
-                  ),
-                  child: Card(
-                    color: isDark ? const Color(0xFF0C2430) : kLightSurface,
-                    elevation: isDark
-                        ? kCardElevationDark
-                        : kCardElevationLight,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusCard),
-                      side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black).withAlpha(
-                          (kCardBorderAlpha * 255).round(),
-                        ),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        kSpace2,
-                        kSpace3,
-                        kSpace2,
-                        kSpace3,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Avatar, name, level, bio
-                          Center(
-                            child: Column(
-                              children: [
-                                Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    Semantics(
-                                      label: 'Change profile picture',
-                                      button: true,
-                                      child: GestureDetector(
-                                        onTap: _onAvatarTap,
-                                        child: _buildAvatar(profile),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      // ✅ Name stays perfectly centered
-                                      Center(
-                                        child: Text(
-                                          profile?.name.isNotEmpty == true
-                                              ? profile!.name
-                                              : 'Your name',
-                                          textAlign: TextAlign.center,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style:
-                                              theme.textTheme.titleLarge
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: -0.2,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                  ) ??
-                                              const TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: -0.2,
-                                              ),
-                                        ),
-                                      ),
-
-                                      // ✅ Pen icon on the right, does NOT shift the text
-                                      Positioned(
-                                        right: 0,
-                                        child: IconButton(
-                                          onPressed: _openEditProfile,
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            size: 18,
-                                          ),
-                                          tooltip: 'Edit profile',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                const SizedBox(height: 4),
-                                Text(
-                                  _walkerLevel,
-                                  style:
-                                      theme.textTheme.bodySmall?.copyWith(
-                                        fontFamily: 'Inter',
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF1ABFC4),
-                                      ) ??
-                                      const TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1ABFC4),
-                                      ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  profile?.bio.isNotEmpty == true
-                                      ? profile!.bio
-                                      : 'Add a short bio about you',
-                                  textAlign: TextAlign.center,
-                                  style:
-                                      theme.textTheme.bodyMedium?.copyWith(
-                                        fontFamily: 'Inter',
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.45,
-                                        color: theme.textTheme.bodySmall?.color,
-                                      ) ??
-                                      TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.45,
-                                        color: theme.textTheme.bodySmall?.color,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          if (profile != null)
-                            ChipTheme(
-                              data: theme.chipTheme.copyWith(
-                                backgroundColor: isDark
-                                    ? const Color(
-                                        0xFF123647,
-                                      ) // 👈 bluish chip surface
-                                    : theme.colorScheme.surface,
-                                side: BorderSide(
-                                  color: (isDark ? Colors.white : Colors.black)
-                                      .withAlpha((0.12 * 255).round()),
-                                ),
-                                labelStyle: TextStyle(
-                                  fontFamily: 'Inter',
-                                  color: isDark ? Colors.white : Colors.black87,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: Wrap(
-                                      alignment: WrapAlignment.center,
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        Chip(
-                                          label: Text('Age: ${profile.age}'),
-                                        ),
-                                        Chip(
-                                          label: Text(
-                                            'Gender: ${profile.gender}',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          const SizedBox(height: 24),
-
-                          // This week
-                          Text(
-                            'This week',
-                            style:
-                                theme.textTheme.titleMedium?.copyWith(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ) ??
-                                const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          Card(
-                            color: isDark
-                                ? const Color(0xFF0C2430)
-                                : theme.cardColor,
-                            elevation: isDark ? 0.0 : 0.5,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                              side: BorderSide(
-                                color: (isDark ? Colors.white : Colors.black)
-                                    .withAlpha((0.08 * 255).round()),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                14,
-                                12,
-                                14,
-                                12,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          '$_weeklyWalks walk${_weeklyWalks == 1 ? '' : 's'} • '
-                                          '${_weeklyKm.toStringAsFixed(1)} / ${_weeklyGoalKmLocal.toStringAsFixed(1)} km',
-                                          style:
-                                              theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'Inter',
-                                                    fontSize: 15,
-                                                    fontWeight: FontWeight.w700,
-                                                    height: 1.45,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : null,
-                                                  ) ??
-                                              TextStyle(
-                                                fontFamily: 'Inter',
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w700,
-                                                height: 1.45,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : null,
-                                              ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white.withAlpha(
-                                                  (0.08 * 255).round(),
-                                                )
-                                              : const Color(0xFFE5F3D9),
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '${(weeklyProgress * 100).round()}%',
-                                          style:
-                                              theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    fontFamily: 'Poppins',
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w800,
-                                                    letterSpacing: -0.1,
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : null,
-                                                  ) ??
-                                              TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: -0.1,
-                                                color: isDark
-                                                    ? Colors.white
-                                                    : null,
-                                              ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  LayoutBuilder(
-                                    builder: (context, c) {
-                                      final trackH = 10.0;
-                                      final fillW =
-                                          (c.maxWidth * weeklyProgress).clamp(
-                                            0.0,
-                                            c.maxWidth,
-                                          );
-
-                                      return Stack(
-                                        children: [
-                                          Container(
-                                            height: trackH,
-                                            decoration: BoxDecoration(
-                                              color: isDark
-                                                  ? Colors.white.withAlpha(
-                                                      (0.10 * 255).round(),
-                                                    )
-                                                  : Colors.black.withAlpha(
-                                                      (0.06 * 255).round(),
-                                                    ),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                          ),
-                                          Container(
-                                            height: trackH,
-                                            width: fillW,
-                                            decoration: BoxDecoration(
-                                              color: isDark
-                                                  ? const Color(0xFF1ABFC4)
-                                                  : const Color(0xFF1ABFC4),
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    _weeklyMotivationText(
-                                      progress: weeklyProgress,
-                                      weeklyKm: _weeklyKm,
-                                      weeklyGoalKm: _weeklyGoalKmLocal,
-                                      streakDays: widget.streakDays,
-                                    ),
-                                    style:
-                                        theme.textTheme.bodySmall?.copyWith(
-                                          fontFamily: 'Inter',
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          height: 1.4,
-                                          color: isDark
-                                              ? Colors.white70
-                                              : Colors.black54,
-                                        ) ??
-                                        TextStyle(
-                                          fontFamily: 'Inter',
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          height: 1.4,
-                                          color: isDark
-                                              ? Colors.white70
-                                              : Colors.black54,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Stats
-                          Text(
-                            'Your stats',
-                            style:
-                                theme.textTheme.titleMedium?.copyWith(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ) ??
-                                const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _statCard(
-                                label: 'Walks joined',
-                                value: _walksJoined.toString(),
-                                icon: Icons.directions_walk,
-                              ),
-                              _statCard(
-                                label: 'Hosted',
-                                value: _eventsHosted.toString(),
-                                icon: Icons.flag,
-                              ),
-                              _statCard(
-                                label: 'Total km',
-                                value: _totalKm.toStringAsFixed(1),
-                                icon: Icons.map,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Center(
-                            child: Text(
-                              'Marked as interested: ${widget.interestedCount}',
-                              style:
-                                  theme.textTheme.bodySmall?.copyWith(
-                                    fontFamily: 'Inter',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.black54,
-                                  ) ??
-                                  const TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Total Stats Section
-                          Text(
-                            'Total stats',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // CP-4: Lifetime Walk Stats
-                          _buildWalkStatsSection(
-                            context,
-                            FirebaseAuth.instance.currentUser?.uid ?? '',
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Host Rating (only if user has hosted walks)
-                          if (_eventsHosted > 0)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildHostRatingCard(
-                                  context,
-                                  FirebaseAuth.instance.currentUser?.uid ?? '',
-                                ),
-                                const SizedBox(height: 24),
-                              ],
-                            ),
-
-                          _buildBadgesSection(context),
-
-                          const SizedBox(height: 24),
-
-                          // Past Walks Section
-                          Text(
-                            'Past walks',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildPastWalksSection(context),
-
-                          const SizedBox(height: 24),
-
-                          // Actions
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.icon(
-                              onPressed: () {
-                                Navigator.of(
-                                  context,
-                                ).pushNamed(AnalyticsScreen.routeName);
-                              },
-                              style: FilledButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              icon: const Icon(Icons.insights_outlined),
-                              label: const Text('Analytics'),
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _openSafetyTips,
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                side: BorderSide(
-                                  color: (isDark ? Colors.white : Colors.black)
-                                      .withAlpha((0.18 * 255).round()),
-                                ),
-                                foregroundColor: isDark
-                                    ? Colors.white
-                                    : Colors.black,
-                              ),
-                              icon: const Icon(Icons.shield_outlined),
-                              label: const Text(
-                                'Walking safety & community tips',
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-                          Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: _exportWalkHistoryCsv,
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(52),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    side: BorderSide(
-                                      color:
-                                          (isDark ? Colors.white : Colors.black)
-                                              .withAlpha((0.18 * 255).round()),
-                                    ),
-                                    foregroundColor: isDark
-                                        ? Colors.white
-                                        : Colors.black,
-                                  ),
-                                  icon: const Icon(Icons.table_view),
-                                  label: const Text(
-                                    'Export walk history (CSV)',
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: _exportWalkSummaryPdf,
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(52),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    side: BorderSide(
-                                      color:
-                                          (isDark ? Colors.white : Colors.black)
-                                              .withAlpha((0.18 * 255).round()),
-                                    ),
-                                    foregroundColor: isDark
-                                        ? Colors.white
-                                        : Colors.black,
-                                  ),
-                                  icon: const Icon(Icons.picture_as_pdf),
-                                  label: const Text(
-                                    'Export walk summary (PDF)',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _switchAccount,
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                side: BorderSide(
-                                  color: isDark
-                                      ? Colors.white.withAlpha(
-                                          (0.3 * 255).round(),
-                                        )
-                                      : Colors.black.withAlpha(
-                                          (0.2 * 255).round(),
-                                        ),
-                                ),
-                              ),
-                              icon: const Icon(Icons.swap_horiz),
-                              label: const Text('Switch Account'),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _signOut,
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                side: BorderSide(
-                                  color: Colors.red.withAlpha(
-                                    (0.5 * 255).round(),
-                                  ),
-                                ),
-                                foregroundColor: Colors.red,
-                              ),
-                              icon: const Icon(Icons.logout),
-                              label: const Text('Sign out'),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-                          Center(
-                            child: Text(
-                              'Tip: Tap on your photo to change it.',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return ProfileView(
+      name: profile?.name ?? '',
+      bio: profile?.bio ?? '',
+      age: profile?.age,
+      gender: profile?.gender,
+      walkerLevel: _walkerLevel,
+      weeklyWalks: _weeklyWalks,
+      weeklyKm: _weeklyKm,
+      weeklyGoalKm: _weeklyGoalKmLocal,
+      motivation: _weeklyMotivationText(
+        progress: weeklyProgress,
+        weeklyKm: _weeklyKm,
+        weeklyGoalKm: _weeklyGoalKmLocal,
+        streakDays: widget.streakDays,
       ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: _currentTab,
-        onTap: (index) {
-          if (index == _currentTab) return;
-
-          if (index == 3) {
-            // Already on profile
-            return;
-          }
-
-          // Navigate back to HomeScreen with the requested tab
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(initialTab: index),
-            ),
-          );
-        },
+      walksJoined: _walksJoined,
+      walksHosted: _eventsHosted,
+      totalKm: _totalKm,
+      interestedCount: widget.interestedCount,
+      avatar: _buildAvatar(profile),
+      banner: _buildStaleDataBanner(),
+      lifetimeStats: _buildWalkStatsSection(context, uid),
+      hostRating: _buildHostRatingCard(context, uid),
+      badges: _buildBadgesSection(context),
+      pastWalks: _buildPastWalksSection(context),
+      actions: ProfileActions(
+        onFriends: () => Navigator.of(context).pushNamed('/friends'),
+        onNotifications: _showNotificationsSheet,
+        onSettings: _openSettings,
+        onAvatarTap: _onAvatarTap,
+        onEditProfile: _openEditProfile,
+        onAnalytics: () =>
+            Navigator.of(context).pushNamed(AnalyticsScreen.routeName),
+        onSafetyTips: _openSafetyTips,
+        onExportCsv: _exportWalkHistoryCsv,
+        onExportPdf: _exportWalkSummaryPdf,
+        onSwitchAccount: _switchAccount,
+        onSignOut: _signOut,
+        // Close Profile and tell Home which tab to show (-1 = create a walk).
+        onNavTap: (index) => Navigator.of(context).pop(index),
+        onCreateWalk: () => Navigator.of(context).pop(-1),
       ),
     );
   }
@@ -2309,17 +1278,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (authPhoto != null && authPhoto.isNotEmpty) {
       return CircleAvatar(
         radius: 48,
-        backgroundColor: const Color(0xFFB7E76A),
+        backgroundColor: AppPalette.lime,
         foregroundImage: NetworkImage(authPhoto),
         onForegroundImageError: (_, _) {},
-        child: const Icon(Icons.person, size: 48, color: Color(0xFF166534)),
+        child: const Icon(Icons.person, size: 48, color: AppPalette.ink),
       );
     }
 
     return const CircleAvatar(
       radius: 48,
-      backgroundColor: Color(0xFFB7E76A),
-      child: Icon(Icons.person, size: 48, color: Color(0xFF166534)),
+      backgroundColor: AppPalette.lime,
+      child: Icon(Icons.person, size: 48, color: AppPalette.ink),
     );
   }
 
@@ -2333,17 +1302,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Expanded(
-      child: Card(
-        color: isDark ? const Color(0xFF0C2430) : theme.cardColor,
-        elevation: isDark ? 0.0 : 0.5,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: (isDark ? Colors.white : Colors.black).withAlpha(
-              (0.08 * 255).round(),
-            ),
-          ),
-        ),
+      child: AppCard(
+        padding: EdgeInsets.zero,
         child: Padding(
           padding: EdgeInsets.symmetric(
             vertical: compact ? 10 : 12,

@@ -1481,7 +1481,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // Profile icon should go directly to Profile
   Future<void> _openProfileQuickSheet() async {
-    await Navigator.push(
+    // Profile's bottom bar closes it and returns the tab to show
+    // (-1 = create a walk).
+    final next = await Navigator.push<int>(
       context,
       MaterialPageRoute(
         builder: (context) => ProfileScreen(
@@ -1500,6 +1502,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // The user may have changed their name or photo on the profile screen.
     await _loadUserName();
+    if (!mounted || next == null) return;
+    if (next == -1) {
+      _openCreateWalk();
+    } else {
+      setState(() => _currentTab = next);
+    }
   }
 
   // --- UI ---
@@ -1729,21 +1737,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onCreate: _openCreateWalk,
         onTap: (index) {
           if (index == 3) {
-            // Profile lives on its own screen; navigate to it directly
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => ProfileScreen(
-                  walksJoined: _walksJoined,
-                  eventsHosted: _eventsHosted,
-                  totalKm: _totalKmJoined,
-                  interestedCount: _interestedCount,
-                  weeklyKm: _weeklyKm,
-                  weeklyWalks: _weeklyWalkCount,
-                  streakDays: _streakDays,
-                  weeklyGoalKm: _weeklyGoalKm,
-                ),
-              ),
-            );
+            // Profile lives on its own screen.
+            _openProfileQuickSheet();
           } else {
             setState(() {
               _currentTab = index;

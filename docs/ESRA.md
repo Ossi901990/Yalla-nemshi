@@ -98,8 +98,11 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    shows walks you joined, not only ones you host. There's now also a **map of walks**
    (switch between list and map; it also shows the walks you host), using free OpenStreetMap maps for now. Google
    Maps needs a credit card on the account, so **we'll switch back to Google Maps once
-   we pay for the plan**. The map is in the main version now. Next: events, profile and
-   chat.
+   we pay for the plan**. The map is in the main version now. The **profile page**
+   is redesigned too (photo, your level, this week's goal, colourful stats, and a tidy
+   list of settings at the bottom); it's waiting for a check before it goes into the main
+   version. Next: chat, and deciding what the **calendar tab** should be (right now it
+   only says "Coming soon").
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
 6. Decide what blocking should do for **walks** (for example, hide your walks from

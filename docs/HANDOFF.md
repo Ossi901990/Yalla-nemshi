@@ -189,8 +189,27 @@ bundled JDK 21 for that shell:
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
-- **Next screens** (same style, Claude designs them): events/calendar, profile, chat. Then switch the default to System and move from
+- **Next screens** (same style, Claude designs them): events/calendar (only a "Coming soon" placeholder now: owner to decide what it becomes), chat. Profile is done (see below). Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
+
+### Profile redesigned on branch `design/profile` (2026-11-26, not merged yet)
+
+- Layout moved into a pure `ProfileView` (`lib/screens/profile/profile_view.dart`);
+  `profile_screen.dart` keeps loading and every action, and passes the sections that
+  load their own data (lifetime stats, host rating, badges, past walks) in as widgets.
+- New look: "Profile" header with Friends / Notifications / Settings buttons; card with
+  lime-ringed photo, name, walker level pill, bio, age/gender chips, Edit profile;
+  "This week" goal card (lime bar, %, motivation); lime / coral / blue stat tiles;
+  "More" list card (Analytics, safety tips, CSV/PDF export, switch account, red Sign out).
+  The old sections were switched to `AppCard`.
+- **Bottom bar fixed:** Profile now uses the same floating bar as Home. Tapping a tab
+  closes Profile and returns the tab number to Home (`-1` = create a walk). Before,
+  it pushed a second Home screen on top. Both ways into Profile now go through
+  `HomeScreen._openProfileQuickSheet`, so the weekly-goal callback is always passed.
+- Tests: `test/profile_test.dart` (84 layouts + 3 checks). 1,050 tests total.
+- **Owner to check in the browser:** real data in the lifetime / host rating / badges /
+  past walks sections (the tests use stand-ins), dark mode, Settings → change weekly
+  goal → back, and the bottom bar from Profile.
 
 ### Walks tab redesigned and merged into `main` (2026-11-26)
 
