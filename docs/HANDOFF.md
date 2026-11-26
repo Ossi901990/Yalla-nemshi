@@ -192,7 +192,7 @@ bundled JDK 21 for that shell:
 - **Next screens** (same style, Claude designs them): events/calendar, profile, chat. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
 
-### Walks tab redesigned (2026-11-26, branch `design/walks-tab`, not merged yet)
+### Walks tab redesigned and merged into `main` (2026-11-26)
 
 - Shared `WalkRow` (`lib/widgets/walk_row.dart`) used by Home "Coming up", My walks and
   Nearby; adds the date for walks > 6 days away.
@@ -202,10 +202,9 @@ bundled JDK 21 for that shell:
   old card and an unused filter card removed. Note: the "distance" filter means the
   walk's **length**, not how far away it is.
 - Tests: `test/walks_tab_test.dart` (168 layouts + sections check). 919 tests total.
-- **Open question for the owner: a real map.** The bottom bar's map icon and Home's
-  "Open the map →" lead to this list; there's no map of walks anywhere. Walks have
-  `meetingLat/Lng` and `google_maps_flutter` is already a dependency, so a List / Map
-  toggle on Nearby is feasible.
+- **Map: approved by the owner (2026-11-26)**, being built next on `design/walks-map`:
+  a List / Map toggle on Nearby with a pin per walk meeting point. (Until then the
+  map icon and Home's "Open the map →" lead to the list.)
 
 ### Create walk redesigned and merged into `main` (2026-11-24)
 

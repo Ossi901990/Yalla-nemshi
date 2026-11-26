@@ -91,7 +91,7 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    main version of the app. The **walk page** (what you see when you open a walk) is
    now also redesigned and in the main version. The **create walk** page is
    redesigned too and in the main version. The **walks list** (your walks and
-   walks nearby) is redesigned too and waiting for a look-over; "My walks" now also
+   walks nearby) is redesigned too and in the main version; "My walks" now also
    shows walks you joined, not only ones you host. Next: events, profile and chat.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
