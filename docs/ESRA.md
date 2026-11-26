@@ -101,8 +101,10 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    we pay for the plan**. The map is in the main version now. The **profile page**
    is redesigned too (photo, your level, this week's goal, colourful stats, and a tidy
    list of settings at the bottom); it's waiting for a check before it goes into the main
-   version. Next: chat, and deciding what the **calendar tab** should be (right now it
-   only says "Coming soon").
+   version. The **calendar tab** (it used to just say "Coming soon") is now **My
+   calendar**: all the walks you host, joined or starred, day by day, with a two-week
+   strip at the top. We decided not to build a separate screen for big events for now,
+   since a big event is just a walk with more people. Also waiting for a check. Next: chat.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
 6. Decide what blocking should do for **walks** (for example, hide your walks from

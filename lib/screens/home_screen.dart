@@ -22,7 +22,7 @@ import 'create_walk_screen.dart';
 import 'event_details_screen.dart';
 import 'profile_screen.dart';
 import 'walks_screen.dart';
-import 'events_screen.dart';
+import 'calendar_screen.dart';
 import 'walk_search_screen.dart';
 import 'active_walk_screen.dart';
 import '../services/notification_storage.dart';
@@ -1704,7 +1704,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       case 2:
       default:
-        body = const EventsScreen();
+        // My calendar: the walks Home already loaded, day by day.
+        body = CalendarScreen(
+          walks: _events,
+          onOpen: _navigateToDetails,
+          onJoin: (e) => _toggleJoin(e),
+          onFindWalks: () => setState(() => _currentTab = 1),
+          onCreateWalk: _openCreateWalk,
+        );
         break;
     }
 

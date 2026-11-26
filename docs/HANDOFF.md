@@ -189,8 +189,25 @@ bundled JDK 21 for that shell:
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
-- **Next screens** (same style, Claude designs them): events/calendar (only a "Coming soon" placeholder now: owner to decide what it becomes), chat. Profile is done (see below). Then switch the default to System and move from
+- **Next screens** (same style, Claude designs them): chat. Profile and My calendar are done (see below). Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
+
+### My calendar replaces the Events tab, branch `design/calendar` (2026-11-26, not merged yet)
+
+- **Owner's decision:** no separate "big events" screen for now. A big event is just a
+  walk with more people; later it could be an "Event" tag on a walk (bigger group,
+  cover photo, highlighted on the Walks tab) instead of a second system.
+- `lib/screens/calendar_screen.dart` (pure UI, fed by Home's already-loaded `_events`,
+  so **no extra Firestore reads**). Shows upcoming walks you host, joined or starred:
+  a 14-day strip with coloured dots (coral host, lime joined, blue starred), tap a day
+  to see only it; All / Hosting / Joined / Starred filters; walks grouped Today /
+  Tomorrow / weekday / date using `WalkRow`. Empty state: Find a walk (→ Walks tab)
+  and Create a walk.
+- `events_screen.dart` (the "Coming soon" placeholder) deleted; bar label is now "Calendar".
+- Branched from `design/profile`, so merging this also merges the profile work.
+- Tests: `test/calendar_test.dart` (84 layouts + 4 behaviour checks). 1,138 tests total.
+- Limit: it only knows the walks Home has loaded (the same as the Walks tab), so a
+  starred walk far beyond the loaded pages won't show until it's loaded.
 
 ### Profile redesigned on branch `design/profile` (2026-11-26, not merged yet)
 
