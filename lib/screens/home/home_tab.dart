@@ -12,6 +12,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/ui/floating_nav_bar.dart';
 import '../../widgets/ui/ui_kit.dart';
 import '../../widgets/user_avatar.dart';
+import '../../widgets/walk_row.dart';
 
 /// What the big card at the top shows.
 enum HomeHeroMode {
@@ -241,20 +242,6 @@ String _details(WalkEvent w) {
 
 String _km(double km) =>
     km == km.roundToDouble() ? km.toStringAsFixed(0) : km.toStringAsFixed(1);
-
-/// Chip colour by when the walk is: lime = today/tomorrow, coral = weekend,
-/// blue = other days.
-Color _chipColor(DateTime t) {
-  final now = DateTime.now();
-  final days = DateTime(
-    t.year,
-    t.month,
-    t.day,
-  ).difference(DateTime(now.year, now.month, now.day)).inDays;
-  if (days <= 1) return AppPalette.lime;
-  if (t.weekday >= DateTime.saturday) return AppPalette.coral;
-  return AppPalette.blue;
-}
 
 List<AvatarStackPerson> _people(WalkEvent w) => [
   for (var i = 0; i < w.joinedUserNames.length; i++)
@@ -790,82 +777,11 @@ class _ComingUpRow extends StatelessWidget {
   final HomeTabActions actions;
 
   @override
-  Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final going = walk.joinedCount;
-    final place = (walk.meetingPlaceName ?? walk.city ?? '').trim();
-    final subtitle = [
-      if (place.isNotEmpty) place,
-      walk.isOwner ? 'you host' : '$going going',
-    ].join(' · ');
-
-    final Widget trailing;
-    if (walk.isOwner) {
-      trailing = const SizedBox.shrink();
-    } else if (walk.joined) {
-      trailing = RoundIconButton(
-        icon: Icons.check_rounded,
-        onTap: () => actions.onOpenWalk(walk),
-        background: AppPalette.lime,
-        foreground: AppPalette.ink,
-        tooltip: "You're in",
-        size: 48,
-      );
-    } else {
-      trailing = RoundIconButton(
-        icon: Icons.add_rounded,
-        onTap: () => actions.onJoin(walk),
-        // Dark mock-up: muted circle + lime icon; light: ink circle + lime icon.
-        background: isDark ? p.surfaceMuted : AppPalette.ink,
-        foreground: AppPalette.lime,
-        tooltip: 'Join',
-        size: 48,
-      );
-    }
-
-    return AppCard(
-      padding: const EdgeInsets.all(14),
-      onTap: () => actions.onOpenWalk(walk),
-      child: Row(
-        children: [
-          TimeChip(
-            day: DateFormat('EEE').format(walk.dateTime).toUpperCase(),
-            time: DateFormat('HH:mm').format(walk.dateTime),
-            color: _chipColor(walk.dateTime),
-            size: 64,
-          ),
-          const SizedBox(width: AppSpace.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  walk.title.isEmpty ? 'Untitled walk' : walk.title,
-                  style: AppText.body(
-                    16,
-                    color: p.text,
-                    weight: FontWeight.w800,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: AppText.body(14, color: p.textMuted),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          trailing,
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => WalkRow(
+    walk: walk,
+    onOpen: () => actions.onOpenWalk(walk),
+    onJoin: () => actions.onJoin(walk),
+  );
 }
 
 class _EmptyNote extends StatelessWidget {

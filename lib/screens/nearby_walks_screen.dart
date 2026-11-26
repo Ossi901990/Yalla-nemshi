@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/walk_event.dart';
+import '../theme/app_palette.dart';
+import '../theme/app_theme.dart';
+import '../widgets/ui/ui_kit.dart';
+import '../widgets/ui/floating_nav_bar.dart';
+import '../widgets/walk_row.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 
@@ -140,8 +145,6 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     final now = DateTime.now();
     final upcoming = <WalkEvent>[];
@@ -172,134 +175,65 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
     _logNearbySummary(total: widget.events.length, kept: upcoming.length);
 
+    final p = AppPalette.of(context);
     return Scaffold(
-      // ✅ Match HomeScreen background colors
-      backgroundColor: isDark
-          ? const Color(0xFF071B26)
-          : const Color(0xFFFBFEF8),
-
+      backgroundColor: p.background,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header removed for Nearby tab to keep list content flush
-          const SizedBox(height: 0),
-
-          // ===== MAIN AREA (background) =====
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.page),
+            child: _buildCompactFilters(context),
+          ),
+          const SizedBox(height: AppSpace.md),
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(kRadiusCard),
-                ),
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.page,
+                AppSpace.xs,
+                AppSpace.page,
+                FloatingNavBar.reservedHeight,
               ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(kRadiusCard),
-                  ),
-                  gradient: isDark
-                      ? const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Color(0xFF071B26), // top (dark blue)
-                            Color(0xFF041016), // bottom (almost black)
-                          ],
-                        )
-                      : null,
-                  color: isDark ? null : const Color(0xFFF7F9F2),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    kSpace2,
-                    kSpace2,
-                    kSpace2,
-                    kSpace2,
-                  ),
-                  child: Card(
-                    color: isDark ? kDarkSurface : kLightSurface,
-                    elevation: isDark
-                        ? kCardElevationDark
-                        : kCardElevationLight,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusCard),
-                      side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withAlpha((kCardBorderAlpha * 255).round()),
-                      ),
+              // +1 for the "load more" footer (or the empty-state card)
+              itemCount: upcoming.isEmpty ? 1 : upcoming.length + 1,
+              itemBuilder: (context, index) {
+                if (upcoming.isEmpty) {
+                  return AppCard(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'No walks match',
+                          textScaler: AppText.headlineScaler(context),
+                          style: AppText.display(
+                            24,
+                            color: p.text,
+                            weight: 750,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpace.sm),
+                        Text(
+                          'Try another date or distance, or turn off Interested.',
+                          style: AppText.body(15, color: p.textMuted),
+                        ),
+                      ],
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        kSpace2,
-                        kSpace3,
-                        kSpace2,
-                        kSpace2,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Nearby walks',
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF111827),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Find walks happening around you and join with one tap.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildCompactFilters(context),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            child: upcoming.isEmpty
-                                ? Center(
-                                    child: SingleChildScrollView(
-                                      padding: const EdgeInsets.all(24.0),
-                                      child: Text(
-                                        'No walks match your filters.\n'
-                                        'Try changing the date or distance filters.',
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      0,
-                                      6,
-                                      0,
-                                      8,
-                                    ),
-                                    itemCount: upcoming.length + 1, // +1 for load more button
-                                    itemBuilder: (context, index) {
-                                      // Show load more button at the end
-                                      if (index == upcoming.length) {
-                                        return _buildLoadMoreButton(context);
-                                      }
-                                      
-                                      final e = upcoming[index];
-                                      return _NearbyWalkCard(
-                                        event: e,
-                                        onToggleJoin: widget.onToggleJoin,
-                                        onToggleInterested:
-                                            widget.onToggleInterested,
-                                        onTap: () => widget.onTapEvent(e),
-                                      );
-                                    },
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  );
+                }
+                if (index == upcoming.length) {
+                  return _buildLoadMoreButton(context);
+                }
+                final e = upcoming[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.md),
+                  child: WalkRow(
+                    walk: e,
+                    onOpen: () => widget.onTapEvent(e),
+                    onJoin: () => widget.onToggleJoin(e),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -310,59 +244,37 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
   // ===== LOAD MORE BUTTON =====
 
   Widget _buildLoadMoreButton(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    // Don't show button if no more walks or currently loading
+    final p = AppPalette.of(context);
     if (!widget.hasMoreWalks && !widget.isLoadingMore) {
       return Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(AppSpace.xl),
         child: Center(
           child: Text(
-            '✓ All walks loaded',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? Colors.white54 : Colors.black54,
-            ),
+            "That's every walk nearby",
+            style: AppText.body(14, color: p.textMuted),
           ),
         ),
       );
     }
-
-    // Show loading indicator while loading
     if (widget.isLoadingMore) {
       return const Padding(
-        padding: EdgeInsets.all(24.0),
-        child: Center(
-          child: CircularProgressIndicator(),
-        ),
+        padding: EdgeInsets.all(AppSpace.xl),
+        child: Center(child: CircularProgressIndicator()),
       );
     }
-
-    // Show "Load More" button
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: SizedBox(
-        width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+      child: Center(
         child: OutlinedButton(
           onPressed: widget.onLoadMore,
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(kRadiusControl),
-            ),
-            side: BorderSide(
-              color: isDark 
-                  ? Colors.white.withAlpha((0.2 * 255).round())
-                  : Colors.black.withAlpha((0.2 * 255).round()),
-            ),
+            foregroundColor: p.text,
+            side: BorderSide(color: p.border),
+            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            textStyle: AppText.body(15, weight: FontWeight.w700),
           ),
-          child: Text(
-            'Load more walks',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: isDark ? kTextSecondary : Colors.black87,
-            ),
-          ),
+          child: const Text('Load more walks'),
         ),
       ),
     );
@@ -371,7 +283,6 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
   // ===== COMPACT HORIZONTAL FILTERS =====
 
   Widget _buildCompactFilters(BuildContext context) {
-
     return SizedBox(
       height: 44,
       child: Row(
@@ -413,7 +324,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                 _buildCompactChip(
                   context,
                   label: 'Interested',
-                  icon: _interestedOnly ? Icons.favorite : Icons.favorite_border,
+                  icon: _interestedOnly
+                      ? Icons.favorite
+                      : Icons.favorite_border,
                   selected: _interestedOnly,
                   onTap: () {
                     setState(() => _interestedOnly = !_interestedOnly);
@@ -437,125 +350,67 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final bg = selected
-        ? const Color(0xFF1ABFC4)
-        : (isDark
-              ? Colors.white.withAlpha((0.08 * 255).round())
-              : Colors.white);
-
-    final textColor = selected
-        ? Colors.white
-        : (isDark ? Colors.white : const Color(0xFF374151));
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: icon != null ? 12 : 16,
-          vertical: 10,
-        ),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(kRadiusPill),
-          border: selected
-              ? null
-              : Border.all(
-                  color: isDark
-                      ? Colors.white.withAlpha((0.15 * 255).round())
-                      : Colors.black.withAlpha((0.1 * 255).round()),
-                  width: 1,
+    final p = AppPalette.of(context);
+    final fg = selected ? AppPalette.ink : p.text;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.symmetric(
+            horizontal: icon != null ? 12 : 16,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? AppPalette.lime : p.surface,
+            borderRadius: BorderRadius.circular(AppSpace.radiusPill),
+            border: Border.all(color: selected ? AppPalette.lime : p.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: fg),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: AppText.body(
+                  14,
+                  color: fg,
+                  weight: selected ? FontWeight.w800 : FontWeight.w600,
                 ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF1ABFC4).withAlpha((0.3 * 255).round()),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 16, color: textColor),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: theme.textTheme.labelLarge?.copyWith(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                color: textColor,
-                letterSpacing: -0.1,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildFilterButton(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    // Show badge if distance filter is active
-    final hasDistanceFilter = _distanceFilter != _DistanceFilter.all;
-
-    return GestureDetector(
-      onTap: () => _showDistanceFilterSheet(context),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: hasDistanceFilter
-              ? const Color(0xFF1ABFC4)
-              : (isDark
-                    ? Colors.white.withAlpha((0.08 * 255).round())
-                    : Colors.white),
-          borderRadius: BorderRadius.circular(kRadiusPill),
-          border: hasDistanceFilter
-              ? null
-              : Border.all(
-                  color: isDark
-                      ? Colors.white.withAlpha((0.15 * 255).round())
-                      : Colors.black.withAlpha((0.1 * 255).round()),
-                  width: 1,
-                ),
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Icon(
-                Icons.tune,
-                size: 20,
-                color: hasDistanceFilter
-                    ? Colors.white
-                    : (isDark ? Colors.white : const Color(0xFF374151)),
-              ),
-            ),
-            if (hasDistanceFilter)
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF00D97E),
-                  ),
-                ),
-              ),
-          ],
+    final p = AppPalette.of(context);
+    final active = _distanceFilter != _DistanceFilter.all;
+    return Tooltip(
+      message: 'Distance filter',
+      child: GestureDetector(
+        onTap: () => _showDistanceFilterSheet(context),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: active ? AppPalette.lime : p.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: active ? AppPalette.lime : p.border),
+          ),
+          child: Icon(
+            Icons.tune_rounded,
+            size: 20,
+            color: active ? AppPalette.ink : p.text,
+          ),
         ),
       ),
     );
@@ -630,7 +485,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: 'Under 3 km',
                         selected: _distanceFilter == _DistanceFilter.short,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.short);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.short,
+                          );
                           setModalState(() {});
                         },
                       ),
@@ -639,7 +496,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: '3–6 km',
                         selected: _distanceFilter == _DistanceFilter.medium,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.medium);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.medium,
+                          );
                           setModalState(() {});
                         },
                       ),
@@ -648,7 +507,9 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                         label: 'Over 6 km',
                         selected: _distanceFilter == _DistanceFilter.long,
                         onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.long);
+                          setState(
+                            () => _distanceFilter = _DistanceFilter.long,
+                          );
                           setModalState(() {});
                         },
                       ),
@@ -663,7 +524,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                     child: FilledButton(
                       onPressed: () => Navigator.pop(context),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1ABFC4),
+                        backgroundColor: AppPalette.lime,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(kRadiusPill),
@@ -688,180 +549,6 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
     );
   }
 
-  // ===== OLD FILTER CARD (KEPT FOR _buildFilterChip) =====
-
-  // ignore: unused_element
-  Widget _buildFiltersCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      color: isDark ? kDarkSurface : kLightSurface,
-
-      elevation: isDark ? kCardElevationDark : kCardElevationLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withAlpha((kCardBorderAlpha * 255).round()),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(kSpace2, 12, kSpace2, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 70,
-                    maxWidth: 100,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Date:',
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildFilterChip(
-                        context,
-                        label: 'All',
-                        selected: _dateFilter == _DateFilter.all,
-                        onTap: () {
-                          setState(() => _dateFilter = _DateFilter.all);
-                        },
-                        showCheck: true,
-                      ),
-                      _buildFilterChip(
-                        context,
-                        label: 'Today',
-                        selected: _dateFilter == _DateFilter.today,
-                        onTap: () {
-                          setState(() => _dateFilter = _DateFilter.today);
-                        },
-                      ),
-                      _buildFilterChip(
-                        context,
-                        label: 'This week',
-                        selected: _dateFilter == _DateFilter.thisWeek,
-                        onTap: () {
-                          setState(() => _dateFilter = _DateFilter.thisWeek);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Distance row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 70,
-                    maxWidth: 100,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Distance:',
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-
-                Expanded(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildFilterChip(
-                        context,
-                        label: 'All',
-                        selected: _distanceFilter == _DistanceFilter.all,
-                        onTap: () {
-                          setState(() => _distanceFilter = _DistanceFilter.all);
-                        },
-                        showCheck: true,
-                      ),
-                      _buildFilterChip(
-                        context,
-                        label: '< 3 km',
-                        selected: _distanceFilter == _DistanceFilter.short,
-                        onTap: () {
-                          setState(
-                            () => _distanceFilter = _DistanceFilter.short,
-                          );
-                        },
-                      ),
-                      _buildFilterChip(
-                        context,
-                        label: '3–6 km',
-                        selected: _distanceFilter == _DistanceFilter.medium,
-                        onTap: () {
-                          setState(
-                            () => _distanceFilter = _DistanceFilter.medium,
-                          );
-                        },
-                      ),
-                      _buildFilterChip(
-                        context,
-                        label: '> 6 km',
-                        selected: _distanceFilter == _DistanceFilter.long,
-                        onTap: () {
-                          setState(
-                            () => _distanceFilter = _DistanceFilter.long,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Checkbox(
-                  value: _interestedOnly,
-                  onChanged: (val) =>
-                      setState(() => _interestedOnly = val ?? false),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 4),
-                const Expanded(
-                  child: Text(
-                    'Interested only',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildFilterChip(
     BuildContext context, {
     required String label,
@@ -874,10 +561,14 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
     final bg = selected
         ? (isDark ? const Color(0xFF123647) : const Color(0xFFCDE9B7))
-        : (isDark ? Colors.white.withAlpha((0.06 * 255).round()) : Colors.white);
+        : (isDark
+              ? Colors.white.withAlpha((0.06 * 255).round())
+              : Colors.white);
 
     final border = selected
-        ? (isDark ? Colors.white.withAlpha((0.18 * 255).round()) : const Color(0xFF1ABFC4))
+        ? (isDark
+              ? Colors.white.withAlpha((0.18 * 255).round())
+              : AppPalette.lime)
         : (isDark
               ? Colors.white.withAlpha((0.12 * 255).round())
               : Colors.grey.withAlpha((0.30 * 255).round()));
@@ -912,15 +603,17 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ) ?? TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                  style:
+                      Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ) ??
+                      TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
                 ),
               ),
             ],
@@ -948,232 +641,3 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 }
 
 // ===== NEARBY WALK CARD =====
-
-class _NearbyWalkCard extends StatelessWidget {
-  final WalkEvent event;
-  final void Function(WalkEvent) onToggleJoin;
-  final void Function(WalkEvent) onToggleInterested;
-  final VoidCallback onTap;
-
-  const _NearbyWalkCard({
-    required this.event,
-    required this.onToggleJoin,
-    required this.onToggleInterested,
-    required this.onTap,
-  });
-
-  String _formatDateTime(DateTime dt) {
-    final dd = dt.day.toString().padLeft(2, '0');
-    final mm = dt.month.toString().padLeft(2, '0');
-    final yyyy = dt.year.toString();
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final min = dt.minute.toString().padLeft(2, '0');
-    return '$dd/$mm/$yyyy • $hh:$min';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Card(
-      color: isDark ? kDarkSurface : kLightSurface,
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: isDark ? kCardElevationDark : kCardElevationLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kRadiusControl),
-        side: BorderSide(
-          color: (isDark ? Colors.white : Colors.black).withAlpha((kCardBorderAlpha * 255).round()),
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(kRadiusControl),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFE5F3D9),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${event.distanceKm.toStringAsFixed(1)}\nkm',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1F2933),
-                  ) ?? const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2933),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            event.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        if (event.isRecurring && !event.isRecurringTemplate)
-                          Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.repeat,
-                                  size: 12,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  'Recurring',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        if (event.interested) ...[
-                          const SizedBox(width: 8),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 110),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: kSpace1,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withAlpha((0.15 * 255).round()),
-                                borderRadius: BorderRadius.circular(
-                                  kRadiusPill,
-                                ),
-                              ),
-                              child: Text(
-                                'Interested',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ) ?? const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDateTime(event.dateTime),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      event.meetingPlaceName != null
-                          ? '${event.gender} • ${event.meetingPlaceName}'
-                          : (event.startLat != null && event.startLng != null
-                                ? '${event.gender} • Start ${event.startLat!.toStringAsFixed(2)},${event.startLng!.toStringAsFixed(2)}'
-                                : '${event.gender} • Meeting point TBA'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 6),
-
-              // ✅ Action buttons (simple, clean; better dark-mode contrast)
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    constraints: const BoxConstraints(
-                      minWidth: 44,
-                      minHeight: 44,
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      event.interested
-                          ? Icons.star
-                          : Icons.star_border_outlined,
-                      color: event.interested
-                          ? Colors.amber
-                          : (isDark ? Colors.white70 : const Color(0xFF374151)),
-                      size: 22,
-                    ),
-                    tooltip: 'Mark as interested',
-                    onPressed: () => onToggleInterested(event),
-                  ),
-                  const SizedBox(height: 6),
-                  IconButton(
-                    constraints: const BoxConstraints(
-                      minWidth: 44,
-                      minHeight: 44,
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(
-                      event.joined
-                          ? Icons.check_circle
-                          : Icons.add_circle_outline,
-                      color: event.joined
-                          ? const Color(0xFF00D97E)
-                          : (isDark ? Colors.white70 : const Color(0xFF374151)),
-                      size: 22,
-                    ),
-                    tooltip: event.joined
-                      ? (event.status == 'active'
-                        ? 'Leave Walk'
-                        : 'Cancel Join')
-                      : 'Join walk',
-                    onPressed: () => onToggleJoin(event),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
