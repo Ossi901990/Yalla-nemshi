@@ -202,7 +202,7 @@ bundled JDK 21 for that shell:
   old card and an unused filter card removed. Note: the "distance" filter means the
   walk's **length**, not how far away it is.
 - Tests: `test/walks_tab_test.dart` (168 layouts + sections check). 919 tests total.
-- **Map (2026-11-26, branch `design/walks-map`, not merged yet):** List / Map switch on
+- **Map (2026-11-26, merged into `main`):** List / Map switch on
   Nearby (`lib/screens/walks/walks_map_view.dart`). Pins at each walk's meeting point
   (lime = open, coral = joined/hosting), camera fits pins, dark map style, tap pin →
   walk row → walk details. Same filtered walks as the list, **plus your own hosted
@@ -219,9 +219,9 @@ bundled JDK 21 for that shell:
     geocoding had been failing silently since there was no billing.
   - `google_maps_flutter` stays only for its `LatLng` data type in create-walk code.
   - **Fair use:** OSM tile servers and Nominatim are fine for testing and small apps
-    (≤1 Nominatim request/second, identify the app). At scale, point `OsmMap.tileUrl`
-    and `GeocodingService._base` at a provider (many have free tiers), or switch back to
-    Google once billing is on.
+    (≤1 Nominatim request/second, identify the app).
+  - **Owner's decision: switch back to Google Maps once the paid plan / billing is
+    on.** Steps are in "⭐ When upgrading to the paid Blaze plan" (step 9).
 - **Android app id is still the placeholder `com.example.yalla_nemshi`**; change it
   before publishing (map requests identify as `com.yallanemshi.app`).
 
@@ -397,6 +397,22 @@ Do these together, in this order:
    badge leaderboards, the monthly email digest (needs SendGrid).
 8. Keep `NotificationSender` and its rules. In-app notifications keep working the same
    way, and push gets added on top.
+9. **Switch the maps back to Google Maps** (owner's decision, 2026-11-26). Maps moved to
+   OpenStreetMap only because Google needs billing:
+   - In Google Cloud (project `yalla-nemshi-app`), with billing on, enable **Maps
+     JavaScript API**, **Maps SDK for Android/iOS** and **Geocoding API**; add a budget
+     alert and per-API daily quotas; restrict the keys (backlog item).
+   - `web/index.html`: re-add
+     `<script src="https://maps.googleapis.com/maps/api/js?key=…"></script>` (web key).
+   - Google versions of the code are in git history: the walks map in commit
+     `21bff98` (`lib/screens/walks/walks_map_view.dart`); the location picker, walk
+     summary route map and Google `GeocodingService` as they were before commit
+     `71e4ac4` (`git show 71e4ac4^:lib/screens/map_pick_screen.dart`, etc.).
+     Keep the new parts: app-style pins, own-walks pins, Amman fallback, Sarajevo-style
+     county handling for city names (Google returns `locality`).
+   - Then `flutter_map` / `latlong2` and `lib/widgets/osm_map.dart` can be removed.
+   - Update the walks test grid: Google maps can't render in widget tests, so drop the
+     `map` state from `test/walks_tab_test.dart` (keep the switch/pin tests if possible).
 
 ## Deploying
 
