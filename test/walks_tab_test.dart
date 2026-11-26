@@ -31,6 +31,8 @@ WalkEvent _walk(
     isOwner: owner,
     joined: joined,
     meetingPlaceName: place,
+    meetingLat: 31.95 + days / 100,
+    meetingLng: 35.91 + days / 200,
     joinedCount: 6,
   );
 }
@@ -76,10 +78,16 @@ void main() {
 
   fitGrid(
     screen: 'walks',
-    states: const ['mine', 'mine_empty', 'nearby', 'nearby_empty'],
+    states: const ['mine', 'mine_empty', 'nearby', 'nearby_empty', 'map'],
     build: _screen,
     prepare: (tester, state) async {
-      if (state.startsWith('nearby')) await tester.tap(find.text('Nearby'));
+      if (state.startsWith('nearby') || state == 'map') {
+        await tester.tap(find.text('Nearby'));
+      }
+      if (state == 'map') {
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Show map'));
+      }
     },
     scroll: () => find.byType(Scrollable).last,
   );

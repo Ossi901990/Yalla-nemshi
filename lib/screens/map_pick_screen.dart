@@ -1,14 +1,20 @@
 // lib/screens/map_pick_screen.dart
-
-import 'dart:convert';
-
+//
+// Pick a walk's start and end point on an OpenStreetMap map (no API key or
+// billing). First tap = start, second tap = end, third tap starts over.
+// Returns [start, end] as google_maps_flutter LatLng values (only the data
+// type; create_walk_screen uses it throughout).
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gm;
+import 'package:latlong2/latlong.dart';
 
-// Routing/automatic route generation removed — this screen now only
-// allows picking a start and an end point and returns them to the caller.
+import '../services/geocoding_service.dart';
+import '../theme/app_palette.dart';
+import '../theme/app_theme.dart';
+import '../widgets/osm_map.dart';
+import '../widgets/ui/ui_kit.dart';
 
 class MapPickScreen extends StatefulWidget {
   const MapPickScreen({super.key});
@@ -18,23 +24,16 @@ class MapPickScreen extends StatefulWidget {
 }
 
 class _MapPickScreenState extends State<MapPickScreen> {
-  // ✅ Put your Google API key here (must have Geocoding API enabled)
-  // Tip: later we can move it to a safer config approach.
-  static const String _googleApiKey = 'AIzaSyAeeUDsBUghrf5gkD2NHZnd7UxSWzZ39u8';
-
-  final TextEditingController _searchCtrl = TextEditingController();
+  final _map = MapController();
+  final _searchCtrl = TextEditingController();
   bool _searchLoading = false;
 
-  GoogleMapController? _mapController;
+  LatLng? _start;
+  LatLng? _end;
 
-  // We collect start and end points (two taps). The caller expects both
-  // points returned when confirming.
-  LatLng? _startLatLng;
-  LatLng? _endLatLng;
-
-  static const LatLng _fallbackPosition = LatLng(31.9539, 35.9106);
-  LatLng? _initialPosition;
-  bool _loadingLocation = true;
+  // Amman (the original default), used when the location isn't available.
+  static const _fallback = LatLng(31.9539, 35.9106);
+  LatLng? _initial;
 
   @override
   void initState() {
@@ -43,98 +42,55 @@ class _MapPickScreenState extends State<MapPickScreen> {
   }
 
   Future<void> _loadInitialLocation() async {
+    var target = _fallback;
     try {
       final permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        // Use fallback if permission denied
-        if (mounted) {
-          setState(() {
-            _initialPosition = _fallbackPosition;
-            _loadingLocation = false;
-          });
-        }
-        return;
-      }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
-
-      if (mounted) {
-        setState(() {
-          _initialPosition = LatLng(position.latitude, position.longitude);
-          _loadingLocation = false;
-        });
+      if (permission != LocationPermission.denied &&
+          permission != LocationPermission.deniedForever) {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
+        );
+        target = LatLng(pos.latitude, pos.longitude);
       }
     } catch (e) {
-      // If location fails, use fallback
       debugPrint('Could not get current location: $e');
-      if (mounted) {
-        setState(() {
-          _initialPosition = _fallbackPosition;
-          _loadingLocation = false;
-        });
-      }
     }
+    if (mounted) setState(() => _initial = target);
   }
 
   Future<void> _searchAndGo(String query) async {
     final q = query.trim();
     if (q.isEmpty) return;
-
-    if (_googleApiKey == 'PASTE_YOUR_GOOGLE_API_KEY_HERE') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add your Google API key in MapPickScreen.'),
-        ),
-      );
-      return;
-    }
-
     setState(() => _searchLoading = true);
-
     try {
-      final uri = Uri.parse(
-        'https://maps.googleapis.com/maps/api/geocode/json'
-        '?address=${Uri.encodeComponent(q)}'
-        '&key=$_googleApiKey',
-      );
-
-      final res = await http.get(uri);
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-
-      final status = data['status']?.toString();
-      if (status != 'OK') {
-        throw Exception(data['error_message'] ?? 'Search failed ($status)');
-      }
-
-      final results = (data['results'] as List);
-      if (results.isEmpty) {
-        throw Exception('No results found.');
-      }
-
-      final loc = results.first['geometry']['location'];
-      final lat = (loc['lat'] as num).toDouble();
-      final lng = (loc['lng'] as num).toDouble();
-      final target = LatLng(lat, lng);
-
-      await _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: target, zoom: 15),
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
+      final hit = await GeocodingService.searchPlace(q);
+      if (!mounted) return;
+      if (hit == null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Search error: $e')));
+        ).showSnackBar(SnackBar(content: Text('No place found for "$q".')));
+        return;
       }
+      _map.move(LatLng(hit.latitude, hit.longitude), 15);
+      FocusScope.of(context).unfocus();
     } finally {
       if (mounted) setState(() => _searchLoading = false);
     }
+  }
+
+  void _onTap(LatLng tapped) {
+    setState(() {
+      if (_start == null) {
+        _start = tapped;
+      } else if (_end == null) {
+        _end = tapped;
+      } else {
+        _start = tapped;
+        _end = null;
+      }
+    });
   }
 
   @override
@@ -145,194 +101,176 @@ class _MapPickScreenState extends State<MapPickScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hintText = _startLatLng == null
-        ? 'Tap on the map to set the START point'
-        : (_endLatLng == null
-              ? 'Tap on the map to set the END point'
-              : 'Tap again to reset (start over)');
-
-    // Show loading indicator while getting location
-    if (_loadingLocation || _initialPosition == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Pick start & end')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    final p = AppPalette.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hint = _start == null
+        ? 'Tap the map to set the START point'
+        : (_end == null
+              ? 'Now tap to set the END point'
+              : 'Tap again to start over');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pick start & end')),
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _initialPosition!,
-              zoom: 15,
-            ),
-            onMapCreated: (controller) {
-              _mapController = controller;
-            },
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-            zoomControlsEnabled: false,
-            onTap: (LatLng tapped) {
-              setState(() {
-                // First tap sets start. Second tap sets end. Third tap resets.
-                if (_startLatLng == null) {
-                  _startLatLng = tapped;
-                } else if (_endLatLng == null) {
-                  _endLatLng = tapped;
-                } else {
-                  _startLatLng = tapped;
-                  _endLatLng = null;
-                }
-              });
-
-              _mapController?.animateCamera(CameraUpdate.newLatLng(tapped));
-            },
-            markers: {
-              if (_startLatLng != null)
-                Marker(
-                  markerId: const MarkerId('start_point'),
-                  position: _startLatLng!,
-                  infoWindow: const InfoWindow(title: 'Start'),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueGreen,
-                  ),
-                ),
-              if (_endLatLng != null)
-                Marker(
-                  markerId: const MarkerId('end_point'),
-                  position: _endLatLng!,
-                  infoWindow: const InfoWindow(title: 'End'),
-                  icon: BitmapDescriptor.defaultMarkerWithHue(
-                    BitmapDescriptor.hueAzure,
-                  ),
-                ),
-            },
-          ),
-
-          // ✅ Search bar overlay
-          Positioned(
-            left: 16,
-            right: 16,
-            top: 12,
-            child: SafeArea(
-              bottom: false,
-              child: Material(
-                elevation: 2,
-                borderRadius: BorderRadius.circular(14),
-                child: TextField(
-                  controller: _searchCtrl,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: _searchAndGo,
-                  decoration: InputDecoration(
-                    hintText: 'Search a place…',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchLoading
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+      backgroundColor: p.background,
+      body: _initial == null
+          ? const Center(child: CircularProgressIndicator())
+          : Stack(
+              children: [
+                Positioned.fill(
+                  child: FlutterMap(
+                    mapController: _map,
+                    options: MapOptions(
+                      initialCenter: _initial!,
+                      initialZoom: 15,
+                      onTap: (_, point) => _onTap(point),
+                    ),
+                    children: [
+                      OsmMap.tiles(context),
+                      if (_start != null && _end != null)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: [_start!, _end!],
+                              strokeWidth: 4,
+                              color: AppPalette.ink.withValues(alpha: 0.6),
+                              pattern: StrokePattern.dashed(
+                                segments: const [10, 8],
+                              ),
                             ),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              FocusScope.of(context).unfocus();
-                            },
+                          ],
+                        ),
+                      MarkerLayer(
+                        markers: [
+                          if (_start != null)
+                            Marker(
+                              point: _start!,
+                              width: 40,
+                              height: 40,
+                              child: const Center(
+                                child: MapPin(color: AppPalette.lime),
+                              ),
+                            ),
+                          if (_end != null)
+                            Marker(
+                              point: _end!,
+                              width: 40,
+                              height: 40,
+                              child: const Center(
+                                child: MapPin(color: AppPalette.coral),
+                              ),
+                            ),
+                        ],
+                      ),
+                      OsmMap.attribution(),
+                    ],
+                  ),
+                ),
+
+                // Top: back + search, then the hint
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpace.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            RoundIconButton(
+                              icon: Icons.arrow_back_rounded,
+                              onTap: () => Navigator.maybePop(context),
+                              tooltip: 'Back',
+                              size: 48,
+                            ),
+                            const SizedBox(width: AppSpace.sm),
+                            Expanded(
+                              child: Material(
+                                color: p.surface,
+                                shape: StadiumBorder(
+                                  side: BorderSide(color: p.border),
+                                ),
+                                child: TextField(
+                                  controller: _searchCtrl,
+                                  textInputAction: TextInputAction.search,
+                                  onSubmitted: _searchAndGo,
+                                  style: AppText.body(15, color: p.text),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search a place…',
+                                    hintStyle: AppText.body(
+                                      15,
+                                      color: p.textMuted,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.search_rounded,
+                                      color: p.text,
+                                    ),
+                                    suffixIcon: _searchLoading
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(14),
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpace.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: PillLabel(
+                            text: hint,
+                            background: AppPalette.ink,
+                            foreground: Colors.white,
+                            dotColor: _start == null
+                                ? AppPalette.lime
+                                : AppPalette.coral,
                           ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Helper hint banner (placed UNDER search bar so they don't overlap)
-          Positioned(
-            left: 16,
-            right: 16,
-            top: 72,
-            child: SafeArea(
-              bottom: false,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withAlpha((0.6 * 255).round()),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    hintText,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Confirm button
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 24,
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_startLatLng == null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha((0.6 * 255).round()),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        'Tap on the map to choose start and end points',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: (_startLatLng == null || _endLatLng == null)
-                          ? null
-                          : () {
-                              Navigator.of(
-                                context,
-                              ).pop([_startLatLng!, _endLatLng!]);
-                            },
-                      child: const Text(
-                        'Confirm start & end',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: p.surface,
+          border: Border(top: BorderSide(color: p.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.page,
+              12,
+              AppSpace.page,
+              12,
+            ),
+            child: PillButton(
+              label: 'Use these points',
+              icon: Icons.check_rounded,
+              expand: true,
+              dark: !isDark,
+              onPressed: (_start == null || _end == null)
+                  ? null
+                  : () => Navigator.of(context).pop([
+                      gm.LatLng(_start!.latitude, _start!.longitude),
+                      gm.LatLng(_end!.latitude, _end!.longitude),
+                    ]),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

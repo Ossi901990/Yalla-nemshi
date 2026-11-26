@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
@@ -18,13 +18,11 @@ import '../services/walk_summary_service.dart';
 import '../services/route_store.dart';
 import '../config/app_features.dart';
 import '../services/walk_completion_service.dart';
+import '../widgets/osm_map.dart';
+import '../theme/app_palette.dart';
 
 class WalkSummaryScreen extends StatefulWidget {
-  const WalkSummaryScreen({
-    super.key,
-    required this.walkId,
-    this.initialWalk,
-  });
+  const WalkSummaryScreen({super.key, required this.walkId, this.initialWalk});
 
   final String walkId;
   final WalkEvent? initialWalk;
@@ -44,9 +42,8 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
   bool _error = false;
   bool _reviewSheetAutoPrompted = false;
 
-  GoogleMapController? _mapController;
-  Set<Polyline> _polylines = const <Polyline>{};
-  LatLngBounds? _routeBounds;
+  /// The walked route (OpenStreetMap; no API key needed).
+  List<LatLng> _route = const [];
   bool _mapLoading = true;
 
   @override
@@ -57,7 +54,6 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
     super.dispose();
   }
 
@@ -122,51 +118,26 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
         return;
       }
 
-      final points = <LatLng>[];
-      double minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-
-      for (final p in routePoints) {
-        final lat = (p['latitude'] as num?)?.toDouble();
-        final lng = (p['longitude'] as num?)?.toDouble();
-        if (lat == null || lng == null) continue;
-        points.add(LatLng(lat, lng));
-        minLat = math.min(minLat, lat);
-        maxLat = math.max(maxLat, lat);
-        minLng = math.min(minLng, lng);
-        maxLng = math.max(maxLng, lng);
-      }
-
-      final polyline = Polyline(
-        polylineId: const PolylineId('route'),
-        points: points,
-        color: const Color(0xFF1ABFC4),
-        width: 5,
-        geodesic: true,
-      );
+      final points = <LatLng>[
+        for (final p in routePoints)
+          if ((p['latitude'] as num?) != null &&
+              (p['longitude'] as num?) != null)
+            LatLng(
+              (p['latitude'] as num).toDouble(),
+              (p['longitude'] as num).toDouble(),
+            ),
+      ];
 
       setState(() {
-        _polylines = {polyline};
-        _routeBounds = LatLngBounds(
-          southwest: LatLng(minLat - 0.001, minLng - 0.001),
-          northeast: LatLng(maxLat + 0.001, maxLng + 0.001),
-        );
+        _route = points;
         _mapLoading = false;
       });
-
-      await Future.delayed(const Duration(milliseconds: 120));
-      final controller = _mapController;
-      final bounds = _routeBounds;
-      if (controller != null && bounds != null) {
-        try {
-          await controller.animateCamera(
-            CameraUpdate.newLatLngBounds(bounds, 60),
-          );
-        } catch (_) {
-          // Ignore animation failures when map not ready.
-        }
-      }
     } catch (e, st) {
-      CrashService.recordError(e, st, reason: 'WalkSummaryScreen._loadRoutePolyline');
+      CrashService.recordError(
+        e,
+        st,
+        reason: 'WalkSummaryScreen._loadRoutePolyline',
+      );
       if (!mounted) return;
       setState(() => _mapLoading = false);
     }
@@ -189,9 +160,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
     );
     if (!mounted) return;
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thanks for the review!')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Thanks for the review!')));
     }
     await _loadSummary();
   }
@@ -212,10 +183,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
             const SizedBox(height: 12),
             const Text('Unable to load walk summary right now.'),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _loadSummary,
-              child: const Text('Retry'),
-            ),
+            FilledButton(onPressed: _loadSummary, child: const Text('Retry')),
           ],
         ),
       );
@@ -241,7 +209,8 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
             if (!_summary!.isHost) _buildReviewSection(theme),
             const SizedBox(height: 32),
             FilledButton.icon(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () =>
+                  Navigator.of(context).popUntil((route) => route.isFirst),
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Back to home'),
             ),
@@ -298,7 +267,7 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
       );
     }
 
-    if (_polylines.isEmpty) {
+    if (_route.length < 2) {
       return Container(
         height: 220,
         decoration: BoxDecoration(
@@ -322,28 +291,48 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
       );
     }
 
-    final bounds = _routeBounds;
-    final initialTarget = bounds == null
-        ? LatLng(
-            _summary!.walk.meetingLat ?? 25.2048,
-            _summary!.walk.meetingLng ?? 55.2708,
-          )
-        : LatLng(
-            (bounds.southwest.latitude + bounds.northeast.latitude) / 2,
-            (bounds.southwest.longitude + bounds.northeast.longitude) / 2,
-          );
-
     return SizedBox(
       height: 220,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: initialTarget, zoom: 12),
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          polylines: _polylines,
-          onMapCreated: (controller) => _mapController ??= controller,
+        child: FlutterMap(
+          options: MapOptions(
+            initialCameraFit: CameraFit.bounds(
+              bounds: LatLngBounds.fromPoints(_route),
+              padding: const EdgeInsets.all(32),
+            ),
+          ),
+          children: [
+            OsmMap.tiles(context),
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _route,
+                  strokeWidth: 5,
+                  color: AppPalette.ink,
+                  borderStrokeWidth: 2,
+                  borderColor: AppPalette.lime,
+                ),
+              ],
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: _route.first,
+                  width: 36,
+                  height: 36,
+                  child: const Center(child: MapPin(color: AppPalette.lime)),
+                ),
+                Marker(
+                  point: _route.last,
+                  width: 36,
+                  height: 36,
+                  child: const Center(child: MapPin(color: AppPalette.coral)),
+                ),
+              ],
+            ),
+            OsmMap.attribution(),
+          ],
         ),
       ),
     );
@@ -362,7 +351,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
           children: [
             Text(
               'Performance',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -382,7 +373,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
                 _StatTile(
                   icon: Icons.speed,
                   label: 'Avg pace',
-                  value: pace == null ? '--' : '${pace.toStringAsFixed(1)} min/km',
+                  value: pace == null
+                      ? '--'
+                      : '${pace.toStringAsFixed(1)} min/km',
                 ),
                 _StatTile(
                   icon: Icons.directions_walk,
@@ -415,7 +408,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
           children: [
             Text(
               'Timeline',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 12),
             _TimelineRow(
@@ -474,7 +469,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
             children: [
               Text(
                 'Share your experience',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -505,7 +502,9 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
                 const SizedBox(width: 8),
                 Text(
                   'Your review',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -525,7 +524,12 @@ class _WalkSummaryScreenState extends State<WalkSummaryScreen> {
                     final url = review.photoUrls[index];
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(url, width: 100, height: 80, fit: BoxFit.cover),
+                      child: Image.network(
+                        url,
+                        width: 100,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
                     );
                   },
                   separatorBuilder: (_, index) => const SizedBox(width: 8),
@@ -590,7 +594,12 @@ class _StatTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 Text(label, style: theme.textTheme.bodySmall),
               ],
             ),
@@ -623,9 +632,17 @@ class _TimelineRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+              ),
               const SizedBox(height: 2),
-              Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                value,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -641,12 +658,7 @@ class _RatingBadges extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chips = <Widget>[
-      _ScoreChip(
-        label: 'Walk',
-        score: review.walkRating,
-      ),
-    ];
+    final chips = <Widget>[_ScoreChip(label: 'Walk', score: review.walkRating)];
     if (review.hostRating != null) {
       chips.add(_ScoreChip(label: 'Host', score: review.hostRating!));
     }
@@ -663,7 +675,11 @@ class _ScoreChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Chip(
-      avatar: const Icon(Icons.star_rate_rounded, color: Colors.amber, size: 18),
+      avatar: const Icon(
+        Icons.star_rate_rounded,
+        color: Colors.amber,
+        size: 18,
+      ),
       label: Text('$label ${score.toStringAsFixed(1)}'),
     );
   }
@@ -720,7 +736,9 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
       if (files.isEmpty) return;
       final drafts = <_ReviewPhotoDraft>[];
       for (final file in files) {
-        if (_drafts.length + _retainedPhotoUrls.length + drafts.length >= 6) break;
+        if (_drafts.length + _retainedPhotoUrls.length + drafts.length >= 6) {
+          break;
+        }
         final bytes = await file.readAsBytes();
         drafts.add(_ReviewPhotoDraft(bytes));
       }
@@ -740,7 +758,9 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be signed in to leave a review.')),
+        const SnackBar(
+          content: Text('You must be signed in to leave a review.'),
+        ),
       );
       return;
     }
@@ -804,9 +824,9 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
       debugPrint('$logTag Error: $e');
       CrashService.recordError(e, st, reason: 'ReviewPrompt.submit');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to submit review: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to submit review: $e')));
     } finally {
       if (mounted) {
         setState(() => _submittingReview = false);
@@ -821,7 +841,9 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
       final draft = _drafts[i];
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_$i';
       debugPrint('$logTag Uploading photo $i for walk=${widget.walkId}');
-      CrashService.log('$logTag Upload start path=walk_reviews/${widget.walkId}/$userId/$fileName.jpg');
+      CrashService.log(
+        '$logTag Upload start path=walk_reviews/${widget.walkId}/$userId/$fileName.jpg',
+      );
       final url = await StorageService.uploadReviewPhoto(
         walkId: widget.walkId,
         userId: userId,
@@ -830,7 +852,9 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
         fileName: fileName,
       );
       debugPrint('$logTag Upload success photo $i');
-      CrashService.log('$logTag Upload success path=walk_reviews/${widget.walkId}/$userId/$fileName.jpg');
+      CrashService.log(
+        '$logTag Upload success path=walk_reviews/${widget.walkId}/$userId/$fileName.jpg',
+      );
       urls.add(url);
     }
     return urls;
@@ -859,8 +883,12 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
               const Icon(Icons.rate_review_outlined),
               const SizedBox(width: 8),
               Text(
-                widget.existingReview == null ? 'Rate this walk' : 'Update your review',
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                widget.existingReview == null
+                    ? 'Rate this walk'
+                    : 'Update your review',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -869,13 +897,18 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 'Looks like you left early. Let the host know what happened.',
-                style: theme.textTheme.bodySmall?.copyWith(color: Colors.orange.shade700),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.orange.shade700,
+                ),
               ),
             ),
           const SizedBox(height: 16),
           Text('Walk rating', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          _StarSelector(value: _walkRating, onChanged: (value) => setState(() => _walkRating = value)),
+          _StarSelector(
+            value: _walkRating,
+            onChanged: (value) => setState(() => _walkRating = value),
+          ),
           const SizedBox(height: 16),
           if (!widget.isHost) ...[
             Text('Host rating', style: theme.textTheme.titleMedium),
@@ -909,14 +942,18 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-                onPressed: _submittingReview ? null : _submit,
-                child: _submittingReview
+              onPressed: _submittingReview ? null : _submit,
+              child: _submittingReview
                   ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.existingReview == null ? 'Submit review' : 'Save changes'),
+                  : Text(
+                      widget.existingReview == null
+                          ? 'Submit review'
+                          : 'Save changes',
+                    ),
             ),
           ),
         ],
@@ -927,7 +964,7 @@ class _ReviewPromptSheetState extends State<_ReviewPromptSheet> {
 
 class _ReviewPhotoDraft {
   _ReviewPhotoDraft(this.bytes)
-      : id = DateTime.now().microsecondsSinceEpoch.toString();
+    : id = DateTime.now().microsecondsSinceEpoch.toString();
 
   final String id;
   final Uint8List bytes;
@@ -954,10 +991,12 @@ class _PhotoPickerRow extends StatelessWidget {
     final items = <Widget>[];
 
     for (final url in retainedPhotoUrls) {
-      items.add(_PhotoPreview(
-        image: Image.network(url, fit: BoxFit.cover),
-        onRemove: () => onRemoveExisting(url),
-      ));
+      items.add(
+        _PhotoPreview(
+          image: Image.network(url, fit: BoxFit.cover),
+          onRemove: () => onRemoveExisting(url),
+        ),
+      );
     }
 
     for (final draft in drafts) {
@@ -977,7 +1016,9 @@ class _PhotoPickerRow extends StatelessWidget {
           height: 80,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.6)),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.6),
+            ),
           ),
           child: const Center(child: Icon(Icons.add_a_photo_outlined)),
         ),
@@ -997,10 +1038,7 @@ class _PhotoPickerRow extends StatelessWidget {
 }
 
 class _PhotoPreview extends StatelessWidget {
-  const _PhotoPreview({
-    required this.image,
-    required this.onRemove,
-  });
+  const _PhotoPreview({required this.image, required this.onRemove});
 
   final Widget image;
   final VoidCallback onRemove;
@@ -1034,10 +1072,7 @@ class _PhotoPreview extends StatelessWidget {
 }
 
 class _StarSelector extends StatelessWidget {
-  const _StarSelector({
-    required this.value,
-    required this.onChanged,
-  });
+  const _StarSelector({required this.value, required this.onChanged});
 
   final double value;
   final ValueChanged<double> onChanged;
