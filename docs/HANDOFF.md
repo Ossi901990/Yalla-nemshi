@@ -189,9 +189,23 @@ bundled JDK 21 for that shell:
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
-- **Next screens** (same style, Claude designs them): walks/map tab,
-  events/calendar, profile, chat. Then switch the default to System and move from
+- **Next screens** (same style, Claude designs them): events/calendar, profile, chat. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
+
+### Walks tab redesigned (2026-11-26, branch `design/walks-tab`, not merged yet)
+
+- Shared `WalkRow` (`lib/widgets/walk_row.dart`) used by Home "Coming up", My walks and
+  Nearby; adds the date for walks > 6 days away.
+- `walks_screen.dart` (709 → 362 lines): "Walks" header + search/bell, lime pill tabs.
+  **My walks now lists Hosting and Joined** (it used to show hosted only).
+- `nearby_walks_screen.dart` (1,179 → 643): same filters/load-more logic, restyled;
+  old card and an unused filter card removed. Note: the "distance" filter means the
+  walk's **length**, not how far away it is.
+- Tests: `test/walks_tab_test.dart` (168 layouts + sections check). 919 tests total.
+- **Open question for the owner: a real map.** The bottom bar's map icon and Home's
+  "Open the map →" lead to this list; there's no map of walks anywhere. Walks have
+  `meetingLat/Lng` and `google_maps_flutter` is already a dependency, so a List / Map
+  toggle on Nearby is feasible.
 
 ### Create walk redesigned and merged into `main` (2026-11-24)
 
