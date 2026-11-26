@@ -6,6 +6,8 @@ Firebase (Auth + Firestore).
 
 ## Features
 
+New to the app? Start with [`docs/WHAT_IS_YALLA_NEMSHI.md`](docs/WHAT_IS_YALLA_NEMSHI.md).
+
 - **Open and private walks.** Open walks show up in Nearby walks. Private walks
   are only visible to the host, joined walkers, and people who redeemed an invite.
 - **Invite codes.** A private walk gets a short code (and link) the host can

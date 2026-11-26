@@ -302,7 +302,9 @@ bundled JDK 21 for that shell:
 
 ## Docs
 
-Only these are kept up to date: this file, [`ESRA.md`](ESRA.md) (a short, plain-English
+Only these are kept up to date: this file,
+[`WHAT_IS_YALLA_NEMSHI.md`](WHAT_IS_YALLA_NEMSHI.md) (a short explainer of the app for
+anyone new; keep it current when features change), [`ESRA.md`](ESRA.md) (a short, plain-English
 version of this file for the owner's partner; **update it whenever this file changes**),
 [`SECURITY_RULES.md`](SECURITY_RULES.md),
 [`GOOGLE_SIGNIN_MOBILE_SETUP.md`](GOOGLE_SIGNIN_MOBILE_SETUP.md) (needed when building

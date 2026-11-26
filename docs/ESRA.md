@@ -1,5 +1,8 @@
 # Yalla Nemshi: where we are (short version)
 
+*There's also a one-page explainer of the app for anyone new:
+`WHAT_IS_YALLA_NEMSHI.md`.*
+
 *Last updated: 24 November 2026. This is the simple version of `HANDOFF.md`.*
 
 ## In one paragraph
