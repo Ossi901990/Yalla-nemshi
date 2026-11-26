@@ -104,7 +104,10 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    version. The **calendar tab** (it used to just say "Coming soon") is now **My
    calendar**: all the walks you host, joined or starred, day by day, with a two-week
    strip at the top. We decided not to build a separate screen for big events for now,
-   since a big event is just a walk with more people. Also waiting for a check. Next: chat.
+   since a big event is just a walk with more people. Also waiting for a check. The **chats** (walk group chat and messages with a
+   friend) have the new look too, and the group chat now shows **who wrote each
+   message**, which it didn't before. Also waiting for a check. That's all the main
+   screens done; the smaller ones (settings, friends, notifications and so on) come next.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
 6. Decide what blocking should do for **walks** (for example, hide your walks from

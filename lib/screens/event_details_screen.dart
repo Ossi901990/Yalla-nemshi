@@ -1406,6 +1406,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
             builder: (_) => WalkChatScreen(
               walkId: event.firestoreId,
               walkTitle: event.title,
+              memberNames: WalkChatScreen.namesOf(event),
             ),
           ),
         ),

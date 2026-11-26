@@ -420,6 +420,7 @@ class _ActiveWalkScreenState extends State<ActiveWalkScreen>
                 builder: (_) => WalkChatScreen(
                   walkId: resolvedId,
                   walkTitle: walk.title,
+                  memberNames: WalkChatScreen.namesOf(walk),
                 ),
               ),
             );

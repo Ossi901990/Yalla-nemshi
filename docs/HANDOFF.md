@@ -189,8 +189,27 @@ bundled JDK 21 for that shell:
 - **To check in the browser (owner):** both modes (Settings → Appearance); join from
   "Coming up" (+), the hero "I'm in", Start walk near start time, notifications bell,
   profile, the + create walk, map/calendar tabs. Use Chrome DevTools phone view.
-- **Next screens** (same style, Claude designs them): chat. Profile and My calendar are done (see below). Then switch the default to System and move from
+- **All main screens are redesigned** (Home, Walks + map, Create walk, Walk details, Profile, My calendar, Chat). Still old style: smaller screens (settings, friends, notifications, edit profile, badges, analytics, login), date/time pickers and the invite card. After that, switch the default theme to System and move to `package:material_ui`. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
+
+### Chat redesigned, branch `design/chat` (2026-11-26, not merged yet)
+
+- Shared `ChatView` (`lib/widgets/chat/chat_view.dart`, pure UI) for both the walk
+  group chat and DMs; `walk_chat_screen.dart` / `dm_chat_screen.dart` keep their
+  Firestore logic (send transaction, notifications, soft delete, photo upload behind
+  `AppFeatures.photoUploads`).
+- New look: header with back button, walk badge / friend avatar, title + "Group chat" /
+  "Direct message"; lime bubbles for you, white/dark for others with a small "tail" on
+  the last of a run; day separators (Today / Yesterday / weekday / date); time under
+  each run; "Message deleted" in italics; friendly empty state; rounded message box
+  (up to 5 lines, 1,000 characters = the rules' limit) with a lime send button.
+- **Group chat now shows who wrote each message.** New messages save `senderName`
+  (the rules already allow extra fields); older messages fall back to the walk's
+  host/walker names (`WalkChatScreen.namesOf(walk)`, passed from walk details and the
+  active walk screen), else "Walker".
+- Branched from `design/calendar` (which includes `design/profile`): merging this
+  merges all three.
+- Tests: `test/chat_test.dart` (126 layouts + 3 checks). 1,267 tests total.
 
 ### My calendar replaces the Events tab, branch `design/calendar` (2026-11-26, not merged yet)
 
