@@ -192,7 +192,7 @@ bundled JDK 21 for that shell:
 - **All main screens are redesigned** (Home, Walks + map, Create walk, Walk details, Profile, My calendar, Chat). Still old style: smaller screens (settings, friends, notifications, edit profile, badges, analytics, login), date/time pickers and the invite card. After that, switch the default theme to System and move to `package:material_ui`. Then switch the default to System and move from
   `package:flutter/material.dart` to `package:material_ui`.
 
-### Chat redesigned, branch `design/chat` (2026-11-26, not merged yet)
+### Chat redesigned, branch `design/chat` (2026-11-26, merged into `main`)
 
 - Shared `ChatView` (`lib/widgets/chat/chat_view.dart`, pure UI) for both the walk
   group chat and DMs; `walk_chat_screen.dart` / `dm_chat_screen.dart` keep their
@@ -211,7 +211,7 @@ bundled JDK 21 for that shell:
   merges all three.
 - Tests: `test/chat_test.dart` (126 layouts + 3 checks). 1,267 tests total.
 
-### My calendar replaces the Events tab, branch `design/calendar` (2026-11-26, not merged yet)
+### My calendar replaces the Events tab, branch `design/calendar` (2026-11-26, merged into `main`)
 
 - **Owner's decision:** no separate "big events" screen for now. A big event is just a
   walk with more people; later it could be an "Event" tag on a walk (bigger group,
@@ -228,7 +228,7 @@ bundled JDK 21 for that shell:
 - Limit: it only knows the walks Home has loaded (the same as the Walks tab), so a
   starred walk far beyond the loaded pages won't show until it's loaded.
 
-### Profile redesigned on branch `design/profile` (2026-11-26, not merged yet)
+### Profile redesigned on branch `design/profile` (2026-11-26, merged into `main`)
 
 - Layout moved into a pure `ProfileView` (`lib/screens/profile/profile_view.dart`);
   `profile_screen.dart` keeps loading and every action, and passes the sections that

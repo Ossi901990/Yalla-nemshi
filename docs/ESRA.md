@@ -100,13 +100,12 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    Maps needs a credit card on the account, so **we'll switch back to Google Maps once
    we pay for the plan**. The map is in the main version now. The **profile page**
    is redesigned too (photo, your level, this week's goal, colourful stats, and a tidy
-   list of settings at the bottom); it's waiting for a check before it goes into the main
-   version. The **calendar tab** (it used to just say "Coming soon") is now **My
+   list of settings at the bottom); it's in the main version now. The **calendar tab** (it used to just say "Coming soon") is now **My
    calendar**: all the walks you host, joined or starred, day by day, with a two-week
    strip at the top. We decided not to build a separate screen for big events for now,
-   since a big event is just a walk with more people. Also waiting for a check. The **chats** (walk group chat and messages with a
+   since a big event is just a walk with more people. Also in the main version. The **chats** (walk group chat and messages with a
    friend) have the new look too, and the group chat now shows **who wrote each
-   message**, which it didn't before. Also waiting for a check. That's all the main
+   message**, which it didn't before. Also in the main version. That's all the main
    screens done; the smaller ones (settings, friends, notifications and so on) come next.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
