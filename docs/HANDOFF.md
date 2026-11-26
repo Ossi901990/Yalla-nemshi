@@ -202,9 +202,16 @@ bundled JDK 21 for that shell:
   old card and an unused filter card removed. Note: the "distance" filter means the
   walk's **length**, not how far away it is.
 - Tests: `test/walks_tab_test.dart` (168 layouts + sections check). 919 tests total.
-- **Map: approved by the owner (2026-11-26)**, being built next on `design/walks-map`:
-  a List / Map toggle on Nearby with a pin per walk meeting point. (Until then the
-  map icon and Home's "Open the map →" lead to the list.)
+- **Map (2026-11-26, branch `design/walks-map`, not merged yet):** List / Map switch on
+  Nearby (`lib/screens/walks/walks_map_view.dart`). Pins at each walk's meeting point
+  (lime = open, coral = joined/hosting), camera fits pins, dark map style, tap pin →
+  walk row → walk details. Same filtered walks as the list. Home's "Open the map →"
+  opens straight into it (`openNearbyMap`).
+- **Web maps were never set up:** `web/index.html` lacked the Google Maps JS script, so
+  no map could show on the web (incl. Create walk's location picker). Added, using
+  the existing web key. **If the map shows a Google error, enable "Maps JavaScript
+  API"** for project `yalla-nemshi-app` (Google Cloud Console → APIs & Services →
+  Library). Map rendering can't be covered by widget tests; check it in the app.
 
 ### Create walk redesigned and merged into `main` (2026-11-24)
 

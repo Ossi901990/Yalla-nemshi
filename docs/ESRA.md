@@ -92,7 +92,9 @@ All the steps to turn these on are written down in `HANDOFF.md`, in the section
    now also redesigned and in the main version. The **create walk** page is
    redesigned too and in the main version. The **walks list** (your walks and
    walks nearby) is redesigned too and in the main version; "My walks" now also
-   shows walks you joined, not only ones you host. Next: events, profile and chat.
+   shows walks you joined, not only ones you host. There's now also a **map of walks**
+   (switch between list and map), waiting for a look-over. Next: events, profile and
+   chat.
 4. **Quick re-checks:** notifications, profile changes, hidden photo buttons.
 5. **Test GPS tracking on a real phone** (it's hard to test on a computer).
 6. Decide what blocking should do for **walks** (for example, hide your walks from
