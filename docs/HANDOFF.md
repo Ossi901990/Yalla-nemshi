@@ -207,11 +207,22 @@ bundled JDK 21 for that shell:
   (lime = open, coral = joined/hosting), camera fits pins, dark map style, tap pin →
   walk row → walk details. Same filtered walks as the list. Home's "Open the map →"
   opens straight into it (`openNearbyMap`).
-- **Web maps were never set up:** `web/index.html` lacked the Google Maps JS script, so
-  no map could show on the web (incl. Create walk's location picker). Added, using
-  the existing web key. **If the map shows a Google error, enable "Maps JavaScript
-  API"** for project `yalla-nemshi-app` (Google Cloud Console → APIs & Services →
-  Library). Map rendering can't be covered by widget tests; check it in the app.
+- **Maps use OpenStreetMap, not Google (owner's choice "C", 2026-11-26).** Google Maps
+  needs billing on the Cloud project (the key answers "You must enable Billing"), and
+  adding billing to the Firebase project would move it to Blaze. Until then:
+  - `flutter_map` + `latlong2`; shared pieces in `lib/widgets/osm_map.dart` (tiles,
+    dark-mode tiles, `MapPin`, credit label; OSM requires the credit to stay visible).
+  - Walks map, Create walk's location picker (`map_pick_screen.dart`, place search via
+    Nominatim, fallback centre Amman) and the walk summary route map all on OSM.
+  - `GeocodingService` uses **Nominatim** (coords → city; text → place). Google
+    geocoding had been failing silently since there was no billing.
+  - `google_maps_flutter` stays only for its `LatLng` data type in create-walk code.
+  - **Fair use:** OSM tile servers and Nominatim are fine for testing and small apps
+    (≤1 Nominatim request/second, identify the app). At scale, point `OsmMap.tileUrl`
+    and `GeocodingService._base` at a provider (many have free tiers), or switch back to
+    Google once billing is on.
+- **Android app id is still the placeholder `com.example.yalla_nemshi`**; change it
+  before publishing (map requests identify as `com.yallanemshi.app`).
 
 ### Create walk redesigned and merged into `main` (2026-11-24)
 
