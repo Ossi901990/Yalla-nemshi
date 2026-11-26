@@ -44,6 +44,7 @@ class HomeTabActions {
     required this.onOpenActive,
     required this.onCreateWalk,
     required this.onBrowseWalks,
+    required this.onOpenMap,
     required this.onRefresh,
   });
 
@@ -57,6 +58,7 @@ class HomeTabActions {
   final ValueChanged<WalkEvent> onOpenActive;
   final VoidCallback onCreateWalk;
   final VoidCallback onBrowseWalks;
+  final VoidCallback onOpenMap;
   final Future<void> Function() onRefresh;
 }
 
@@ -148,7 +150,7 @@ class HomeTab extends StatelessWidget {
               else
                 _EmptyHero(actions: actions),
               const SizedBox(height: AppSpace.lg),
-              _NearbyMapCard(count: nearbyCount, onTap: actions.onBrowseWalks),
+              _NearbyMapCard(count: nearbyCount, onTap: actions.onOpenMap),
               const SizedBox(height: AppSpace.xxl),
               SectionHeader(
                 title: 'Coming up',

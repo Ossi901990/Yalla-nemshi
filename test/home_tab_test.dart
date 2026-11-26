@@ -94,6 +94,7 @@ HomeTabActions _noActions() => HomeTabActions(
   onOpenActive: (_) {},
   onCreateWalk: () {},
   onBrowseWalks: () {},
+  onOpenMap: () {},
   onRefresh: () async {},
 );
 

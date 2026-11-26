@@ -93,4 +93,12 @@ void main() {
     expect(find.text('Joined'), findsOneWidget);
     expect(find.text('Sunrise to Vrelo Bosne'), findsOneWidget);
   });
+
+  testWidgets('Nearby has a map switch', (tester) async {
+    await tester.pumpWidget(themedApp(_screen('nearby'), ThemeMode.light));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nearby'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Show map'), findsOneWidget);
+  });
 }

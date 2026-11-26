@@ -60,6 +60,9 @@ class WalksScreen extends StatefulWidget {
   final bool isLoadingMore;
   final VoidCallback onLoadMore;
 
+  /// Open on Nearby in map mode.
+  final bool openNearbyMap;
+
   const WalksScreen({
     super.key,
     required this.myWalks,
@@ -82,6 +85,7 @@ class WalksScreen extends StatefulWidget {
     required this.hasMoreWalks,
     required this.isLoadingMore,
     required this.onLoadMore,
+    this.openNearbyMap = false,
   });
 
   @override
@@ -103,7 +107,11 @@ class _WalksScreenState extends State<WalksScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.openNearbyMap ? 1 : 0,
+    );
   }
 
   @override
@@ -198,6 +206,7 @@ class _WalksScreenState extends State<WalksScreen>
                     hasMoreWalks: widget.hasMoreWalks,
                     isLoadingMore: widget.isLoadingMore,
                     onLoadMore: widget.onLoadMore,
+                    startOnMap: widget.openNearbyMap,
                   ),
                 ],
               ),

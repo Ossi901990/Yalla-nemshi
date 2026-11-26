@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/ui/ui_kit.dart';
 import '../widgets/ui/floating_nav_bar.dart';
 import '../widgets/walk_row.dart';
+import 'walks/walks_map_view.dart';
 
 // ===== Design tokens (match HomeScreen) =====
 
@@ -64,6 +65,9 @@ class NearbyWalksScreen extends StatefulWidget {
   final bool isLoadingMore;
   final VoidCallback onLoadMore;
 
+  /// Open in map mode (e.g. from Home's "Open the map").
+  final bool startOnMap;
+
   const NearbyWalksScreen({
     super.key,
     required this.events,
@@ -83,6 +87,7 @@ class NearbyWalksScreen extends StatefulWidget {
     required this.hasMoreWalks,
     required this.isLoadingMore,
     required this.onLoadMore,
+    this.startOnMap = false,
   });
 
   @override
@@ -93,6 +98,7 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
   _DateFilter _dateFilter = _DateFilter.all;
   _DistanceFilter _distanceFilter = _DistanceFilter.all;
   bool _interestedOnly = false;
+  late bool _showMap = widget.startOnMap;
 
   DateTime get _today {
     final now = DateTime.now();
@@ -145,7 +151,6 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final now = DateTime.now();
     final upcoming = <WalkEvent>[];
     for (final event in widget.events) {
@@ -187,54 +192,65 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
           ),
           const SizedBox(height: AppSpace.md),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.page,
-                AppSpace.xs,
-                AppSpace.page,
-                FloatingNavBar.reservedHeight,
-              ),
-              // +1 for the "load more" footer (or the empty-state card)
-              itemCount: upcoming.isEmpty ? 1 : upcoming.length + 1,
-              itemBuilder: (context, index) {
-                if (upcoming.isEmpty) {
-                  return AppCard(
-                    padding: const EdgeInsets.all(22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'No walks match',
-                          textScaler: AppText.headlineScaler(context),
-                          style: AppText.display(
-                            24,
-                            color: p.text,
-                            weight: 750,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpace.sm),
-                        Text(
-                          'Try another date or distance, or turn off Interested.',
-                          style: AppText.body(15, color: p.textMuted),
-                        ),
-                      ],
+            child: _showMap
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.page,
                     ),
-                  );
-                }
-                if (index == upcoming.length) {
-                  return _buildLoadMoreButton(context);
-                }
-                final e = upcoming[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpace.md),
-                  child: WalkRow(
-                    walk: e,
-                    onOpen: () => widget.onTapEvent(e),
-                    onJoin: () => widget.onToggleJoin(e),
+                    child: WalksMapView(
+                      walks: upcoming,
+                      onOpen: widget.onTapEvent,
+                      onJoin: widget.onToggleJoin,
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpace.page,
+                      AppSpace.xs,
+                      AppSpace.page,
+                      FloatingNavBar.reservedHeight,
+                    ),
+                    // +1 for the "load more" footer (or the empty-state card)
+                    itemCount: upcoming.isEmpty ? 1 : upcoming.length + 1,
+                    itemBuilder: (context, index) {
+                      if (upcoming.isEmpty) {
+                        return AppCard(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'No walks match',
+                                textScaler: AppText.headlineScaler(context),
+                                style: AppText.display(
+                                  24,
+                                  color: p.text,
+                                  weight: 750,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.sm),
+                              Text(
+                                'Try another date or distance, or turn off Interested.',
+                                style: AppText.body(15, color: p.textMuted),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      if (index == upcoming.length) {
+                        return _buildLoadMoreButton(context);
+                      }
+                      final e = upcoming[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.md),
+                        child: WalkRow(
+                          walk: e,
+                          onOpen: () => widget.onTapEvent(e),
+                          onJoin: () => widget.onToggleJoin(e),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -338,6 +354,8 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
           const SizedBox(width: 8),
           // More filters button (opens bottom sheet)
           _buildFilterButton(context),
+          const SizedBox(width: 8),
+          _buildViewToggle(context),
         ],
       ),
     );
@@ -385,6 +403,35 @@ class _NearbyWalksScreenState extends State<NearbyWalksScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// List / Map switch.
+  Widget _buildViewToggle(BuildContext context) {
+    final p = AppPalette.of(context);
+    return Tooltip(
+      message: _showMap ? 'Show list' : 'Show map',
+      child: Semantics(
+        button: true,
+        label: _showMap ? 'Show list' : 'Show map',
+        child: GestureDetector(
+          onTap: () => setState(() => _showMap = !_showMap),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _showMap ? AppPalette.lime : p.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: _showMap ? AppPalette.lime : p.border),
+            ),
+            child: Icon(
+              _showMap ? Icons.view_list_rounded : Icons.map_rounded,
+              size: 20,
+              color: _showMap ? AppPalette.ink : p.text,
+            ),
           ),
         ),
       ),

@@ -593,6 +593,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// All events (hosted by user + nearby).
   final List<WalkEvent> _events = [];
 
+  /// Next time the Walks tab opens, start on the Nearby map.
+  bool _openNearbyMap = false;
+
   /// Walks the user starred (saved in users/{uid}/interested).
   Set<String> _interestedIds = {};
   StreamSubscription<Set<String>>? _interestedSub;
@@ -1659,7 +1662,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             'uid=${FirebaseAuth.instance.currentUser?.uid}',
           );
 
+          final openMap = _openNearbyMap;
+          _openNearbyMap = false;
           body = WalksScreen(
+            openNearbyMap: openMap,
             myWalks: _myHostedWalks,
             nearbyWalks: _nearbyWalks,
             onToggleJoin: (e) => _toggleJoin(e),
@@ -1814,6 +1820,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onOpenActive: _openActiveWalk,
         onCreateWalk: _openCreateWalk,
         onBrowseWalks: () => setState(() => _currentTab = 1),
+        onOpenMap: () => setState(() {
+          _openNearbyMap = true;
+          _currentTab = 1;
+        }),
         onRefresh: () async {
           _listenToWalks();
           await _refreshNotificationsCount();
